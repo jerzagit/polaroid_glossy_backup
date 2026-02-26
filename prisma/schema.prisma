@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Order status enum
+// pending -> processing -> posted -> on_delivery -> delivered
+// pending/processing can be cancelled -> refunded
+// delivered can have reviews
+
+model User {
+  id            String   @id @default(cuid())
+  supabaseId    String   @unique // Supabase Auth User ID
+  email         String   @unique
+  name          String?
+  avatar        String?
+  phone         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  orders        Order[]
+  reviews       Review[]
+
+  @@map("users")
+}
+
+model PrintSize {
+  id          String       @id @default(cuid())
+  name        String       // e.g., "4R", "3R", "2R", "A4"
+  displayName String       // e.g., "4R (4x6 inches)"
+  width       Float        // in inches
+  height      Float        // in inches
+  price       Float        // base price
+  description String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+  reviews     Review[]
+
+  @@map("print_sizes")
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  basePrice   Float
+  category    String      // "polaroid", "frame", "album", etc.
+  image       String?
+  features    String?     // JSON string of features
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  orderItems  OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id            String          @id @default(cuid())
+  orderNumber   String          @unique
+  userId        String?
+  user          User?           @relation(fields: [userId], references: [id])
+  customerName  String
+  customerEmail String
+  customerPhone String?
+  status        String          @default("pending") // pending, processing, posted, on_delivery, delivered, cancelled, refunded
+  subtotal      Float
+  shipping      Float           @default(0)
+  total         Float
+  notes         String?
+  trackingNumber String?
+  shippedAt     DateTime?
+  deliveredAt   DateTime?
+  cancelledAt   DateTime?
+  cancelReason  String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+  reviews       Review[]
+
+  @@map("orders")
+}
+
+model OrderStatusHistory {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      String   // The status that was set
+  message     String?  // Optional message about the status change
+  createdAt   DateTime @default(now())
+
+  @@map("order_status_history")
+}
+
+model OrderItem {
+  id          String    @id @default(cuid())
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?  @relation(fields: [productId], references: [id])
+  sizeId      String
+  size        PrintSize @relation(fields: [sizeId], references: [id])
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+  images      String    // JSON string array of image URLs (multiple photos)
+  customTexts String?   // JSON string array of custom texts for each photo
+  createdAt   DateTime  @default(now())
+
+  @@map("order_items")
+}
+
+model Review {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id])
+  sizeId      String
+  size        PrintSize @relation(fields: [sizeId], references: [id])
+  rating      Int       // 1-5 stars
+  title       String
+  comment     String
+  images      String?   // JSON string array of review image URLs
+  isVerified  Boolean   @default(false) // Verified purchase
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, orderId]) // One review per order per user
+  @@map("reviews")
+}
+
+model Cart {
+  id          String     @id @default(cuid())
+  sessionId   String     @unique
+  userId      String?    // For logged-in users
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  items       CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id          String    @id @default(cuid())
+  cartId      String
+  cart        Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  sizeId      String
+  size        PrintSize @relation(fields: [sizeId], references: [id])
+  quantity    Int
+  images      String    // JSON string array of image URLs
+  customTexts String?   // JSON string array of custom texts
+  unitPrice   Float
+  createdAt   DateTime  @default(now())
+
+  @@map("cart_items")
+}
