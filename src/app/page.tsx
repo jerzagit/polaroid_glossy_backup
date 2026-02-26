@@ -1240,31 +1240,104 @@ export default function PolaroidPrintPage() {
 
   const renderConfirmationStep = () => (
     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12">
-      <div className="w-24 h-24 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-6">
-        <Check className="w-12 h-12 text-green-600" />
-      </div>
-      <h2 className="text-3xl font-bold text-foreground mb-2">Order Confirmed!</h2>
-      <p className="text-muted-foreground mb-6">Thank you for your order. We&apos;ll start printing your beautiful polaroids right away!</p>
-      <Card className="max-w-md mx-auto">
-        <CardContent className="py-6">
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Order Number:</span>
-              <div className="flex items-center gap-2">
-                <span className="font-mono font-bold">{orderNumber}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyTrackingNumber(orderNumber)}>
-                  <Copy className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Email:</span>
-              <span>{orderFormData.customerEmail}</span>
-            </div>
+      {paymentMethod === 'bank_transfer' ? (
+        <>
+          <div className="w-24 h-24 mx-auto bg-yellow-100 rounded-full flex items-center justify-center mb-6">
+            <Clock className="w-12 h-12 text-yellow-600" />
           </div>
-        </CardContent>
-      </Card>
-      <p className="text-sm text-muted-foreground mt-6">Save your order number to track your order status</p>
+          <h2 className="text-3xl font-bold text-foreground mb-2">Awaiting Payment</h2>
+          <p className="text-muted-foreground mb-2">Please make your payment within <span className="font-semibold text-yellow-600">24 hours</span>.</p>
+          <p className="text-sm text-muted-foreground mb-6">Your order will be processed once we receive your payment.</p>
+          <Card className="max-w-md mx-auto">
+            <CardContent className="py-6">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Order Number:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold">{orderNumber}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyTrackingNumber(orderNumber)}>
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Email:</span>
+                  <span>{orderFormData.customerEmail}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <div className="bg-muted rounded-lg p-4 text-sm max-w-md mx-auto mt-6">
+            <p className="font-semibold mb-2">Bank Transfer Details:</p>
+            <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
+            <p><span className="text-muted-foreground">Account Name:</span> Acachiaa Empire</p>
+            <p><span className="text-muted-foreground">Account Number:</span> 123456789012</p>
+            <p className="font-semibold mt-2">Total: RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</p>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="w-24 h-24 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-6">
+            <Check className="w-12 h-12 text-green-600" />
+          </div>
+          <h2 className="text-3xl font-bold text-foreground mb-2">Order Confirmed!</h2>
+          <p className="text-muted-foreground mb-6">Thank you for your order. We&apos;ll start printing your beautiful polaroids right away!</p>
+          <Card className="max-w-md mx-auto">
+            <CardContent className="py-6">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Order Number:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold">{orderNumber}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyTrackingNumber(orderNumber)}>
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Email:</span>
+                  <span>{orderFormData.customerEmail}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+      
+      {/* Order Status Progress Bar */}
+      <div className="mt-8">
+        <p className="text-sm text-muted-foreground mb-4">
+          {paymentMethod === 'bank_transfer' ? 'Order Status:' : 'Track your order:'}
+        </p>
+        <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
+          {[
+            { key: 'received', label: 'Order Received', icon: Check },
+            { key: 'pending', label: 'Pending Payment', icon: Clock },
+            { key: 'processing', label: 'Processing', icon: Sparkles },
+            { key: 'delivery', label: 'Delivery', icon: Truck },
+          ].map((step, index) => {
+            const isActive = paymentMethod === 'bank_transfer' 
+              ? index <= 1  // Show pending as current for bank transfer
+              : index <= (index === 0 ? 0 : 1); // For toyyibpay, show processing
+            
+            const Icon = step.icon;
+            return (
+              <div key={step.key} className="flex items-center">
+                <div className={`flex flex-col items-center ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs mt-1 hidden sm:block">{step.label}</span>
+                </div>
+                {index < 3 && (
+                  <div className={`w-8 h-0.5 mx-1 ${index < (paymentMethod === 'bank_transfer' ? 1 : 1) ? 'bg-primary' : 'bg-muted'}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="flex gap-4 mt-8 justify-center">
         <Button variant="outline" onClick={() => { setShowTrackingModal(true); setTrackingInput(orderNumber); }}>
           <Search className="w-4 h-4 mr-2" /> Track Order
