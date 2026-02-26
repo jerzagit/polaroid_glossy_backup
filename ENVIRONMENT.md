@@ -95,13 +95,34 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## ToyyibPay Setup
 
-### Development
-- Return URL: `http://localhost:3000/payment-status`
-- Callback URL: `http://localhost:3000/api/toyyibpay/callback`
+### Important: ToyyibPay Requires Public URLs
 
-### Production
-- Return URL: `https://your-domain.com/payment-status`
-- Callback URL: `https://your-domain.com/api/toyyibpay/callback`
+ToyyibPay's servers cannot reach `localhost`. For development, you need a public URL:
+
+**Option 1: ngrok (Recommended for local development)**
+
+```bash
+# Install ngrok if not
+ installed Start your# dev server first: bun run dev
+
+# In another terminal, start ngrok tunnel
+ngrok http 3000
+
+# Update .env with theexample ngrok URL ():
+TOYYIBPAY_RETURN_URL=https://your-ngrok-url.ngrok-free.dev/payment-status
+TOYYIBPAY_CALLBACK_URL=https://your-ngrok-url.ngrok-free.dev/api/toyyibpay/callback
+
+# Restart dev server for changes to take effect
+```
+
+**Option 2: Deploy to a public server**
+
+Use your production domain URL.
+
+### ToyyibPay Dashboard Configuration
+
+- Return URL: `https://your-url/payment-status`
+- Callback URL: `https://your-url/api/toyyibpay/callback`
 
 Update these URLs in your ToyyibPay merchant dashboard.
 

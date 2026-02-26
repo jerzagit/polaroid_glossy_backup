@@ -54,8 +54,13 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 # ToyyibPay (Malaysian payment gateway)
 TOYYIBPAY_SECRET_KEY=your-secret-key
 TOYYIBPAY_CATEGORY_CODE=your-category-code
-TOYYIBPAY_RETURN_URL=http://localhost:3000/payment-status
-TOYYIBPAY_CALLBACK_URL=http://localhost:3000/api/toyyibpay/callback
+
+# IMPORTANT: ToyyibPay requires public URLs (not localhost)
+# For local development, use ngrok:
+# 1. Run: ngrok http 3000
+# 2. Use the https URL from ngrok for the values below
+TOYYIBPAY_RETURN_URL=https://your-ngrok-url.ngrok-free.dev/payment-status
+TOYYIBPAY_CALLBACK_URL=https://your-ngrok-url.ngrok-free.dev/api/toyyibpay/callback
 ```
 
 #### Getting Google OAuth Credentials
