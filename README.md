@@ -1,94 +1,91 @@
 # Polaroid Glossy MY
 
-Transform your digital photos into beautiful physical polaroid prints. Choose from multiple sizes, add custom text, and create memories that last forever.
+A modern e-commerce platform for printing digital photos as beautiful physical polaroid prints. Built with Next.js 16, TypeScript, and Tailwind CSS.
 
 ## Features
 
-- **Photo Upload** - Upload multiple photos at once
-- **Custom Text** - Add personal messages to your polaroid prints
-- **Multiple Sizes** - Choose from 2R, 3R, 4R, and A4 sizes
-- **Cart & Checkout** - Full shopping cart experience
-- **Order Tracking** - Track your order status with order number
-- **User Accounts** - Sign in with Google to manage orders
-- **Customer Reviews** - View and submit reviews
-- **Theme Switching** - Choose from 4 color themes (Soft Pink, Lavender Dream, Coral Sunset, Mint Fresh)
+- **Photo Upload** - Upload multiple photos with custom text
+- **Multiple Sizes** - 2R, 3R, 4R, and A4 print sizes
+- **Shopping Cart** - Full cart experience with persistent storage
+- **Order Management** - Track orders with order numbers
+- **User Accounts** - Google OAuth authentication
+- **Payment Gateway** - ToyyibPay integration (Malaysia)
+- **Customer Reviews** - Verified purchase reviews
+- **Theme System** - 4 color themes (Soft Pink, Lavender Dream, Coral Sunset, Mint Fresh)
 
 ## Tech Stack
 
-- **Next.js 16** - React framework with App Router
-- **TypeScript** - Type-safe JavaScript
-- **Tailwind CSS 4** - Utility-first CSS
-- **shadcn/ui** - Component library
-- **Prisma** - Database ORM
-- **NextAuth.js** - Authentication
-- **Supabase** - Backend database
-- **Framer Motion** - Animations
+| Category | Technology |
+|----------|------------|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS 4 + shadcn/ui |
+| Database | SQLite + Prisma ORM |
+| Auth | NextAuth.js (Google OAuth) |
+| Payments | ToyyibPay |
+| Animations | Framer Motion |
+| Package Manager | Bun |
 
-## Getting Started
+## Quick Start
 
 ```bash
 # Install dependencies
 bun install
 
-# Generate Prisma client
+# Setup database
 bun run db:generate
-
-# Push database schema
 bun run db:push
 
 # Start development server
 bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
-
-## Available Themes
-
-| Theme | Description |
-|-------|-------------|
-| Soft Pink | Pastel pink palette |
-| Lavender Dream | Soft violet tones |
-| Coral Sunset | Warm coral/peach |
-| Mint Fresh | Fresh mint green |
+Open [http://localhost:3000](http://localhost:3000)
 
 ## Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   ├── page.tsx           # Main page
-│   ├── layout.tsx         # Root layout
-│   └── globals.css        # Global styles + themes
-├── components/
-│   ├── ui/               # shadcn/ui components
-│   └── ThemeSwitcher.tsx # Theme switcher component
-├── contexts/
-│   ├── AuthContext.tsx   # Authentication context
-│   └── ThemeContext.tsx  # Theme context
-└── lib/
-    ├── supabase/         # Supabase client
-    ├── db.ts            # Database client
-    └── utils.ts         # Utility functions
+polaroid-glossy-clean/
+├── prisma/
+│   └── schema.prisma       # Database schema
+├── public/
+│   └── images/             # Static images
+├── src/
+│   ├── app/                # Next.js App Router
+│   │   ├── api/            # API routes
+│   │   ├── layout.tsx      # Root layout
+│   │   └── page.tsx        # Home page
+│   ├── components/
+│   │   ├── ui/             # shadcn/ui components
+│   │   └── ThemeSwitcher.tsx
+│   ├── contexts/           # React contexts
+│   ├── hooks/              # Custom hooks
+│   └── lib/                # Utilities
+├── Caddyfile               # Caddy reverse proxy config
+├── DEPLOYMENT.md           # Deployment guide
+├── SETUP.md                # Local setup guide
+├── ENVIRONMENT.md          # Environment configuration
+└── .env.example            # Environment variables template
 ```
 
-## Environment Variables
+## Available Scripts
 
-Create a `.env` file with:
+| Command | Description |
+|---------|-------------|
+| `bun run dev` | Start development server |
+| `bun run build` | Build for production |
+| `bun run start` | Start production server |
+| `bun run lint` | Run ESLint |
+| `bun run db:generate` | Generate Prisma client |
+| `bun run db:push` | Push schema to database |
+| `bun run db:migrate` | Run database migrations |
+| `bun run db:reset` | Reset database |
 
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+## Documentation
 
-# NextAuth
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your_nextauth_secret
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-```
+- [SETUP.md](./SETUP.md) - Local development setup
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - Production deployment
+- [ENVIRONMENT.md](./ENVIRONMENT.md) - Environment configuration
 
 ## License
 
