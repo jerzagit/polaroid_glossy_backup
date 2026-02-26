@@ -72,10 +72,15 @@ model Order {
   customerName  String
   customerEmail String
   customerPhone String?
+  customerState String?         @default("w")
   status        String          @default("pending") // pending, processing, posted, on_delivery, delivered, cancelled, refunded
   subtotal      Float
   shipping      Float           @default(0)
   total         Float
+  paymentMethod String?         @default("bank_transfer") // bank_transfer, toyyibpay
+  paymentStatus String?          @default("pending") // pending, paid, failed
+  toyyibpayRef String?
+  paidAt        DateTime?
   notes         String?
   trackingNumber String?
   shippedAt     DateTime?

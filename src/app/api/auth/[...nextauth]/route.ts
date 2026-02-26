@@ -1,10 +1,8 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { db } from "@/lib/db";
-import { NextRequest } from "next/server";
 
-// Dynamic auth options that work with any domain
-const getAuthOptions = (req?: NextRequest): NextAuthOptions => ({
+export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -13,7 +11,6 @@ const getAuthOptions = (req?: NextRequest): NextAuthOptions => ({
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Create or update user in database
       try {
         await db.user.upsert({
           where: { email: user.email! },
@@ -22,6 +19,7 @@ const getAuthOptions = (req?: NextRequest): NextAuthOptions => ({
             avatar: user.image,
           },
           create: {
+            supabaseId: (account?.providerAccountId || user.email || "").toString(),
             email: user.email!,
             name: user.name,
             avatar: user.image,
@@ -32,8 +30,7 @@ const getAuthOptions = (req?: NextRequest): NextAuthOptions => ({
       }
       return true;
     },
-    async session({ session, user, token }) {
-      // Get user from database and add id to session
+    async session({ session, token }) {
       if (session.user?.email) {
         try {
           const dbUser = await db.user.findUnique({
@@ -48,7 +45,7 @@ const getAuthOptions = (req?: NextRequest): NextAuthOptions => ({
       }
       return session;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
       }
@@ -63,9 +60,8 @@ const getAuthOptions = (req?: NextRequest): NextAuthOptions => ({
     strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
-  // Use relative URLs for callbacks - this makes it work on any domain
   debug: process.env.NODE_ENV === 'development',
-});
+};
 
-const handler = NextAuth(getAuthOptions);
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };

@@ -14,10 +14,13 @@ interface OrderInput {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
+  customerState?: string;
   notes?: string;
   items: OrderItemInput[];
   subtotal: number;
+  shipping?: number;
   total: number;
+  paymentMethod?: string;
 }
 
 // Generate a unique order number
@@ -25,6 +28,24 @@ function generateOrderNumber(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `PP-${timestamp}-${random}`;
+}
+
+// Ensure print sizes exist in database
+async function ensurePrintSizes() {
+  const defaultSizes = [
+    { id: '2r', name: '2R', displayName: '2R (2.5 x 3.5 inches)', width: 2.5, height: 3.5, price: 0.50, description: 'Wallet size - Perfect for keepsakes' },
+    { id: '3r', name: '3R', displayName: '3R (3.5 x 5 inches)', width: 3.5, height: 5, price: 0.75, description: 'Standard photo size - Great for albums' },
+    { id: '4r', name: '4R', displayName: '4R (4 x 6 inches)', width: 4, height: 6, price: 1.00, description: 'Most popular - Classic polaroid style' },
+    { id: 'a4', name: 'A4', displayName: 'A4 (8.3 x 11.7 inches)', width: 8.3, height: 11.7, price: 3.50, description: 'Poster size - Perfect for displays' }
+  ];
+
+  for (const size of defaultSizes) {
+    await db.printSize.upsert({
+      where: { id: size.id },
+      update: {},
+      create: size
+    });
+  }
 }
 
 // GET /api/orders - Get orders (for user or admin)
@@ -125,8 +146,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body: OrderInput = await request.json();
+    console.log('Order request body:', JSON.stringify(body, null, 2));
     
-    const { userId, customerName, customerEmail, customerPhone, notes, items, subtotal, total } = body;
+    const { userId, customerName, customerEmail, customerPhone, customerState, notes, items, subtotal, shipping, total, paymentMethod } = body;
 
     // Validate required fields
     if (!customerName || !customerEmail || !items || items.length === 0) {
@@ -145,8 +167,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Ensure print sizes exist in database
+    await ensurePrintSizes();
+
     // Generate order number
     const orderNumber = generateOrderNumber();
+    console.log('Creating order:', { orderNumber, customerName, customerEmail, total, paymentMethod });
+
+    // Get shipping cost from request body or use default
+    const shippingCost = shipping || 11;
 
     // Create order with items and status history in a transaction
     const order = await db.$transaction(async (tx) => {
@@ -154,14 +183,15 @@ export async function POST(request: NextRequest) {
       const newOrder = await tx.order.create({
         data: {
           orderNumber,
-          userId: userId || null,
           customerName,
           customerEmail,
           customerPhone: customerPhone || null,
+          customerState: customerState || 'w',
           status: 'pending',
           subtotal,
-          shipping: 5.00, // Flat shipping rate
+          shipping: shippingCost,
           total,
+          paymentMethod: paymentMethod || 'bank_transfer',
           notes: notes || null
         }
       });

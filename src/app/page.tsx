@@ -63,6 +63,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // Types
 interface PrintSize {
@@ -142,6 +149,17 @@ const printSizes: PrintSize[] = [
   { id: 'a4', name: 'A4', displayName: 'A4 (8.3 x 11.7 inches)', width: 8.3, height: 11.7, price: 3.50, description: 'Poster size - Perfect for displays' }
 ];
 
+const malaysiaStates = [
+  { id: 'w', name: 'West Malaysia (Semenanjung)', shippingCost: 11 },
+  { id: 'e_sabah', name: 'Sabah', shippingCost: 7 },
+  { id: 'e_sarawak', name: 'Sarawak', shippingCost: 7 },
+];
+
+const getShippingCost = (stateId: string): number => {
+  const state = malaysiaStates.find(s => s.id === stateId);
+  return state ? state.shippingCost : 11;
+};
+
 // Customer testimonials data
 const customerTestimonials = [
   { id: 1, name: 'Sarah Mitchell', location: 'New York, USA', image: '/images/customer-1.png', rating: 5, text: 'Absolutely love my polaroid prints! The quality is amazing and they arrived so quickly. Perfect for my scrapbook!', printType: '4R Classic' },
@@ -195,12 +213,14 @@ export default function PolaroidPrintPage() {
   const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
   const [trackingInput, setTrackingInput] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('bank_transfer');
   
   // Form
   const [orderFormData, setOrderFormData] = useState({
     customerName: '',
     customerEmail: '',
     customerPhone: '',
+    customerState: 'w',
     notes: ''
   });
   
@@ -280,9 +300,11 @@ export default function PolaroidPrintPage() {
 
   const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
+    const fileCount = files.length;
     const newPhotos: PhotoItem[] = [];
+    let loadedCount = 0;
     
     Array.from(files).forEach(file => {
       const reader = new FileReader();
@@ -294,15 +316,22 @@ export default function PolaroidPrintPage() {
           customText: ''
         });
         
-        if (newPhotos.length === files.length) {
+        loadedCount++;
+        if (loadedCount === fileCount) {
           setPhotos(prev => [...prev, ...newPhotos]);
-          toast.success(`Added ${files.length} photo${files.length > 1 ? 's' : ''}!`);
+          toast.success(`Added ${fileCount} photo${fileCount > 1 ? 's' : ''}!`);
+        }
+      };
+      reader.onerror = () => {
+        loadedCount++;
+        toast.error(`Failed to load ${file.name}`);
+        if (loadedCount === fileCount && newPhotos.length > 0) {
+          setPhotos(prev => [...prev, ...newPhotos]);
         }
       };
       reader.readAsDataURL(file);
     });
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -358,12 +387,22 @@ export default function PolaroidPrintPage() {
   }, []);
 
   const handleCheckout = useCallback(async () => {
+    console.log('handleCheckout clicked, paymentMethod:', paymentMethod);
+    
     if (!orderFormData.customerName || !orderFormData.customerEmail) {
       toast.error('Please fill in required fields');
       return;
     }
 
+    if (!orderFormData.customerState) {
+      toast.error('Please select your state');
+      return;
+    }
+
+    const shippingCost = getShippingCost(orderFormData.customerState);
     setIsProcessing(true);
+
+    console.log('Starting checkout with paymentMethod:', paymentMethod);
 
     try {
       const items = cart.map(item => ({
@@ -382,13 +421,45 @@ export default function PolaroidPrintPage() {
           ...orderFormData,
           items,
           subtotal: cartTotal,
-          total: cartTotal + 5
+          shipping: shippingCost,
+          total: cartTotal + shippingCost,
+          paymentMethod
         })
       });
 
       const data = await response.json();
+      console.log('Order API response:', data);
 
       if (data.success) {
+        if (paymentMethod === 'toyyibpay') {
+          console.log('Creating ToyyibPay bill...');
+          const billResponse = await fetch('/api/toyyibpay/create-bill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: data.order.id,
+              orderNumber: data.order.orderNumber,
+              amount: cartTotal + shippingCost,
+              customerEmail: orderFormData.customerEmail,
+              customerName: orderFormData.customerName
+            })
+          });
+
+          const billData = await billResponse.json();
+          console.log('ToyyibPay bill response:', billData);
+
+          if (billData.success && billData.paymentUrl) {
+            setOrderNumber(data.order.orderNumber);
+            setCart([]);
+            localStorage.removeItem('polaroid_cart');
+            window.location.href = billData.paymentUrl;
+            return;
+          } else {
+            console.error('Bill creation failed:', billData);
+            throw new Error(billData.error || 'Failed to create payment');
+          }
+        }
+
         setOrderNumber(data.order.orderNumber);
         setOrderComplete(true);
         setCurrentStep(4);
@@ -396,14 +467,16 @@ export default function PolaroidPrintPage() {
         localStorage.removeItem('polaroid_cart');
         toast.success('Order placed successfully!');
       } else {
+        console.error('Order creation failed:', data);
         throw new Error(data.error || 'Failed to place order');
       }
-    } catch {
+    } catch (error) {
+      console.error('Checkout error:', error);
       toast.error('Failed to place order. Please try again.');
     } finally {
       setIsProcessing(false);
     }
-  }, [orderFormData, cart, cartTotal, profile?.id]);
+  }, [orderFormData, cart, cartTotal, profile?.id, paymentMethod]);
 
   const handleCancelOrder = useCallback(async (orderId: string) => {
     try {
@@ -564,7 +637,7 @@ export default function PolaroidPrintPage() {
             { icon: Zap, title: 'Quick & Easy', description: 'Upload your photos, choose a size, and checkout in under 2 minutes' },
             { icon: Shield, title: 'Quality Guaranteed', description: 'Premium photo paper with vibrant colors that last for years' },
             { icon: Heart, title: 'Personal Touch', description: 'Add custom text to make each print uniquely yours' },
-            { icon: Truck, title: 'Fast Shipping', description: 'Free shipping on all orders, delivered in 3-5 business days' },
+            { icon: Truck, title: 'Fast Shipping', description: 'RM7 for East Malaysia, RM11 for West Malaysia, delivered in 3-5 business days' },
             { icon: RefreshCw, title: 'Easy Reorders', description: 'Your uploaded photos are saved for quick reordering anytime' },
             { icon: Sparkles, title: 'Multiple Sizes', description: 'From wallet-size 2R to poster-size A4, we have you covered' }
           ].map((feature, index) => (
@@ -739,7 +812,7 @@ export default function PolaroidPrintPage() {
                   </div>
                   <p className="text-sm text-muted-foreground mb-4">{size.description}</p>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold text-primary">${size.price.toFixed(2)}</span>
+                    <span className="text-4xl font-bold text-primary">RM{size.price.toFixed(2)}</span>
                     <span className="text-muted-foreground">/print</span>
                   </div>
                 </CardContent>
@@ -752,7 +825,7 @@ export default function PolaroidPrintPage() {
             </motion.div>
           ))}
         </div>
-        <p className="text-center text-muted-foreground mt-8"><span className="font-medium">$5.00 flat-rate shipping</span> on all orders</p>
+        <p className="text-center text-muted-foreground mt-8"><span className="font-medium">RM7 flat-rate shipping</span> for East Malaysia • <span className="font-medium">RM11 flat-rate shipping</span> for West Malaysia</p>
         
         {/* Customer Reviews */}
         {reviews.length > 0 && (
@@ -871,7 +944,7 @@ export default function PolaroidPrintPage() {
                   >
                     <CardContent className="p-4 text-center">
                       <p className="font-semibold">{size.name}</p>
-                      <p className="text-2xl font-bold text-primary">${size.price.toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-primary">RM{size.price.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">/print</p>
                     </CardContent>
                   </Card>
@@ -900,7 +973,7 @@ export default function PolaroidPrintPage() {
                     <p className="text-sm text-muted-foreground">Total: {photos.length * quantity} prints</p>
                   </div>
                   <span className="font-bold text-primary text-3xl">
-                    ${(selectedSize.price * photos.length * quantity).toFixed(2)}
+                    RM{(selectedSize.price * photos.length * quantity).toFixed(2)}
                   </span>
                 </div>
               </CardContent>
@@ -971,7 +1044,7 @@ export default function PolaroidPrintPage() {
                               <Plus className="w-3 h-3" />
                             </Button>
                           </div>
-                          <span className="font-bold text-lg">${(item.size.price * item.photos.length * item.quantity).toFixed(2)}</span>
+                          <span className="font-bold text-lg">RM{(item.size.price * item.photos.length * item.quantity).toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -986,16 +1059,16 @@ export default function PolaroidPrintPage() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Photos ({totalPhotos} prints)</span>
-                  <span>${cartTotal.toFixed(2)}</span>
+                  <span>RM{cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span>$5.00</span>
+                  <span>RM{getShippingCost(orderFormData.customerState).toFixed(2)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span className="text-primary">${(cartTotal + 5).toFixed(2)}</span>
+                  <span className="text-primary">RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</span>
                 </div>
               </div>
             </CardContent>
@@ -1040,12 +1113,88 @@ export default function PolaroidPrintPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" placeholder="+1 (555) 123-4567" value={orderFormData.customerPhone} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: e.target.value }))} />
+              <Input id="phone" type="tel" placeholder="+60 123 456789" value={orderFormData.customerPhone} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="state">State *</Label>
+              <Select value={orderFormData.customerState} onValueChange={(value) => setOrderFormData(prev => ({ ...prev, customerState: value }))}>
+                <SelectTrigger id="state">
+                  <SelectValue placeholder="Select your state" />
+                </SelectTrigger>
+                <SelectContent>
+                  {malaysiaStates.map((state) => (
+                    <SelectItem key={state.id} value={state.id}>
+                      {state.name} (RM{state.shippingCost} shipping)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="notes">Special Instructions</Label>
               <Textarea id="notes" placeholder="Any special requests for your order..." value={orderFormData.notes} onChange={(e) => setOrderFormData(prev => ({ ...prev, notes: e.target.value }))} />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Payment Method</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div
+                className={cn(
+                  "border-2 rounded-lg p-4 cursor-pointer transition-all",
+                  paymentMethod === 'bank_transfer' ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                )}
+                onClick={() => setPaymentMethod('bank_transfer')}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", paymentMethod === 'bank_transfer' ? "border-primary bg-primary" : "border-muted-foreground")}>
+                    {paymentMethod === 'bank_transfer' && <div className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                  <div>
+                    <p className="font-semibold">Bank Transfer</p>
+                    <p className="text-xs text-muted-foreground">Maybank</p>
+                  </div>
+                </div>
+              </div>
+              <div
+                className={cn(
+                  "border-2 rounded-lg p-4 cursor-pointer transition-all",
+                  paymentMethod === 'toyyibpay' ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                )}
+                onClick={() => setPaymentMethod('toyyibpay')}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", paymentMethod === 'toyyibpay' ? "border-primary bg-primary" : "border-muted-foreground")}>
+                    {paymentMethod === 'toyyibpay' && <div className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                  <div>
+                    <p className="font-semibold">ToyyibPay</p>
+                    <p className="text-xs text-muted-foreground">Online Payment</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {paymentMethod === 'bank_transfer' && (
+              <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
+                <p className="font-semibold">Bank Transfer Details:</p>
+                <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
+                <p><span className="text-muted-foreground">Account Name:</span> Acachiaa Empire</p>
+                <p><span className="text-muted-foreground">Account Number:</span> 123456789012</p>
+                <p className="text-xs text-muted-foreground mt-2">Please transfer the exact amount and upload your receipt after placing order.</p>
+              </div>
+            )}
+
+            {paymentMethod === 'toyyibpay' && (
+              <div className="bg-muted rounded-lg p-4 text-sm">
+                <p className="font-semibold">Pay with ToyyibPay:</p>
+                <p className="text-muted-foreground">You will be redirected to ToyyibPay to complete your payment securely.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -1058,22 +1207,22 @@ export default function PolaroidPrintPage() {
               {cart.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm">
                   <span>{item.size.name} - {item.photos.length} photo{item.photos.length > 1 ? 's' : ''} × {item.quantity}</span>
-                  <span>${(item.size.price * item.photos.length * item.quantity).toFixed(2)}</span>
+                  <span>RM{(item.size.price * item.photos.length * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
               <Separator />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>${cartTotal.toFixed(2)}</span>
+                <span>RM{cartTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Shipping</span>
-                <span>$5.00</span>
+                <span>RM{getShippingCost(orderFormData.customerState).toFixed(2)}</span>
               </div>
               <Separator />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
-                <span className="text-primary">${(cartTotal + 5).toFixed(2)}</span>
+                <span className="text-primary">RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</span>
               </div>
             </div>
           </CardContent>
@@ -1082,7 +1231,7 @@ export default function PolaroidPrintPage() {
         <div className="flex gap-4 mt-6">
           <Button variant="outline" className="flex-1" onClick={() => setCurrentStep(2)}>Back to Cart</Button>
           <Button className="flex-1" onClick={handleCheckout} disabled={isProcessing}>
-            {isProcessing ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Processing...</>) : (<><CreditCard className="w-4 h-4 mr-2" />Place Order</>)}
+            {isProcessing ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Processing...</>) : (<><CreditCard className="w-4 h-4 mr-2" />{paymentMethod === 'toyyibpay' ? 'Pay with ToyyibPay' : 'Place Order'}</>)}
           </Button>
         </div>
       </div>
@@ -1120,7 +1269,7 @@ export default function PolaroidPrintPage() {
         <Button variant="outline" onClick={() => { setShowTrackingModal(true); setTrackingInput(orderNumber); }}>
           <Search className="w-4 h-4 mr-2" /> Track Order
         </Button>
-        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', notes: '' }); }}>
+        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerState: 'w', notes: '' }); }}>
           <Plus className="w-4 h-4 mr-2" /> Create Another Order
         </Button>
       </div>
@@ -1304,7 +1453,7 @@ export default function PolaroidPrintPage() {
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm">{item.size.name}</p>
                               <p className="text-xs text-muted-foreground">{item.photos.length} photos × {item.quantity}</p>
-                              <p className="text-sm font-bold">${(item.size.price * item.photos.length * item.quantity).toFixed(2)}</p>
+                              <p className="text-sm font-bold">RM{(item.size.price * item.photos.length * item.quantity).toFixed(2)}</p>
                             </div>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeFromCart(item.id)}><X className="w-4 h-4" /></Button>
                           </div>
@@ -1318,7 +1467,7 @@ export default function PolaroidPrintPage() {
                 <div className="border-t p-4 space-y-4">
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total ({totalPhotos} prints)</span>
-                    <span>${(cartTotal + 5).toFixed(2)}</span>
+                    <span>RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</span>
                   </div>
                   <Button className="w-full" onClick={() => { setShowCart(false); setCurrentStep(2); }}>View Cart & Checkout</Button>
                 </div>
@@ -1355,7 +1504,7 @@ export default function PolaroidPrintPage() {
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
-                      <p className="font-bold text-lg">${order.total.toFixed(2)}</p>
+                      <p className="font-bold text-lg">RM{order.total.toFixed(2)}</p>
                       <div className="flex gap-2">
                         {order.trackingNumber && (
                           <Button variant="outline" size="sm" onClick={() => handleCopyTrackingNumber(order.trackingNumber!)}>
@@ -1556,7 +1705,7 @@ export default function PolaroidPrintPage() {
             <div>
               <h4 className="font-semibold mb-4">Print Sizes</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                {printSizes.map(size => (<li key={size.id}>{size.displayName} - ${size.price.toFixed(2)}</li>))}
+                {printSizes.map(size => (<li key={size.id}>{size.displayName} - RM{size.price.toFixed(2)}</li>))}
               </ul>
             </div>
             <div>
