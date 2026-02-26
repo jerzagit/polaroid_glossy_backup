@@ -150,9 +150,9 @@ const printSizes: PrintSize[] = [
 ];
 
 const malaysiaStates = [
-  { id: 'w', name: 'West Malaysia (Semenanjung)', shippingCost: 11 },
-  { id: 'e_sabah', name: 'Sabah', shippingCost: 7 },
-  { id: 'e_sarawak', name: 'Sarawak', shippingCost: 7 },
+  { id: 'w', name: 'West Malaysia (Semenanjung)', shippingCost: 7 },
+  { id: 'e_sabah', name: 'Sabah', shippingCost: 11 },
+  { id: 'e_sarawak', name: 'Sarawak', shippingCost: 11 },
 ];
 
 const getShippingCost = (stateId: string): number => {

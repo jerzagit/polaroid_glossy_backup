@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
     console.log('Creating order:', { orderNumber, customerName, customerEmail, total, paymentMethod });
 
     // Get shipping cost from request body or use default
-    const shippingCost = shipping || 11;
+    const shippingCost = shipping || 7;
 
     // Create order with items and status history in a transaction
     const order = await db.$transaction(async (tx) => {

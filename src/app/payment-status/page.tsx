@@ -15,18 +15,39 @@ function PaymentStatusContent() {
   useEffect(() => {
     const refno = searchParams.get('refno');
     const billcode = searchParams.get('billcode');
-    const order_id = searchParams.get('order_id');
-    const statusParam = searchParams.get('status');
+    const order_id = searchParams.get('order_id') || searchParams.get('orderId');
+    const statusParam = searchParams.get('status') || searchParams.get('status_id');
 
     if (statusParam === '1' || statusParam === '2') {
       setStatus(statusParam === '1' ? 'success' : 'pending');
     } else if (refno && billcode) {
       setStatus('success');
+    } else if (order_id) {
+      fetchOrderStatus(order_id);
     } else {
       setStatus('failed');
     }
     setLoading(false);
   }, [searchParams]);
+
+  const fetchOrderStatus = async (orderNumber: string) => {
+    try {
+      const res = await fetch(`/api/orders?orderNumber=${orderNumber}`);
+      const data = await res.json();
+      if (data.success && data.order) {
+        if (data.order.paymentStatus === 'paid') {
+          setStatus('success');
+        } else if (data.order.paymentStatus === 'pending') {
+          setStatus('pending');
+        } else {
+          setStatus('failed');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching order:', error);
+      setStatus('failed');
+    }
+  };
 
   if (loading) {
     return (

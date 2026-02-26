@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     formData.append('billName', billName.substring(0, 30));
     formData.append('billDescription', billDescription.substring(0, 100));
     formData.append('billPriceSetting', '1');
-    formData.append('billPayorInfo', '0');
+    formData.append('billPayorInfo', '1');
     formData.append('billAmount', billAmount.toString());
     formData.append('billReturnUrl', returnUrl || '');
     formData.append('billCallbackUrl', callbackUrl || '');
