@@ -44,6 +44,7 @@ import {
   TruckIcon,
   Loader2
 } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +56,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { compressImage, WHATSAPP_HD_SETTINGS } from '@/lib/imageCompression';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import {
   Dialog,
@@ -197,6 +199,7 @@ export default function PolaroidPrintPage() {
   const [quantity, setQuantity] = useState(1);
   const [showCart, setShowCart] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   
@@ -298,42 +301,75 @@ export default function PolaroidPrintPage() {
     }
   };
 
-  const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    setIsUploading(true);
     const fileCount = files.length;
-    const newPhotos: PhotoItem[] = [];
-    let loadedCount = 0;
     
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        newPhotos.push({
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          file,
-          preview: event.target?.result as string,
-          customText: ''
-        });
+    const processFile = async (file: File): Promise<PhotoItem> => {
+      try {
+        const compressedFile = await compressImage(file, WHATSAPP_HD_SETTINGS);
         
-        loadedCount++;
-        if (loadedCount === fileCount) {
-          setPhotos(prev => [...prev, ...newPhotos]);
-          toast.success(`Added ${fileCount} photo${fileCount > 1 ? 's' : ''}!`);
-        }
-      };
-      reader.onerror = () => {
-        loadedCount++;
-        toast.error(`Failed to load ${file.name}`);
-        if (loadedCount === fileCount && newPhotos.length > 0) {
-          setPhotos(prev => [...prev, ...newPhotos]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            resolve({
+              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              file: compressedFile,
+              preview: event.target?.result as string,
+              customText: ''
+            });
+          };
+          reader.onerror = () => {
+            resolve({
+              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              file,
+              preview: '',
+              customText: ''
+            });
+          };
+          reader.readAsDataURL(compressedFile);
+        });
+      } catch (error) {
+        console.error('Compression failed, using original:', error);
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            resolve({
+              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              file,
+              preview: event.target?.result as string,
+              customText: ''
+            });
+          };
+          reader.onerror = () => {
+            resolve({
+              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              file,
+              preview: '',
+              customText: ''
+            });
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+    };
+    
+    try {
+      const promises = Array.from(files).map(file => processFile(file));
+      const processedPhotos = await Promise.all(promises);
+      setPhotos(prev => [...prev, ...processedPhotos]);
+      toast.success(`Added ${fileCount} photo${fileCount > 1 ? 's' : ''}!`);
+    } catch (error) {
+      toast.error('Failed to process some photos');
+    } finally {
+      setIsUploading(false);
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   }, []);
 
@@ -879,13 +915,23 @@ export default function PolaroidPrintPage() {
           />
           <div className="space-y-4">
             <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-              <Upload className="w-8 h-8 text-primary" />
+              {isUploading ? (
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              ) : (
+                <Upload className="w-8 h-8 text-primary" />
+              )}
             </div>
             <div>
-              <p className="text-lg font-medium">Drop your photos here</p>
-              <p className="text-sm text-muted-foreground">or click to browse • Select multiple photos at once</p>
+              {isUploading ? (
+                <p className="text-lg font-medium">Compressing photos...</p>
+              ) : (
+                <>
+                  <p className="text-lg font-medium">Drop your photos here</p>
+                  <p className="text-sm text-muted-foreground">or click to browse • Select multiple photos at once</p>
+                </>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">Supports: JPG, PNG, WEBP (Max 10MB each)</p>
+            <p className="text-xs text-muted-foreground">Supports: JPG, PNG, WEBP, HEIC (Max 25MB each)</p>
           </div>
         </div>
 
@@ -1437,6 +1483,11 @@ export default function PolaroidPrintPage() {
 
             <div className="flex items-center gap-4">
               <ThemeSwitcher />
+              <Button variant="ghost" asChild>
+                <Link href="/faq">
+                  <MessageSquare className="w-4 h-4 mr-2" /> FAQ
+                </Link>
+              </Button>
               <Button variant="ghost" onClick={() => setShowTrackingModal(true)}>
                 <Search className="w-4 h-4 mr-2" /> Track Order
               </Button>
@@ -1788,7 +1839,8 @@ export default function PolaroidPrintPage() {
                 <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Premium Quality</li>
                 <li className="flex items-center gap-2"><Truck className="w-4 h-4 text-primary" /> Fast Shipping</li>
                 <li className="flex items-center gap-2"><Heart className="w-4 h-4 text-primary" /> Custom Text</li>
-                <li className="flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> 24hr Processing</li>
+                <li className="flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> 3-4 Working Days</li>
+                <li><Link href="/faq" className="hover:underline">FAQ & Warranty</Link></li>
               </ul>
             </div>
             <div>
