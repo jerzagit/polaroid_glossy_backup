@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderId, orderNumber, amount, customerEmail, customerName } = body;
+    const { orderId, orderNumber, amount, customerEmail, customerName, customerPhone } = body;
 
     if (!orderId || !amount || !customerEmail) {
       return NextResponse.json(
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     formData.append('billExternalReferenceNo', orderNumber);
     formData.append('billTo', customerName || '');
     formData.append('billEmail', customerEmail);
+    formData.append('billPhone', customerPhone || '');
     formData.append('billPaymentChannel', '0');
     formData.append('billChargeToCustomer', '1');
 

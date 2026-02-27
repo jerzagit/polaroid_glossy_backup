@@ -441,7 +441,8 @@ export default function PolaroidPrintPage() {
               orderNumber: data.order.orderNumber,
               amount: cartTotal + shippingCost,
               customerEmail: orderFormData.customerEmail,
-              customerName: orderFormData.customerName
+              customerName: orderFormData.customerName,
+              customerPhone: orderFormData.customerPhone
             })
           });
 
