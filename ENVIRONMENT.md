@@ -11,6 +11,8 @@ This guide explains all environment variables and how to switch between developm
 | `NEXTAUTH_URL` | Yes | Your domain URL |
 | `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL (for image storage) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public API key |
 | `TOYYIBPAY_SECRET_KEY` | Yes | ToyyibPay API secret |
 | `TOYYIBPAY_CATEGORY_CODE` | Yes | ToyyibPay category code |
 | `TOYYIBPAY_RETURN_URL` | Yes | Payment return page URL |
@@ -93,22 +95,34 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 - Authorized JavaScript origins: `https://your-domain.com`
 - Authorized redirect URIs: `https://your-domain.com/api/auth/callback/google`
 
+## Supabase Setup
+
+Supabase is used for image storage (user-uploaded photos).
+
+1. Go to [supabase.com](https://supabase.com) and create a project
+2. In Project Settings → API, copy:
+   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
+   - **anon/public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Create a storage bucket named `polaroid-glossy`
+4. Set the bucket to **Public** (so images are accessible via URL)
+
 ## ToyyibPay Setup
 
 ### Important: ToyyibPay Requires Public URLs
 
-ToyyibPay's servers cannot reach `localhost`. For development, you need a public URL:
+ToyyibPay's servers cannot reach `localhost`. For development, you need a public URL.
 
 **Option 1: ngrok (Recommended for local development)**
 
 ```bash
-# Install ngrok if not
- installed Start your# dev server first: bun run dev
+# Install ngrok first if not installed
+# Start your dev server first
+bun run dev
 
 # In another terminal, start ngrok tunnel
 ngrok http 3000
 
-# Update .env with theexample ngrok URL ():
+# Update .env with the ngrok URL (example):
 TOYYIBPAY_RETURN_URL=https://your-ngrok-url.ngrok-free.dev/payment-status
 TOYYIBPAY_CALLBACK_URL=https://your-ngrok-url.ngrok-free.dev/api/toyyibpay/callback
 
@@ -131,4 +145,5 @@ Update these URLs in your ToyyibPay merchant dashboard.
 - Never commit `.env` to version control
 - Use different secrets for development and production
 - Keep `NEXTAUTH_SECRET` private - it's used for session encryption
+- Keep `NEXT_PUBLIC_SUPABASE_ANON_KEY` restricted via Supabase Row Level Security (RLS)
 - Rotate secrets periodically in production

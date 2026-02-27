@@ -2,6 +2,8 @@
 
 Complete API documentation for Polaroid Glossy MY.
 
+> **Note:** Current APIs run inside the Next.js monolith (`/api/...`). Future Admin APIs will be served by the separate Spring Boot backend on port 8080. See [backend_architecture.md](./backend_architecture.md) for the full migration plan.
+
 ---
 
 ## Table of Contents
@@ -307,8 +309,8 @@ Payment webhook (ToyyibPay server calls this).
 ### Base URL
 
 ```
-Development: http://localhost:3001/api/admin
-Production:  https://api.your-domain.com/v1/admin
+Development: http://localhost:8080/api/admin
+Production:  https://api.your-domain.com/api/admin
 ```
 
 ---

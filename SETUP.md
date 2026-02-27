@@ -51,6 +51,10 @@ NEXTAUTH_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
 
+# Supabase (for image storage)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
 # ToyyibPay (Malaysian payment gateway)
 TOYYIBPAY_SECRET_KEY=your-secret-key
 TOYYIBPAY_CATEGORY_CODE=your-category-code
@@ -72,6 +76,12 @@ TOYYIBPAY_CALLBACK_URL=https://your-ngrok-url.ngrok-free.dev/api/toyyibpay/callb
 5. Create credentials
 6. Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
 7. Add authorized JavaScript origins: `http://localhost:3000`
+
+#### Getting Supabase Credentials
+
+1. Go to [supabase.com](https://supabase.com) and create a project
+2. In Project Settings → API, copy the **Project URL** and **anon/public** key
+3. In Storage, create a bucket named `polaroid-glossy` and set it to **Public**
 
 ### 3. Database Setup
 
@@ -161,5 +171,6 @@ Or change the port in `package.json`:
 ## Next Steps
 
 After setup:
-1. Read [ENVIRONMENT.md](./ENVIRONMENT.md) to understand configuration
-2. Read [DEPLOYMENT.md](./DEPLOYMENT.md) when ready to deploy
+1. Read [ENVIRONMENT.md](./ENVIRONMENT.md) to understand all configuration options
+2. Read [TOYYIBPAY_FLOW.md](./TOYYIBPAY_FLOW.md) for payment integration details
+3. Read [DEPLOYMENT.md](./DEPLOYMENT.md) when ready to deploy
