@@ -88,6 +88,10 @@ NEXTAUTH_SECRET=your-production-secret-key
 GOOGLE_CLIENT_ID=your-production-client-id
 GOOGLE_CLIENT_SECRET=your-production-client-secret
 
+# Supabase (image storage)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
 # ToyyibPay - update in merchant dashboard
 TOYYIBPAY_SECRET_KEY=your-production-secret-key
 TOYYIBPAY_CATEGORY_CODE=your-category-code
@@ -152,7 +156,7 @@ caddy run
 
 ### Step 10: Verify Deployment
 
-Visit `https://your-domain.com` - Caddy automatically provisions SSL.
+Visit `https://your-domain.com` — Caddy automatically provisions SSL.
 
 ---
 
@@ -231,12 +235,16 @@ vercel
 
 Set these in Vercel Dashboard → Settings → Environment Variables:
 
-- `DATABASE_URL` (use Vercel Postgres or external DB)
+- `DATABASE_URL` (use Vercel Postgres or external DB — SQLite is not supported on Vercel)
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `TOYYIBPAY_*` variables
+
+> **Note:** SQLite (`file:./dev.db`) does not persist on Vercel's serverless platform. Use a hosted database (e.g., Supabase PostgreSQL, PlanetScale) and update the Prisma schema provider to `postgresql`.
 
 ---
 
@@ -244,12 +252,13 @@ Set these in Vercel Dashboard → Settings → Environment Variables:
 
 - [ ] Domain DNS points to server IP
 - [ ] SSL certificate auto-provisioned (Caddy)
-- [ ] Google OAuth redirect URIs updated
-- [ ] ToyyibPay URLs updated in dashboard
+- [ ] Google OAuth redirect URIs updated in Google Cloud Console
+- [ ] ToyyibPay URLs updated in merchant dashboard
 - [ ] Database migrated (`bun run db:push`)
 - [ ] Application builds successfully
-- [ ] Payment flow works
-- [ ] Authentication works
+- [ ] Payment flow works end-to-end
+- [ ] Authentication works (Google OAuth)
+- [ ] Image uploads work (Supabase Storage)
 - [ ] Database backup configured
 
 ---
@@ -289,7 +298,7 @@ nohup bun run start > server.log 2>&1 &
 # Backup SQLite database
 cp db/production.db backups/db-$(date +%Y%m%d).db
 
-# Or use crontab for automated backups
+# Automated backup via crontab
 crontab -e
 # Add: 0 2 * * * cp /home/user/polaroid/db/production.db /home/user/polaroid/backups/db-$(date +\%Y\%m\%d).db
 ```
@@ -334,3 +343,9 @@ caddy start
 1. Verify Google OAuth redirect URIs match exactly
 2. Check `NEXTAUTH_URL` is correct
 3. Ensure `NEXTAUTH_SECRET` is set
+
+### Images Not Uploading
+
+1. Verify `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set
+2. Check that the `polaroid-glossy` storage bucket exists and is public
+3. Verify Supabase storage policies allow uploads

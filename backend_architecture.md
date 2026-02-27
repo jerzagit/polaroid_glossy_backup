@@ -87,11 +87,10 @@
         <scope>runtime</scope>
     </dependency>
     
-    <!-- Supabase -->
+    <!-- HTTP client for Supabase REST API -->
     <dependency>
-        <groupId>io.supabase</groupId>
-        <artifactId>supabase-java</artifactId>
-        <version>0.1.0</version>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-webflux</artifactId>
     </dependency>
     
     <!-- Utilities -->
