@@ -338,35 +338,25 @@ export default function PolaroidPrintPage() {
           reader.readAsDataURL(compressedFile);
         });
       } catch (error) {
-        console.error('Compression failed, using original:', error);
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            resolve({
-              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              file,
-              preview: event.target?.result as string,
-              customText: ''
-            });
-          };
-          reader.onerror = () => {
-            resolve({
-              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              file,
-              preview: '',
-              customText: ''
-            });
-          };
-          reader.readAsDataURL(file);
-        });
+        // Re-throw so Promise.allSettled can track this file as failed
+        throw error;
       }
     };
-    
+
     try {
-      const promises = Array.from(files).map(file => processFile(file));
-      const processedPhotos = await Promise.all(promises);
-      setPhotos(prev => [...prev, ...processedPhotos]);
-      toast.success(t.toast_photos_added(fileCount));
+      const results = await Promise.allSettled(Array.from(files).map(processFile));
+      const processedPhotos = results
+        .filter((r): r is PromiseFulfilledResult<PhotoItem> => r.status === 'fulfilled')
+        .map(r => r.value);
+      const failedCount = results.filter(r => r.status === 'rejected').length;
+
+      if (processedPhotos.length > 0) {
+        setPhotos(prev => [...prev, ...processedPhotos]);
+        toast.success(t.toast_photos_added(processedPhotos.length));
+      }
+      if (failedCount > 0) {
+        toast.error(`${failedCount} file(s) could not be processed. HEIC/HEIF may not be supported on this browser.`);
+      }
     } catch (error) {
       toast.error(t.toast_compress_fail);
     } finally {
@@ -889,7 +879,7 @@ export default function PolaroidPrintPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif,image/heic,image/heif"
             multiple
             className="hidden"
             onChange={handlePhotoUpload}
