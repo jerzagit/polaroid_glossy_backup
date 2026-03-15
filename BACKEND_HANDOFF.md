@@ -259,6 +259,58 @@ The backend (admin) can:
 - **Download** images by fetching the URL (they are publicly readable in dev; via CloudFront in prod)
 - **Batch download** by iterating `order_items.images[]` for an order
 
+### S3 IAM Credentials Strategy
+
+Two options depending on environment:
+
+**Option A — Same IAM user (dev / simple setup)**
+
+Both Next.js and Spring Boot share the same credentials and access the same bucket.
+
+```
+Next.js  → PutObject  → S3 bucket
+Spring Boot → GetObject, DeleteObject → same S3 bucket
+```
+
+Use Option A now — same keys, easiest to set up.
+
+**Option B — Separate IAM users (production best practice)**
+
+| IAM User | Permissions | Used by |
+|---|---|---|
+| `polaroid-nextjs` | `s3:PutObject` only | Next.js frontend (upload) |
+| `polaroid-backend` | `s3:GetObject`, `s3:DeleteObject` | Spring Boot (download + delete) |
+
+Spring Boot IAM policy (production):
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::polaroid-glossy-prod/*"
+    }
+  ]
+}
+```
+
+Next.js IAM policy (production):
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject"],
+      "Resource": "arn:aws:s3:::polaroid-glossy-prod/*"
+    }
+  ]
+}
+```
+
+> Switch to Option B before going live. For dev, share the same key from `.env`.
+
 ### AWS credentials for backend
 
 ```properties
@@ -268,6 +320,17 @@ cloud.aws.credentials.secret-key=${AWS_SECRET_ACCESS_KEY}
 cloud.aws.region.static=${AWS_REGION}
 cloud.aws.s3.bucket=${AWS_S3_BUCKET}
 ```
+
+**Dev values (same as Next.js `.env`):**
+
+| Variable | Dev Value |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | `AKIAT3ZKKEKVEGDA2FEW` |
+| `AWS_SECRET_ACCESS_KEY` | *(share securely — do not commit)* |
+| `AWS_REGION` | `us-east-1` |
+| `AWS_S3_BUCKET` | `polaroid-glossy-dev` |
+
+> **Important:** Rotate these keys before production. Generate new IAM keys per Option B above.
 
 Add to `pom.xml`:
 ```xml
