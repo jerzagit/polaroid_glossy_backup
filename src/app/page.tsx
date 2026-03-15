@@ -957,16 +957,15 @@ export default function PolaroidPrintPage() {
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       </div>
                     )}
+                    {!photo.uploading && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
+                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 rounded-full p-0.5 shadow-lg"
+                      >
+                        <XCircle className="w-5 h-5 text-white" />
+                      </button>
+                    )}
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    disabled={photo.uploading}
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
-                    onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
                   <input
                     type="text"
                     placeholder={t.caption_placeholder}
