@@ -24,13 +24,14 @@ A modern e-commerce platform for printing digital photos as beautiful physical p
 
 | Category | Technology |
 |----------|------------|
-| Framework | Next.js 16 (App Router, Turbopack) |
-| Language | TypeScript |
-| Styling | Tailwind CSS 4 + shadcn/ui |
-| Database | SQLite (dev) / PostgreSQL (prod) + Prisma ORM |
-| Auth | NextAuth.js v5 (Google OAuth) |
-| Image Storage | Amazon S3 (ap-southeast-1) |
+| Framework | Next.js 16 (App Router, Webpack) |
+| Language | TypeScript 5.9 |
+| Styling | Tailwind CSS 4 + shadcn/ui (Radix UI) |
+| Database | PostgreSQL + Prisma ORM v6 |
+| Auth | NextAuth.js v4 (Google OAuth, JWT) |
+| Image Storage | Amazon S3 + WhatsApp HD compression |
 | Payments | ToyyibPay (sandbox + live) |
+| State | Zustand v5 + TanStack Query v5 |
 | Animations | Framer Motion |
 | Package Manager | npm |
 
@@ -40,7 +41,11 @@ A modern e-commerce platform for printing digital photos as beautiful physical p
 # Install dependencies
 npm install
 
-# Setup database
+# Create local PostgreSQL databases
+createdb polaroid_glossy_dev
+createdb polaroid_glossy_uat
+
+# Push schema + seed print sizes
 npx prisma db push
 
 # Start development server
@@ -49,14 +54,14 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-> For payment testing you also need ngrok running — see [SETUP.md](./SETUP.md).
+> Payment testing requires ngrok — see [SETUP.md](./SETUP.md) for the full guide.
 
 ## Project Structure
 
 ```
 polaroid_glossy/
 ├── prisma/
-│   └── schema.prisma           # Database schema (SQLite dev / PostgreSQL prod)
+│   └── schema.prisma           # Database schema (PostgreSQL — all environments)
 ├── public/
 │   └── images/                 # Static images (product photos, hero, etc.)
 ├── src/
@@ -120,18 +125,33 @@ polaroid_glossy/
 ```
 User selects photo
       ↓
-compressImage()          ← client-side (max 2048px, 80% JPEG quality)
+compressImage()          ← client-side WhatsApp HD (max 2048px, 80% JPEG)
+      ↓                     HEIC → JPEG converted automatically
+POST /api/upload         ← server validates type + size (≤25 MB)
       ↓
-POST /api/upload         ← Next.js server validates + uploads to S3
-      ↓
-S3 key: orders/YYYY-MM-DD/{uuid}.jpg
-      ↓
+S3 key: orders/{sessionId}/{uuid}.jpg
+      ↓                     sessionId = UUID per checkout session
+      ↓                     all photos from one order share the same folder
 S3 URL stored in photo.s3Url (React state)
       ↓
 POST /api/orders         ← checkout uses S3 URLs in item.images[]
       ↓
-OrderItem.images in DB   ← permanent S3 URLs
+OrderItem.images in DB   ← permanent S3 URLs (JSONB array)
 ```
+
+## Performance & Caching
+
+| Layer | What | TTL |
+|---|---|---|
+| Server in-memory | `GET /api/products` | 5 min |
+| Server in-memory | `GET /api/reviews` (homepage listing) | 5 min, busted on new review |
+| HTTP header | `Cache-Control: public, max-age=300` | All public API responses |
+| HTTP header | `/_next/static/*` JS/CSS bundles | 1 year immutable |
+| HTTP header | `/images/*` static assets | 24 hours |
+| Next.js image | Automatic WebP/AVIF conversion | Browser-cached |
+| Compression | gzip on all HTTP responses | Always |
+
+No Redis required at current scale — in-memory cache is faster (no network hop) and zero infrastructure cost. Add Redis when scaling to multiple server instances.
 
 ## Product Data Flow
 

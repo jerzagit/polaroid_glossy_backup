@@ -12,7 +12,7 @@ All credentials below are already configured in `.env`. This section is a refere
 |---|---|
 | ngrok URL | `https://remissly-sirenic-jacinda.ngrok-free.dev` |
 | Google Client ID | `912176079688-q853e78d3l9n6tpatt72fj86iepato98.apps.googleusercontent.com` |
-| ToyyibPay | Sandbox — category `npr3176z`, base `https://dev.toyyibpay.com` |
+| ToyyibPay | **Production** — category `npr3176z`, base `https://toyyibpay.com` |
 | S3 Bucket | `polaroid-glossy-dev` (region: `us-east-1`) |
 | S3 IAM User | `polaroid-glossy-dev-user` (Access Key ID: `AKIAT3ZKKEKVEGDA2FEW`) |
 | DB | PostgreSQL local — `polaroid_glossy_dev` (dev) / `polaroid_glossy_uat` (UAT) |
@@ -129,8 +129,8 @@ Copy the `https://xxxx.ngrok-free.dev` URL — you'll need it for Google Console
 ## Step 6 — Fill in `.env`
 
 ```env
-# Database
-DATABASE_URL=file:./dev.db
+# Database (PostgreSQL local)
+DATABASE_URL=postgresql://YOUR_USERNAME@localhost:5432/polaroid_glossy_dev
 
 # NextAuth
 NEXTAUTH_SECRET=polaroidglossymy-local-dev-secret-key-2024
@@ -140,10 +140,10 @@ NEXTAUTH_URL=https://YOUR-NGROK-URL.ngrok-free.dev
 GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-xxxx
 
-# ToyyibPay (sandbox)
-TOYYIBPAY_SECRET_KEY=your-sandbox-secret-key
+# ToyyibPay — use PRODUCTION keys + URL (sandbox keys won't work with prod URL)
+TOYYIBPAY_SECRET_KEY=your-toyyibpay-secret-key
 TOYYIBPAY_CATEGORY_CODE=your-category-code
-TOYYIBPAY_BASE_URL=https://dev.toyyibpay.com
+TOYYIBPAY_BASE_URL=https://toyyibpay.com
 TOYYIBPAY_RETURN_URL=https://YOUR-NGROK-URL.ngrok-free.dev/payment-status
 TOYYIBPAY_CALLBACK_URL=https://YOUR-NGROK-URL.ngrok-free.dev/api/toyyibpay/callback
 
@@ -159,8 +159,21 @@ AWS_S3_BUCKET=polaroid-glossy-dev
 ## Step 7 — Database
 
 ```bash
-# Create / sync tables
+# Create local PostgreSQL databases (one-time)
+createdb polaroid_glossy_dev
+createdb polaroid_glossy_uat
+
+# Push schema to dev database
 npx prisma db push
+
+# Seed print sizes (run once per fresh database)
+psql polaroid_glossy_dev -c "
+INSERT INTO print_sizes (id, name, \"displayName\", width, height, price, description, \"isActive\", \"createdAt\", \"updatedAt\") VALUES
+('2r','2R','2R (2.5×3.5 in)',2.5,3.5,3.00,'Wallet-size print',true,NOW(),NOW()),
+('3r','3R','3R (3.5×5 in)',3.5,5.0,4.00,'Classic small print',true,NOW(),NOW()),
+('4r','4R','4R (4×6 in)',4.0,6.0,5.00,'Most popular size',true,NOW(),NOW()),
+('a4','A4','A4 (8.3×11.7 in)',8.27,11.69,12.00,'Large format print',true,NOW(),NOW())
+ON CONFLICT (id) DO NOTHING;"
 
 # Visual browser — keep open in a separate terminal
 npx prisma studio     # → http://localhost:5555
