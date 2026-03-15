@@ -243,13 +243,23 @@ export default function PolaroidPrintPage() {
     }
   }, []);
 
-  // Check for OAuth error in URL
+  // Check for OAuth error or product deep-link in URL
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+
+    // ?product=4r → pre-select size and open upload step
+    const productId = urlParams.get('product');
+    if (productId) {
+      const match = printSizes.find(s => s.id === productId);
+      if (match) setSelectedSize(match);
+      setCurrentStep(0);
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
     const error = urlParams.get('error');
     if (error === 'OAuthSignin' || error === 'OAuthCallback' || error === 'OAuthCreateAccount') {
       setShowOAuthErrorModal(true);
-      // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
