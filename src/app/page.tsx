@@ -948,32 +948,23 @@ export default function PolaroidPrintPage() {
                   key={photo.id}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="relative group"
+                  className="relative"
                 >
-                  <div className="aspect-square rounded-lg overflow-hidden border-2 border-border relative">
+                  <div className="aspect-square rounded-lg overflow-hidden border-2 border-border">
                     <img src={photo.preview} alt="Uploaded" className="w-full h-full object-cover" />
-                    {photo.uploading && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    )}
-                    {!photo.uploading && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
-                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 rounded-full p-0.5 shadow-lg"
-                      >
-                        <XCircle className="w-5 h-5 text-white" />
-                      </button>
-                    )}
                   </div>
-                  <input
-                    type="text"
-                    placeholder={t.caption_placeholder}
-                    value={photo.customText || ''}
-                    onChange={(e) => updatePhotoText(photo.id, e.target.value)}
-                    className="mt-1 w-full text-xs px-2 py-1 border rounded"
-                    onClick={(e) => e.stopPropagation()}
-                  />
+                  {photo.uploading ? (
+                    <div className="absolute inset-0 rounded-lg bg-black/50 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
+                      className="absolute top-1 right-1 w-7 h-7 bg-red-600 rounded-full flex items-center justify-center shadow-xl border-2 border-white"
+                    >
+                      <X className="w-4 h-4 text-white stroke-[3]" />
+                    </button>
+                  )}
                 </motion.div>
               ))}
             </div>
