@@ -6,6 +6,37 @@
 
 ---
 
+## 0. UAT Database Connection
+
+Both Next.js and Spring Boot must point to the **same PostgreSQL database** for UAT.
+
+| | Value |
+|---|---|
+| Host | `localhost` |
+| Port | `5432` |
+| Database | `polaroid_glossy_uat` |
+| Username | `jerza` |
+| Password | *(none — local trust auth)* |
+
+**Next.js** (`.env.uat`):
+```
+DATABASE_URL=postgresql://jerza@localhost:5432/polaroid_glossy_uat
+```
+
+**Spring Boot** (`application-uat.properties`):
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/polaroid_glossy_uat
+spring.datasource.username=jerza
+spring.datasource.password=
+spring.jpa.hibernate.ddl-auto=validate
+```
+
+> The full `spring-boot-uat.properties` file is in the project root — copy it to Spring Boot's `src/main/resources/application-uat.properties`.
+
+> Run Spring Boot with: `java -jar app.jar --spring.profiles.active=uat`
+
+---
+
 ## Table of Contents
 
 1. [Database Schema](#1-database-schema)
@@ -38,10 +69,10 @@ CREATE TABLE users (
 );
 ```
 
-### `print_size`
+### `print_sizes`
 
 ```sql
-CREATE TABLE print_size (
+CREATE TABLE print_sizes (
     id            VARCHAR(20)   PRIMARY KEY,   -- '2r', '3r', '4r', 'a4'
     name          VARCHAR(20)   NOT NULL,       -- '2R', '3R', etc.
     display_name  VARCHAR(100)  NOT NULL,
@@ -59,7 +90,7 @@ CREATE TABLE print_size (
 
 ```sql
 CREATE TABLE product_meta (
-    id                   VARCHAR(20)   PRIMARY KEY REFERENCES print_size(id),
+    id                   VARCHAR(20)   PRIMARY KEY REFERENCES print_sizes(id),
     tag                  VARCHAR(50)   NOT NULL DEFAULT 'STANDARD',
     accent_color         VARCHAR(20)   NOT NULL DEFAULT '#6366f1',
     images               JSONB         NOT NULL DEFAULT '[]',     -- ["url1","url2"]
@@ -117,7 +148,7 @@ CREATE TABLE orders (
 CREATE TABLE order_items (
     id           VARCHAR(36)   PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id     VARCHAR(36)   NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    size_id      VARCHAR(20)   NOT NULL REFERENCES print_size(id),
+    size_id      VARCHAR(20)   NOT NULL REFERENCES print_sizes(id),
     quantity     INT           NOT NULL,
     unit_price   DECIMAL(8,2)  NOT NULL,
     total_price  DECIMAL(10,2) NOT NULL,
@@ -146,7 +177,7 @@ CREATE TABLE reviews (
     id          VARCHAR(36)   PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     VARCHAR(36)   NOT NULL REFERENCES users(id),
     order_id    VARCHAR(36)   NOT NULL REFERENCES orders(id),
-    size_id     VARCHAR(20)   NOT NULL REFERENCES print_size(id),
+    size_id     VARCHAR(20)   NOT NULL REFERENCES print_sizes(id),
     rating      INT           NOT NULL CHECK (rating BETWEEN 1 AND 5),
     title       VARCHAR(255)  NOT NULL,
     comment     TEXT          NOT NULL,
@@ -162,15 +193,20 @@ CREATE TABLE reviews (
 
 ## 2. Seed Data
 
-### `print_size`
+### `print_sizes`
+
+> Already seeded in both `polaroid_glossy_dev` and `polaroid_glossy_uat`. Run this only for a fresh database.
 
 ```sql
-INSERT INTO print_size (id, name, display_name, width, height, price, description, is_active) VALUES
-('2r', '2R', '2R (2.5 x 3.5 inches)',  2.50,  3.50, 0.50, 'Wallet size - Perfect for keepsakes', TRUE),
-('3r', '3R', '3R (3.5 x 5 inches)',    3.50,  5.00, 0.75, 'Standard photo size - Great for albums', TRUE),
-('4r', '4R', '4R (4 x 6 inches)',      4.00,  6.00, 1.00, 'Most popular - Classic polaroid style', TRUE),
-('a4', 'A4', 'A4 (8.3 x 11.7 inches)', 8.30, 11.70, 3.50, 'Poster size - Perfect for displays', TRUE);
+INSERT INTO print_sizes (id, name, "displayName", width, height, price, description, "isActive", "createdAt", "updatedAt") VALUES
+('2r', '2R', '2R (2.5×3.5 in)',  2.50,  3.50,  3.00, 'Wallet-size print, great for albums',            TRUE, NOW(), NOW()),
+('3r', '3R', '3R (3.5×5 in)',    3.50,  5.00,  4.00, 'Classic small print',                            TRUE, NOW(), NOW()),
+('4r', '4R', '4R (4×6 in)',      4.00,  6.00,  5.00, 'Most popular size — standard photo print',       TRUE, NOW(), NOW()),
+('a4', 'A4', 'A4 (8.3×11.7 in)', 8.27, 11.69, 12.00, 'Large format print, poster quality',            TRUE, NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
 ```
+
+> Note: Column names use Prisma's camelCase mapping (`"displayName"`, `"isActive"`) because the schema uses `@@map` without custom column names.
 
 ### `product_meta`
 
@@ -705,7 +741,7 @@ Allowed headers: `Content-Type, Authorization`
 | `subtotal` | `BigDecimal` | `DECIMAL(10,2)` | RM |
 | `total` | `BigDecimal` | `DECIMAL(10,2)` | subtotal + shipping |
 | `rating` | `Integer` | `INT` | 1–5 |
-| `price` (PrintSize) | `BigDecimal` | `DECIMAL(8,2)` | RM per print |
+| `price` (print_sizes) | `BigDecimal` | `DECIMAL(8,2)` | RM per print |
 
 ---
 
