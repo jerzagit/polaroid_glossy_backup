@@ -15,7 +15,7 @@ All credentials below are already configured in `.env`. This section is a refere
 | ToyyibPay | Sandbox — category `npr3176z`, base `https://dev.toyyibpay.com` |
 | S3 Bucket | `polaroid-glossy-dev` (region: `us-east-1`) |
 | S3 IAM User | `polaroid-glossy-dev-user` (Access Key ID: `AKIAT3ZKKEKVEGDA2FEW`) |
-| DB | SQLite `prisma/dev.db` — already synced |
+| DB | PostgreSQL local — `polaroid_glossy_dev` (dev) / `polaroid_glossy_uat` (UAT) |
 | Prisma Studio | http://localhost:5555 |
 
 > **Share the S3 Secret Access Key with the Spring Boot backend dev** — same IAM user, same bucket for dev (Option A). See `BACKEND_HANDOFF.md` § 3 for details.

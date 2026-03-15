@@ -4,26 +4,48 @@ Read top-to-bottom the first time. Use the quick reference table when switching 
 
 ---
 
-## Quick Reference — Dev vs Production
+## Quick Reference — Dev vs UAT vs Production
 
-| Setting | Development (current) | Production |
-|---|---|---|
-| `DATABASE_URL` | `file:./dev.db` (SQLite) | PostgreSQL connection string |
-| `NEXTAUTH_URL` | ngrok HTTPS URL | `https://polaroidglossy.my` |
-| `TOYYIBPAY_BASE_URL` | `https://dev.toyyibpay.com` (sandbox) | `https://toyyibpay.com` (live) |
-| `TOYYIBPAY_RETURN_URL` | `{ngrok}/payment-status` | `https://polaroidglossy.my/payment-status` |
-| `TOYYIBPAY_CALLBACK_URL` | `{ngrok}/api/toyyibpay/callback` | `https://polaroidglossy.my/api/toyyibpay/callback` |
-| `AWS_S3_BUCKET` | `polaroid-glossy-dev` | `polaroid-glossy-prod` |
-| `AWS_REGION` | `us-east-1` | `ap-southeast-1` (Singapore — closer to MY) |
-| S3 image delivery | Direct S3 URL (public read) | CloudFront CDN |
-| S3 IAM strategy | Shared single IAM user | Separate IAM users (Next.js + Spring Boot) |
-| Google OAuth redirect | `http://localhost:3000` + ngrok URL | `https://polaroidglossy.my` only |
-| Prisma provider | `sqlite` | `postgresql` |
-| ToyyibPay keys | Sandbox keys | Live keys |
+| Setting | Development | UAT | Production |
+|---|---|---|---|
+| `DATABASE_URL` | `postgresql://jerza@localhost:5432/polaroid_glossy_dev` | `postgresql://jerza@localhost:5432/polaroid_glossy_uat` | PostgreSQL (hosted) |
+| DB shared with Spring Boot | No | **Yes** | **Yes** |
+| `NEXTAUTH_URL` | ngrok HTTPS URL | ngrok HTTPS URL | `https://polaroidglossy.my` |
+| `TOYYIBPAY_BASE_URL` | `https://dev.toyyibpay.com` (sandbox) | `https://dev.toyyibpay.com` (sandbox) | `https://toyyibpay.com` (live) |
+| `AWS_S3_BUCKET` | `polaroid-glossy-dev` | `polaroid-glossy-dev` | `polaroid-glossy-prod` |
+| `AWS_REGION` | `us-east-1` | `us-east-1` | `ap-southeast-1` (Singapore) |
+| S3 image delivery | Direct S3 URL | Direct S3 URL | CloudFront CDN |
+| S3 IAM strategy | Shared IAM user | Shared IAM user | Separate IAM users |
+| Prisma provider | `postgresql` | `postgresql` | `postgresql` |
+| ToyyibPay keys | Sandbox | Sandbox | Live |
+| Spring Boot datasource | N/A | `jdbc:postgresql://localhost:5432/polaroid_glossy_uat` | hosted PostgreSQL |
 
 ---
 
 ## 1. Local Development
+
+### 1.0 How Environments Work
+
+Three environments share the same codebase — only `.env` / `DATABASE_URL` changes:
+
+| Environment | Database | Who connects | Run with |
+|---|---|---|---|
+| **dev** | `polaroid_glossy_dev` (PostgreSQL local) | Next.js only | `.env` (default) |
+| **uat** | `polaroid_glossy_uat` (PostgreSQL local) | Next.js **+ Spring Boot** | `.env.uat` |
+| **prod** | PostgreSQL hosted (Supabase / RDS) | Next.js **+ Spring Boot** | Vercel env vars |
+
+To switch to UAT:
+```bash
+# Copy .env.uat over .env, run the app
+cp .env.uat .env && npm run dev
+
+# Spring Boot: --spring.profiles.active=uat
+# (see spring-boot-uat.properties in project root)
+```
+
+> Never commit `.env` or `.env.uat` — they contain secrets. Both are already in `.gitignore`.
+
+---
 
 ### 1.1 Current Dev Credentials (already configured in `.env`)
 
@@ -165,11 +187,11 @@ npx prisma studio
 
 ### 2.1 Code changes required
 
-**`prisma/schema.prisma`** — change provider:
+**`prisma/schema.prisma`** — provider is already `postgresql` (changed during UAT setup):
 
 ```prisma
 datasource db {
-  provider = "postgresql"   // was "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 ```
@@ -299,7 +321,7 @@ server {
 
 ### 2.6 Go-live checklist
 
-- [ ] `prisma/schema.prisma` changed to `provider = "postgresql"`
+- [ ] `prisma/schema.prisma` is already `provider = "postgresql"` — no change needed
 - [ ] `npx prisma migrate deploy` run against production PostgreSQL
 - [ ] All environment variables set on hosting platform
 - [ ] `NEXTAUTH_URL` = production domain
