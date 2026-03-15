@@ -1,176 +1,221 @@
 # Local Development Setup
 
-This guide covers setting up the project for local development.
+Complete guide to get the app running locally with login, image upload, and payment all working end-to-end.
+
+---
 
 ## Prerequisites
 
-| Requirement | Version | Notes |
-|-------------|---------|-------|
-| Bun | >= 1.0 | Package manager |
-| Node.js | >= 18 | Alternative to Bun |
-| Git | Any | Version control |
+| Tool | Install |
+|------|---------|
+| Node.js 20+ | [nodejs.org](https://nodejs.org) or `brew install node` |
+| npm | comes with Node.js |
+| ngrok | `brew install ngrok/ngrok/ngrok` |
+| AWS account | [aws.amazon.com](https://aws.amazon.com) (free tier is fine) |
+| Google Cloud account | [console.cloud.google.com](https://console.cloud.google.com) |
+| ToyyibPay account | [toyyibpay.com](https://toyyibpay.com) |
 
-Install Bun:
-```bash
-# Windows (PowerShell)
-irm https://bun.sh/install | iex
+---
 
-# macOS/Linux
-curl -fsSL https://bun.sh/install | bash
-```
-
-## Installation
-
-### 1. Clone & Install
+## Step 1 — Clone & Install
 
 ```bash
-git clone <repository-url>
-cd polaroid-glossy-clean
-bun install
+git clone https://github.com/jerzagit/polaroid_glossy_backup.git
+cd polaroid_glossy_backup
+npm install
 ```
 
-### 2. Environment Variables
+---
 
-Copy the example environment file:
+## Step 2 — ngrok (do this first — you need the URL for Google + ToyyibPay)
+
+Sign up at [dashboard.ngrok.com](https://dashboard.ngrok.com) (free), then:
 
 ```bash
-cp .env.example .env
+# Add your authtoken (one-time)
+ngrok config add-authtoken YOUR_NGROK_TOKEN
+
+# Start tunnel
+ngrok http 3000
 ```
 
-Edit `.env` with your local values:
+Copy the `https://xxxx.ngrok-free.dev` URL — you need it in the next steps.
+
+> **Tip:** Get a free static domain at ngrok dashboard → Domains so the URL never changes between restarts.
+
+---
+
+## Step 3 — Google OAuth
+
+1. [console.cloud.google.com](https://console.cloud.google.com) → **APIs & Services** → **Credentials**
+2. **Create Credentials** → OAuth 2.0 Client ID → Web application
+3. Add to **Authorized JavaScript origins**:
+   ```
+   http://localhost:3000
+   https://YOUR-NGROK-URL.ngrok-free.dev
+   ```
+4. Add to **Authorized redirect URIs**:
+   ```
+   http://localhost:3000/api/auth/callback/google
+   https://YOUR-NGROK-URL.ngrok-free.dev/api/auth/callback/google
+   ```
+5. Copy **Client ID** and **Client Secret**
+
+---
+
+## Step 4 — ToyyibPay (sandbox)
+
+1. Register at [toyyibpay.com](https://toyyibpay.com)
+2. Dashboard → get your **Secret Key** and **Category Code**
+3. Use sandbox base URL: `https://dev.toyyibpay.com`
+
+---
+
+## Step 5 — Amazon S3
+
+### Create the bucket
+
+1. [s3.console.aws.amazon.com](https://s3.console.aws.amazon.com) → **Create bucket**
+2. Name: `polaroid-glossy-dev`
+3. Region: pick the one closest to you
+4. Uncheck **"Block all public access"** → acknowledge warning
+5. Create bucket
+6. Go to bucket → **Permissions** tab → **Bucket policy** → paste:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::polaroid-glossy-dev/*"
+    }
+  ]
+}
+```
+
+### Create IAM credentials
+
+1. [console.aws.amazon.com/iam](https://console.aws.amazon.com/iam) → **Users** → **Create user**
+2. Name: `polaroid-glossy-dev`
+3. Attach policy: **AmazonS3FullAccess**
+4. After creating → **Security credentials** tab → **Create access key**
+5. Use case: **Application running outside AWS**
+6. Copy **Access key ID** and **Secret access key** (only shown once)
+
+---
+
+## Step 6 — Fill in `.env`
+
+Edit the `.env` file in the project root:
 
 ```env
-# Database (SQLite)
+# Database
 DATABASE_URL=file:./dev.db
 
-# NextAuth.js
-NEXTAUTH_SECRET=your-secret-key-here
-NEXTAUTH_URL=http://localhost:3000
+# NextAuth
+NEXTAUTH_SECRET=polaroidglossymy-local-dev-secret-key-2024
+NEXTAUTH_URL=https://YOUR-NGROK-URL.ngrok-free.dev
 
-# Google OAuth (get from Google Cloud Console)
-GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-client-secret
+# Google OAuth
+GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxx
 
-# Supabase (for image storage)
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# ToyyibPay (Malaysian payment gateway)
-TOYYIBPAY_SECRET_KEY=your-secret-key
+# ToyyibPay (sandbox)
+TOYYIBPAY_SECRET_KEY=your-sandbox-secret
 TOYYIBPAY_CATEGORY_CODE=your-category-code
+TOYYIBPAY_BASE_URL=https://dev.toyyibpay.com
+TOYYIBPAY_RETURN_URL=https://YOUR-NGROK-URL.ngrok-free.dev/payment-status
+TOYYIBPAY_CALLBACK_URL=https://YOUR-NGROK-URL.ngrok-free.dev/api/toyyibpay/callback
 
-# IMPORTANT: ToyyibPay requires public URLs (not localhost)
-# For local development, use ngrok:
-# 1. Run: ngrok http 3000
-# 2. Use the https URL from ngrok for the values below
-TOYYIBPAY_RETURN_URL=https://your-ngrok-url.ngrok-free.dev/payment-status
-TOYYIBPAY_CALLBACK_URL=https://your-ngrok-url.ngrok-free.dev/api/toyyibpay/callback
+# Amazon S3
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=xxxx
+AWS_REGION=us-east-1        # match the region of your bucket
+AWS_S3_BUCKET=polaroid-glossy-dev
 ```
 
-#### Getting Google OAuth Credentials
+---
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project
-3. Enable Google+ API / Google People API
-4. Go to Credentials → OAuth 2.0 Client IDs
-5. Create credentials
-6. Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
-7. Add authorized JavaScript origins: `http://localhost:3000`
-
-#### Getting Supabase Credentials
-
-1. Go to [supabase.com](https://supabase.com) and create a project
-2. In Project Settings → API, copy the **Project URL** and **anon/public** key
-3. In Storage, create a bucket named `polaroid-glossy` and set it to **Public**
-
-### 3. Database Setup
+## Step 7 — Database Setup
 
 ```bash
-# Generate Prisma client
-bun run db:generate
+# Create tables in dev.db
+npx prisma db push
 
-# Push schema to database (creates/updates SQLite database)
-bun run db:push
+# Open visual DB browser (keep this running in its own terminal)
+npx prisma studio
+# → http://localhost:5555
 ```
 
-This creates `dev.db` in the project root.
+---
 
-### 4. Start Development Server
+## Step 8 — Start the App
 
 ```bash
-bun run dev
+npm run dev
+# → http://localhost:3000
 ```
 
-The app runs at **http://localhost:3000**
+**Access via the ngrok URL** (not localhost) so Google OAuth works:
+`https://YOUR-NGROK-URL.ngrok-free.dev`
+
+---
+
+## End-to-End Test Checklist
+
+| Step | Action | Verify |
+|------|--------|--------|
+| 1 | Open ngrok URL in browser | Page loads |
+| 2 | Sign in with Google | Prisma Studio → `User` table |
+| 3 | Browse Products → pick 4R → Start Creating | — |
+| 4 | Upload 2–3 photos (JPG or HEIC) | AWS S3 console → `polaroid-glossy-dev/orders/` folder |
+| 5 | Add custom text to a photo | — |
+| 6 | Add to cart → Checkout → fill name/email/phone/state | — |
+| 7 | Select ToyyibPay → Place Order | Prisma Studio → `Order` (status: pending) |
+| 8 | Complete payment on ToyyibPay sandbox page | Prisma Studio → `Order` (status: processing, paymentStatus: paid) |
+| 9 | Redirected to `/payment-status` | Order number shown |
+| 10 | Check image URLs | Prisma Studio → `OrderItem` → `images` = S3 URLs |
+
+---
 
 ## Database Management
 
-### Reset Database
-
 ```bash
-# Drops all tables and recreates
-bun run db:reset
+# Visual browser (recommended)
+npx prisma studio        # → http://localhost:5555
+
+# Reset all tables
+npx prisma db push --force-reset
+
+# Raw SQLite access
+sqlite3 prisma/dev.db
 ```
 
-### View Database
-
-```bash
-# Using SQLite CLI (macOS/Linux)
-sqlite3 dev.db
-
-# Using SQLite Browser (Windows)
-# Download from https://sqlitebrowser.org/
-```
-
-### Prisma Studio (GUI)
-
-```bash
-npx prisma studio
-```
-
-Opens a web interface to view/edit database records.
+---
 
 ## Common Issues
 
-### "Bun not found"
+### ngrok URL changed after restart
+Update `NEXTAUTH_URL`, `TOYYIBPAY_RETURN_URL`, `TOYYIBPAY_CALLBACK_URL` in `.env`, update Google Console redirect URIs, then restart `npm run dev`.
 
-Restart your terminal after installation, or add Bun to PATH:
-```bash
-export PATH="$HOME/.bun/bin:$PATH"
-```
+**Fix:** Use ngrok's free static domain (dashboard → Domains) — same URL every time.
 
-### "Database locked"
+### "NEXTAUTH_URL mismatch"
+The URL you're accessing the app from must match `NEXTAUTH_URL` in `.env`. Always access via the ngrok URL, not `localhost`.
 
-Close any database connections (Prisma Studio, other instances) and try again.
+### S3 upload fails
+- Check `AWS_REGION` matches the bucket's region exactly
+- Check bucket policy allows public read
+- Check IAM user has `AmazonS3FullAccess`
 
-### "Module not found"
-
-Clear the cache and reinstall:
-```bash
-rm -rf node_modules .next
-bun install
-bun run build
-```
+### ToyyibPay callback not received
+- Confirm ngrok is running and URL matches `.env`
+- Check Terminal 1 (npm run dev) logs for incoming POST to `/api/toyyibpay/callback`
 
 ### Port 3000 in use
-
 ```bash
-# Find process using port 3000
-# Windows
-netstat -ano | findstr :3000
-
-# Kill the process
-taskkill /PID <PID> /F
+lsof -ti:3000 | xargs kill -9
 ```
-
-Or change the port in `package.json`:
-```json
-"dev": "next dev -p 3001"
-```
-
-## Next Steps
-
-After setup:
-1. Read [ENVIRONMENT.md](./ENVIRONMENT.md) to understand all configuration options
-2. Read [TOYYIBPAY_FLOW.md](./TOYYIBPAY_FLOW.md) for payment integration details
-3. Read [DEPLOYMENT.md](./DEPLOYMENT.md) when ready to deploy
