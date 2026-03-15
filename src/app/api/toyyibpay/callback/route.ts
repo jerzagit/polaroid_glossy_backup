@@ -25,7 +25,8 @@ export async function POST(request: NextRequest) {
       transaction_time,
     });
 
-    if (!order_id || !status) {
+    const VALID_STATUSES = ['1', '2', '3'];
+    if (!order_id || !status || !VALID_STATUSES.includes(status)) {
       return NextResponse.json(
         { success: false, error: 'Missing required parameters' },
         { status: 400 }
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       .update(secretKey + status + order_id + refno + 'ok')
       .digest('hex');
 
-    if (receivedHash && receivedHash !== expectedHash) {
+    if (!receivedHash || receivedHash !== expectedHash) {
       console.error('Hash validation failed');
       return NextResponse.json(
         { success: false, error: 'Invalid hash' },

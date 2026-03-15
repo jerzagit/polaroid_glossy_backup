@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const sessionId = (formData.get('sessionId') as string | null)?.trim() || randomUUID();
+    const rawSessionId = (formData.get('sessionId') as string | null)?.trim();
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const sessionId = rawSessionId && UUID_RE.test(rawSessionId) ? rawSessionId : randomUUID();
 
     const buffer = Buffer.from(await file.arrayBuffer());
 

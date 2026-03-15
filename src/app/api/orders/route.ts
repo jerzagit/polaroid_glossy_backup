@@ -121,6 +121,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate name length
+    if (customerName.length > 200) {
+      return NextResponse.json({ success: false, error: 'Customer name too long' }, { status: 400 });
+    }
+
+    // Validate phone format (digits, spaces, dashes, plus only)
+    if (customerPhone && !/^\+?[\d\s\-]{7,20}$/.test(customerPhone)) {
+      return NextResponse.json({ success: false, error: 'Invalid phone number' }, { status: 400 });
+    }
+
+    // Whitelist payment method
+    const VALID_PAYMENT_METHODS = ['bank_transfer', 'toyyibpay', 'fpx', 'card'];
+    if (paymentMethod && !VALID_PAYMENT_METHODS.includes(paymentMethod)) {
+      return NextResponse.json({ success: false, error: 'Invalid payment method' }, { status: 400 });
+    }
+
+    // Validate numeric amounts are positive and finite
+    const isPositiveFinite = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n > 0;
+    if (!isPositiveFinite(subtotal) || !isPositiveFinite(total)) {
+      return NextResponse.json({ success: false, error: 'Invalid order amounts' }, { status: 400 });
+    }
+
+    // Validate each item
+    for (const item of items) {
+      if (!item.sizeId || typeof item.sizeId !== 'string' || item.sizeId.length > 50) {
+        return NextResponse.json({ success: false, error: 'Invalid item sizeId' }, { status: 400 });
+      }
+      if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 500) {
+        return NextResponse.json({ success: false, error: 'Item quantity must be between 1 and 500' }, { status: 400 });
+      }
+      if (!isPositiveFinite(item.unitPrice)) {
+        return NextResponse.json({ success: false, error: 'Invalid item unit price' }, { status: 400 });
+      }
+      if (!Array.isArray(item.images) || item.images.length === 0 || item.images.length > 100) {
+        return NextResponse.json({ success: false, error: 'Invalid images array' }, { status: 400 });
+      }
+    }
+
     // Ensure print sizes exist in database
     await ensurePrintSizes();
 

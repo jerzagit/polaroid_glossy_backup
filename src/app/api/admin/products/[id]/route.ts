@@ -54,6 +54,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
 // PATCH /api/admin/products/[id] — toggle isActive on PrintSize
 export async function PATCH(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   const { id } = await params;
   try {
     const current = await db.printSize.findUnique({ where: { id } });
@@ -70,6 +73,9 @@ export async function PATCH(_request: NextRequest, { params }: { params: Promise
 
 // DELETE /api/admin/products/[id] — soft delete (set isActive: false)
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   const { id } = await params;
   try {
     await db.printSize.update({ where: { id }, data: { isActive: false } });

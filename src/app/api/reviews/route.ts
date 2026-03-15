@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireSession } from '@/lib/auth';
 
 // Cache for the public all-reviews listing (homepage) — busted on new review
 let reviewsCache: { data: unknown; expiresAt: number } | null = null;
@@ -83,12 +84,15 @@ export async function GET(request: NextRequest) {
 
 // POST /api/reviews - Create a review
 export async function POST(request: NextRequest) {
+  const { session, error } = await requireSession();
+  if (error) return error;
+
   try {
     const body = await request.json();
-    const { userId, orderId, sizeId, rating, title, comment, images } = body;
+    const { orderId, sizeId, rating, title, comment, images } = body;
 
     // Validate required fields
-    if (!userId || !orderId || !sizeId || !rating || !title || !comment) {
+    if (!orderId || !sizeId || !rating || !title || !comment) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
@@ -96,14 +100,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate rating
-    if (rating < 1 || rating > 5) {
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       return NextResponse.json(
         { success: false, error: 'Rating must be between 1 and 5' },
         { status: 400 }
       );
     }
 
-    // Check if order exists and belongs to user
+    // Validate text lengths
+    if (title.length > 200 || comment.length > 2000) {
+      return NextResponse.json(
+        { success: false, error: 'Title or comment exceeds maximum length' },
+        { status: 400 }
+      );
+    }
+
+    // Resolve session user
+    const sessionUser = await db.user.findFirst({ where: { email: session!.user!.email! } });
+    if (!sessionUser) {
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    }
+
+    // Check if order exists and belongs to session user
     const order = await db.order.findUnique({
       where: { id: orderId }
     });
@@ -115,7 +133,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (order.userId !== userId) {
+    if (order.customerEmail.toLowerCase() !== session!.user!.email!.toLowerCase()) {
       return NextResponse.json(
         { success: false, error: 'You can only review your own orders' },
         { status: 403 }
@@ -145,7 +163,7 @@ export async function POST(request: NextRequest) {
     // Create review
     const review = await db.review.create({
       data: {
-        userId,
+        userId: sessionUser.id,
         orderId,
         sizeId,
         rating,
@@ -177,18 +195,39 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/reviews - Update a review
 export async function PUT(request: NextRequest) {
+  const { session, error } = await requireSession();
+  if (error) return error;
+
   try {
     const body = await request.json();
-    const { reviewId, userId, rating, title, comment, images } = body;
+    const { reviewId, rating, title, comment, images } = body;
 
-    if (!reviewId || !userId) {
+    if (!reviewId) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Check if review belongs to user
+    if (rating !== undefined && (!Number.isInteger(rating) || rating < 1 || rating > 5)) {
+      return NextResponse.json({ success: false, error: 'Rating must be between 1 and 5' }, { status: 400 });
+    }
+
+    if (title && title.length > 200) {
+      return NextResponse.json({ success: false, error: 'Title exceeds maximum length' }, { status: 400 });
+    }
+
+    if (comment && comment.length > 2000) {
+      return NextResponse.json({ success: false, error: 'Comment exceeds maximum length' }, { status: 400 });
+    }
+
+    // Resolve session user
+    const sessionUser = await db.user.findFirst({ where: { email: session!.user!.email! } });
+    if (!sessionUser) {
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    }
+
+    // Check if review belongs to session user
     const existingReview = await db.review.findUnique({
       where: { id: reviewId }
     });
@@ -200,7 +239,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (existingReview.userId !== userId) {
+    if (existingReview.userId !== sessionUser.id) {
       return NextResponse.json(
         { success: false, error: 'You can only edit your own reviews' },
         { status: 403 }
@@ -237,19 +276,27 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/reviews - Delete a review
 export async function DELETE(request: NextRequest) {
+  const { session, error } = await requireSession();
+  if (error) return error;
+
   try {
     const { searchParams } = new URL(request.url);
     const reviewId = searchParams.get('reviewId');
-    const userId = searchParams.get('userId');
 
-    if (!reviewId || !userId) {
+    if (!reviewId) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Check if review belongs to user
+    // Resolve session user
+    const sessionUser = await db.user.findFirst({ where: { email: session!.user!.email! } });
+    if (!sessionUser) {
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    }
+
+    // Check if review belongs to session user
     const existingReview = await db.review.findUnique({
       where: { id: reviewId }
     });
@@ -261,7 +308,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    if (existingReview.userId !== userId) {
+    if (existingReview.userId !== sessionUser.id) {
       return NextResponse.json(
         { success: false, error: 'You can only delete your own reviews' },
         { status: 403 }
