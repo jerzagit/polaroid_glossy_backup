@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+// Cache for the public all-reviews listing (homepage) — busted on new review
+let reviewsCache: { data: unknown; expiresAt: number } | null = null;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 // GET /api/reviews - Get reviews for a print size or by user
 export async function GET(request: NextRequest) {
   try {
@@ -46,7 +50,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, reviews });
     }
 
-    // Get all reviews
+    // Get all reviews — serve from cache if fresh
+    if (reviewsCache && Date.now() < reviewsCache.expiresAt) {
+      return NextResponse.json(reviewsCache.data, {
+        headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=60' },
+      });
+    }
+
     const reviews = await db.review.findMany({
       include: {
         user: true,
@@ -56,7 +66,12 @@ export async function GET(request: NextRequest) {
       take: 50
     });
 
-    return NextResponse.json({ success: true, reviews });
+    const responseData = { success: true, reviews };
+    reviewsCache = { data: responseData, expiresAt: Date.now() + CACHE_TTL_MS };
+
+    return NextResponse.json(responseData, {
+      headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=60' },
+    });
   } catch (error) {
     console.error('Error fetching reviews:', error);
     return NextResponse.json(
@@ -144,6 +159,8 @@ export async function POST(request: NextRequest) {
         size: true
       }
     });
+
+    reviewsCache = null; // bust cache so homepage shows the new review
 
     return NextResponse.json({
       success: true,
