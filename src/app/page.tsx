@@ -267,9 +267,23 @@ export default function PolaroidPrintPage() {
     }
   }, []);
 
-  // Save cart to localStorage
+  // Save cart to localStorage — strip base64 previews and File objects (too large)
+  // S3 URLs are used as the restored preview after page reload
   useEffect(() => {
-    localStorage.setItem('polaroid_cart', JSON.stringify(cart));
+    try {
+      const serialisable = cart.map(item => ({
+        ...item,
+        photos: item.photos.map(({ file: _file, preview, ...rest }) => {
+          // Replace base64 blob with s3Url for storage; if no s3Url yet, skip the preview
+          const storedPreview = rest.s3Url ?? (preview.startsWith('data:') ? '' : preview);
+          return { ...rest, preview: storedPreview };
+        }),
+      }));
+      localStorage.setItem('polaroid_cart', JSON.stringify(serialisable));
+    } catch {
+      // Storage quota hit — silently clear rather than crash
+      localStorage.removeItem('polaroid_cart');
+    }
   }, [cart]);
 
   // Load user orders
