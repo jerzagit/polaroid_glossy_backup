@@ -1,351 +1,303 @@
-# Deployment Guide
+# Deployment Guide — Polaroid Glossy
 
-Complete guide for deploying Polaroid Glossy to production.
-
-## Deployment Options
-
-1. **Caddy Server** (Recommended) - Reverse proxy with automatic SSL
-2. **Docker** - Containerized deployment
-3. **Vercel** - Platform as a Service
+Covers local development setup and production deployment. Read top-to-bottom the first time; refer to the diff table for quick changes between environments.
 
 ---
 
-## Option 1: Caddy Server (Recommended)
+## Quick Reference — Dev vs Production
 
-### Server Requirements
+| Setting | Development | Production |
+|---|---|---|
+| `DATABASE_URL` | `file:./dev.db` (SQLite) | PostgreSQL connection string |
+| `NEXTAUTH_URL` | `http://localhost:3000` | `https://polaroidglossy.my` |
+| `TOYYIBPAY_BASE_URL` | `https://dev.toyyibpay.com` | `https://toyyibpay.com` |
+| `TOYYIBPAY_RETURN_URL` | ngrok HTTPS URL | `https://polaroidglossy.my/payment-status` |
+| `TOYYIBPAY_CALLBACK_URL` | ngrok HTTPS URL | `https://polaroidglossy.my/api/toyyibpay/callback` |
+| `AWS_S3_BUCKET` | `polaroid-glossy-dev` | `polaroid-glossy-prod` |
+| S3 image delivery | Direct S3 URL (public read) | CloudFront CDN |
+| Google OAuth redirect | `http://localhost:3000/api/auth/callback/google` | `https://polaroidglossy.my/api/auth/callback/google` |
+| Prisma provider | `sqlite` | `postgresql` |
 
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
-| OS | Ubuntu 20.04+ | Ubuntu 22.04 LTS |
-| RAM | 1 GB | 2 GB |
-| CPU | 1 core | 2 cores |
-| Storage | 10 GB | 20 GB |
-| Domain | Required | Point A record to server IP |
+---
 
-### Step 1: Prepare Server
+## 1. Local Development
 
-```bash
-# SSH into your server
-ssh user@your-server-ip
+### 1.1 Prerequisites
 
-# Update system
-sudo apt update && sudo apt upgrade -y
+| Tool | Install |
+|---|---|
+| Node.js 20+ | `brew install node` |
+| ngrok | `brew install ngrok` |
 
-# Install required packages
-sudo apt install -y curl git unzip
-
-# Install Bun
-curl -fsSL https://bun.sh/install | bash
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-
-# Install Caddy
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update
-sudo apt install caddy
-```
-
-### Step 2: Upload Project
+### 1.2 Install dependencies
 
 ```bash
-# From your local machine
-scp -r ./polaroid-glossy-clean user@your-server:/home/user/polaroid/
+git clone https://github.com/jerzagit/polaroid_glossy_backup.git
+cd polaroid_glossy_backup
+npm install
 ```
 
-### Step 3: Install Dependencies & Build
+### 1.3 Create `.env.local`
+
+Create this file in the project root. **Never commit it.**
 
 ```bash
-# SSH into server
-ssh user@your-server
+# ── Database (SQLite for local dev) ─────────────────────────────────
+DATABASE_URL="file:./dev.db"
 
-cd /home/user/polaroid
+# ── NextAuth ─────────────────────────────────────────────────────────
+NEXTAUTH_SECRET="paste output of: openssl rand -base64 32"
+NEXTAUTH_URL="http://localhost:3000"
 
-# Install dependencies
-bun install
+# ── Google OAuth ──────────────────────────────────────────────────────
+# console.cloud.google.com → Credentials → OAuth 2.0 Client IDs
+# Add authorized redirect: http://localhost:3000/api/auth/callback/google
+GOOGLE_CLIENT_ID="xxxx.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="xxxx"
 
-# Generate Prisma client
-bun run db:generate
+# ── ToyyibPay (SANDBOX) ───────────────────────────────────────────────
+# Use sandbox credentials from toyyibpay.com
+# Start ngrok first, then fill the two URL fields with your ngrok URL
+TOYYIBPAY_SECRET_KEY="your-sandbox-secret-key"
+TOYYIBPAY_CATEGORY_CODE="your-category-code"
+TOYYIBPAY_BASE_URL="https://dev.toyyibpay.com"
+TOYYIBPAY_RETURN_URL="https://YOUR-NGROK-ID.ngrok.io/payment-status"
+TOYYIBPAY_CALLBACK_URL="https://YOUR-NGROK-ID.ngrok.io/api/toyyibpay/callback"
+
+# ── Amazon S3 (DEV bucket) ────────────────────────────────────────────
+# AWS Console → S3 → create bucket: polaroid-glossy-dev (ap-southeast-1)
+# IAM → create user → attach AmazonS3FullAccess → create access key
+AWS_ACCESS_KEY_ID="AKIA..."
+AWS_SECRET_ACCESS_KEY="xxxx"
+AWS_REGION="ap-southeast-1"
+AWS_S3_BUCKET="polaroid-glossy-dev"
 ```
 
-### Step 4: Configure Production Environment
+### 1.4 Database setup
 
 ```bash
-# Create production .env
-nano .env
+# Create tables in dev.db
+npx prisma db push
+
+# Open visual DB browser at http://localhost:5555
+npx prisma studio
 ```
 
-```env
-# Database - use separate production database
-DATABASE_URL=file:./db/production.db
+### 1.5 S3 dev bucket setup (one-time)
 
-# Use your actual domain
-NEXTAUTH_URL=https://your-domain.com
-NEXTAUTH_SECRET=your-production-secret-key
+1. AWS Console → S3 → **Create bucket** → name: `polaroid-glossy-dev` → region: `ap-southeast-1`
+2. **Uncheck** "Block all public access" (dev convenience only)
+3. Add bucket policy for public read:
 
-# Google OAuth - update in Google Cloud Console
-GOOGLE_CLIENT_ID=your-production-client-id
-GOOGLE_CLIENT_SECRET=your-production-client-secret
-
-# Supabase (image storage)
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# ToyyibPay - update in merchant dashboard
-TOYYIBPAY_SECRET_KEY=your-production-secret-key
-TOYYIBPAY_CATEGORY_CODE=your-category-code
-TOYYIBPAY_RETURN_URL=https://your-domain.com/payment-status
-TOYYIBPAY_CALLBACK_URL=https://your-domain.com/api/toyyibpay/callback
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::polaroid-glossy-dev/*"
+    }
+  ]
+}
 ```
 
-### Step 5: Create Production Database
+### 1.6 Start all services
+
+Open three terminals:
 
 ```bash
-mkdir -p db
-bun run db:push
+# Terminal 1 — Next.js app
+npm run dev
+
+# Terminal 2 — ngrok tunnel (required for ToyyibPay payment callback)
+ngrok http 3000
+# Copy the https://xxx.ngrok.io URL
+# → Paste into TOYYIBPAY_RETURN_URL and TOYYIBPAY_CALLBACK_URL in .env.local
+# → Restart Terminal 1 after updating .env.local
+
+# Terminal 3 — DB viewer (optional but very useful)
+npx prisma studio
 ```
 
-### Step 6: Build Application
+### 1.7 End-to-end test checklist
+
+| Step | Action | Verify here |
+|---|---|---|
+| 1 | Open `http://localhost:3000` | — |
+| 2 | Sign in with Google | Prisma Studio → `User` table |
+| 3 | Browse products → pick 4R → Start Creating | — |
+| 4 | Upload 2–3 JPG or HEIC photos | AWS S3 console → `polaroid-glossy-dev/orders/` |
+| 5 | Add custom text to a photo | — |
+| 6 | Add to cart → checkout → fill name/email/phone/state | — |
+| 7 | Select ToyyibPay → Place Order | Prisma Studio → `Order` (status: pending) |
+| 8 | Complete payment on ToyyibPay sandbox page | Prisma Studio → `Order` (status: processing, paymentStatus: paid) |
+| 9 | Redirected to `/payment-status` | Check order number shown |
+| 10 | Inspect stored image URLs | Prisma Studio → `OrderItem` → `images` field = S3 URLs |
+
+---
+
+## 2. Production Deployment
+
+### 2.1 Prisma — switch to PostgreSQL
+
+Edit `prisma/schema.prisma`:
+
+```prisma
+// Change provider from "sqlite" to "postgresql"
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+
+Then run migrations against the production database:
 
 ```bash
-bun run build
+npx prisma migrate deploy
 ```
 
-### Step 7: Configure Caddy
+### 2.2 Production environment variables
 
-Edit the Caddyfile:
+Set these on your hosting platform (Vercel dashboard, or server `.env`):
 
 ```bash
-nano Caddyfile
+# ── Database (PostgreSQL — Supabase or AWS RDS) ──────────────────────
+DATABASE_URL="postgresql://user:password@host:5432/polaroid_glossy?sslmode=require"
+
+# ── NextAuth ─────────────────────────────────────────────────────────
+NEXTAUTH_SECRET="long-random-secret-min-32-chars"
+NEXTAUTH_URL="https://polaroidglossy.my"
+
+# ── Google OAuth ──────────────────────────────────────────────────────
+# Add authorized redirect in Google Console:
+# https://polaroidglossy.my/api/auth/callback/google
+GOOGLE_CLIENT_ID="xxxx.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="xxxx"
+
+# ── ToyyibPay (LIVE keys) ─────────────────────────────────────────────
+TOYYIBPAY_SECRET_KEY="your-live-secret-key"
+TOYYIBPAY_CATEGORY_CODE="your-live-category-code"
+TOYYIBPAY_BASE_URL="https://toyyibpay.com"
+TOYYIBPAY_RETURN_URL="https://polaroidglossy.my/payment-status"
+TOYYIBPAY_CALLBACK_URL="https://polaroidglossy.my/api/toyyibpay/callback"
+
+# ── Amazon S3 (PROD bucket) ───────────────────────────────────────────
+AWS_ACCESS_KEY_ID="AKIA..."
+AWS_SECRET_ACCESS_KEY="xxxx"
+AWS_REGION="ap-southeast-1"
+AWS_S3_BUCKET="polaroid-glossy-prod"
 ```
 
-```Caddyfile
-your-domain.com {
-    reverse_proxy localhost:3000 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
+### 2.3 S3 production bucket setup
+
+1. Create bucket: `polaroid-glossy-prod` (ap-southeast-1)
+2. Keep "Block all public access" **ON**
+3. Set up a **CloudFront distribution** pointing to the bucket — serve images via CDN
+4. Scope the IAM policy to minimum required:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::polaroid-glossy-prod/*"
+    }
+  ]
+}
+```
+
+5. Update `src/lib/s3.ts` — replace the returned URL with your CloudFront domain:
+
+```ts
+// Change this line in uploadToS3():
+return `https://YOUR-CLOUDFRONT-ID.cloudfront.net/${key}`;
+```
+
+### 2.4 Deploy to Vercel (recommended)
+
+```bash
+npm i -g vercel
+vercel --prod
+
+# Set env vars via CLI (or paste into Vercel dashboard)
+vercel env add DATABASE_URL production
+vercel env add NEXTAUTH_SECRET production
+# ... repeat for all vars
+```
+
+### 2.5 Deploy to VPS (alternative)
+
+```bash
+npm run build
+
+# Process manager
+npm install -g pm2
+pm2 start npm --name "polaroid-glossy" -- start
+pm2 save && pm2 startup
+```
+
+Nginx config:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name polaroidglossy.my www.polaroidglossy.my;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
     }
 }
 ```
 
-### Step 8: Start Application
+### 2.6 Production go-live checklist
 
-```bash
-# Start the Next.js app in background
-nohup bun run start > server.log 2>&1 &
-
-# Verify it's running
-curl http://localhost:3000
-```
-
-### Step 9: Start Caddy
-
-```bash
-# Validate Caddyfile
-caddy validate --config Caddyfile
-
-# Start Caddy
-caddy start
-
-# Or run in foreground for debugging
-caddy run
-```
-
-### Step 10: Verify Deployment
-
-Visit `https://your-domain.com` — Caddy automatically provisions SSL.
+- [ ] PostgreSQL database provisioned (Supabase free tier is fine)
+- [ ] `npx prisma migrate deploy` run against production DB
+- [ ] All environment variables set on hosting platform
+- [ ] Google OAuth redirect URI updated to production domain
+- [ ] ToyyibPay switched to **live** keys and `TOYYIBPAY_BASE_URL=https://toyyibpay.com`
+- [ ] S3 prod bucket created with CloudFront in front
+- [ ] `AWS_S3_BUCKET` points to prod bucket
+- [ ] `src/lib/s3.ts` updated to return CloudFront URL
+- [ ] `NEXTAUTH_URL` set to production domain
+- [ ] SSL certificate active (Vercel handles automatically)
+- [ ] Full end-to-end order test done on production before announcing
 
 ---
 
-## Option 2: Docker
+## 3. Image Storage Flow
 
-### Dockerfile
-
-Create `Dockerfile` in project root:
-
-```dockerfile
-FROM oven/bun:1 AS base
-WORKDIR /app
-
-FROM base AS deps
-COPY package.json bun.lockb* ./
-RUN bun install --frozen-lockfile
-
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY prisma ./prisma
-COPY . .
-RUN bun run build
-
-FROM base AS runner
-ENV NODE_ENV=production
-
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/.env ./
-
-EXPOSE 3000
-CMD ["bun", "run", "start"]
+```
+User selects photo
+      │
+      ▼
+compressImage()          ← client-side, WhatsApp HD (max 2048px, 80% JPEG)
+      │
+      ▼
+POST /api/upload         ← Next.js server
+      │  validates type (JPG/PNG/WEBP/HEIC) + size (≤ 25 MB)
+      ▼
+S3 PutObject
+      │  key: orders/YYYY-MM-DD/{uuid}.jpg
+      ▼
+returns S3 URL           ← stored in photo.s3Url (state)
+      │
+      ▼
+POST /api/orders         ← on checkout
+      │  item.images = [s3Url, s3Url, ...]
+      ▼
+OrderItem.images in DB   ← JSON array of permanent S3/CloudFront URLs
 ```
 
-### Build & Run
+**Dev:** `https://polaroid-glossy-dev.s3.ap-southeast-1.amazonaws.com/orders/...`
 
-```bash
-# Build image
-docker build -t polaroid-glossy .
-
-# Run container
-docker run -d -p 3000:3000 --env-file .env polaroid-glossy
-```
-
-### Docker Compose (Optional)
-
-```yaml
-version: '3.8'
-services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
-    restart: unless-stopped
-```
-
----
-
-## Option 3: Vercel
-
-### Deploy
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-```
-
-### Environment Variables
-
-Set these in Vercel Dashboard → Settings → Environment Variables:
-
-- `DATABASE_URL` (use Vercel Postgres or external DB — SQLite is not supported on Vercel)
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `TOYYIBPAY_*` variables
-
-> **Note:** SQLite (`file:./dev.db`) does not persist on Vercel's serverless platform. Use a hosted database (e.g., Supabase PostgreSQL, PlanetScale) and update the Prisma schema provider to `postgresql`.
-
----
-
-## Post-Deployment Checklist
-
-- [ ] Domain DNS points to server IP
-- [ ] SSL certificate auto-provisioned (Caddy)
-- [ ] Google OAuth redirect URIs updated in Google Cloud Console
-- [ ] ToyyibPay URLs updated in merchant dashboard
-- [ ] Database migrated (`bun run db:push`)
-- [ ] Application builds successfully
-- [ ] Payment flow works end-to-end
-- [ ] Authentication works (Google OAuth)
-- [ ] Image uploads work (Supabase Storage)
-- [ ] Database backup configured
-
----
-
-## Maintenance
-
-### View Logs
-
-```bash
-# Production server logs
-tail -f server.log
-
-# System logs
-sudo journalctl -u caddy -f
-```
-
-### Update Application
-
-```bash
-# Pull latest changes
-git pull
-
-# Install updates
-bun install
-
-# Rebuild
-bun run build
-
-# Restart
-pkill -f "node.*next"
-nohup bun run start > server.log 2>&1 &
-```
-
-### Database Backup
-
-```bash
-# Backup SQLite database
-cp db/production.db backups/db-$(date +%Y%m%d).db
-
-# Automated backup via crontab
-crontab -e
-# Add: 0 2 * * * cp /home/user/polaroid/db/production.db /home/user/polaroid/backups/db-$(date +\%Y\%m\%d).db
-```
-
----
-
-## Troubleshooting
-
-### 500 Internal Server Error
-
-```bash
-# Check logs
-tail -f server.log
-
-# Common causes:
-# - Missing environment variables
-# - Database not initialized
-# - Permission issues
-```
-
-### SSL Certificate Issues
-
-```bash
-# Stop Caddy
-caddy stop
-
-# Delete existing certificates
-rm -rf ~/.local/share/caddy
-
-# Start Caddy again
-caddy start
-```
-
-### Payment Not Working
-
-1. Check ToyyibPay dashboard for errors
-2. Verify callback URL is publicly accessible
-3. Check `server.log` for callback errors
-
-### Authentication Not Working
-
-1. Verify Google OAuth redirect URIs match exactly
-2. Check `NEXTAUTH_URL` is correct
-3. Ensure `NEXTAUTH_SECRET` is set
-
-### Images Not Uploading
-
-1. Verify `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set
-2. Check that the `polaroid-glossy` storage bucket exists and is public
-3. Verify Supabase storage policies allow uploads
+**Prod:** `https://YOUR-CLOUDFRONT-ID.cloudfront.net/orders/...`
