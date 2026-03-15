@@ -46,7 +46,9 @@ export async function POST(request: NextRequest) {
     formData.append('billPaymentChannel', '0');
     formData.append('billChargeToCustomer', '1');
 
-    const response = await fetch('https://toyyibpay.com/index.php/api/createBill', {
+    const baseUrl = process.env.TOYYIBPAY_BASE_URL ?? 'https://toyyibpay.com';
+
+    const response = await fetch(`${baseUrl}/index.php/api/createBill`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -58,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     if (result && result[0] && result[0].BillCode) {
       const billCode = result[0].BillCode;
-      const paymentUrl = `https://toyyibpay.com/${billCode}`;
+      const paymentUrl = `${baseUrl}/${billCode}`;
 
       await db.order.update({
         where: { id: orderId },
