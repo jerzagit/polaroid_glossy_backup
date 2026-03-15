@@ -5,10 +5,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, XCircle, Clock, Loader2, Camera, ArrowLeft } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 function PaymentStatusContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<'success' | 'pending' | 'failed' | null>(null);
 
@@ -35,13 +37,9 @@ function PaymentStatusContent() {
       const res = await fetch(`/api/orders?orderNumber=${orderNumber}`);
       const data = await res.json();
       if (data.success && data.order) {
-        if (data.order.paymentStatus === 'paid') {
-          setStatus('success');
-        } else if (data.order.paymentStatus === 'pending') {
-          setStatus('pending');
-        } else {
-          setStatus('failed');
-        }
+        if (data.order.paymentStatus === 'paid') setStatus('success');
+        else if (data.order.paymentStatus === 'pending') setStatus('pending');
+        else setStatus('failed');
       }
     } catch (error) {
       console.error('Error fetching order:', error);
@@ -66,48 +64,39 @@ function PaymentStatusContent() {
               <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-6">
                 <CheckCircle className="w-10 h-10 text-green-600" />
               </div>
-              <h1 className="text-2xl font-bold mb-2">Payment Successful!</h1>
-              <p className="text-muted-foreground mb-6">
-                Thank you for your payment. Your order is being processed.
-              </p>
+              <h1 className="text-2xl font-bold mb-2">{t.pay_success_title}</h1>
+              <p className="text-muted-foreground mb-6">{t.pay_success_desc}</p>
               {searchParams.get('order_id') && (
                 <p className="text-sm text-muted-foreground mb-6">
-                  Order Number: <span className="font-mono font-semibold">{searchParams.get('order_id')}</span>
+                  {t.pay_order_no} <span className="font-mono font-semibold">{searchParams.get('order_id')}</span>
                 </p>
               )}
             </>
           )}
-
           {status === 'pending' && (
             <>
               <div className="w-20 h-20 mx-auto bg-yellow-100 rounded-full flex items-center justify-center mb-6">
                 <Clock className="w-10 h-10 text-yellow-600" />
               </div>
-              <h1 className="text-2xl font-bold mb-2">Payment Pending</h1>
-              <p className="text-muted-foreground mb-6">
-                Your payment is being processed. Please wait a moment.
-              </p>
+              <h1 className="text-2xl font-bold mb-2">{t.pay_pending_title}</h1>
+              <p className="text-muted-foreground mb-6">{t.pay_pending_desc}</p>
             </>
           )}
-
           {status === 'failed' && (
             <>
               <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-6">
                 <XCircle className="w-10 h-10 text-red-600" />
               </div>
-              <h1 className="text-2xl font-bold mb-2">Payment Failed</h1>
-              <p className="text-muted-foreground mb-6">
-                Something went wrong with your payment. Please try again.
-              </p>
+              <h1 className="text-2xl font-bold mb-2">{t.pay_fail_title}</h1>
+              <p className="text-muted-foreground mb-6">{t.pay_fail_desc}</p>
             </>
           )}
-
           <div className="space-y-3">
             <Button onClick={() => router.push('/')} className="w-full">
-              <Camera className="w-4 h-4 mr-2" /> Back to Home
+              <Camera className="w-4 h-4 mr-2" /> {t.btn_back_home}
             </Button>
             <Button variant="outline" onClick={() => router.push('/')} className="w-full">
-              <ArrowLeft className="w-4 h-4 mr-2" /> View Order Status
+              <ArrowLeft className="w-4 h-4 mr-2" /> {t.btn_view_status}
             </Button>
           </div>
         </CardContent>

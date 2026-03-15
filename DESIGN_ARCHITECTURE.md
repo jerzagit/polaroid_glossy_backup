@@ -3,28 +3,79 @@
 ## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Frontend (Next.js 16)                  │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────┐   │
-│  │  Pages  │ │  API    │ │ NextAuth│ │  Prisma     │   │
-│  │         │ │ Routes  │ │ (OAuth) │ │  (SQLite)   │   │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────────┘   │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      Frontend (Next.js 16)                       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────────────┐  │
+│  │  Pages   │ │   API    │ │ NextAuth │ │  Prisma (SQLite)  │  │
+│  │ /        │ │  Routes  │ │  OAuth   │ │                   │  │
+│  │ /products│ │          │ │          │ │                   │  │
+│  │ /faq     │ │          │ │          │ │                   │  │
+│  └──────────┘ └──────────┘ └──────────┘ └───────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
          │                                    │
-         │ Image Upload                       │ DB
+         │ Image Upload                       │ DB queries
          ▼                                    ▼
 ┌─────────────────┐                  ┌─────────────────┐
 │  Supabase       │                  │  SQLite         │
 │  Storage        │                  │  (dev.db)       │
 │  (images)       │                  └─────────────────┘
 └─────────────────┘
+                                              │ product metadata
+                                              ▼
+                                    ┌─────────────────────┐
+                                    │ products-meta.json  │
+                                    │ (images, ratings,   │
+                                    │  TikTok, features)  │
+                                    └─────────────────────┘
          │
-         ▼ (future)
+         ▼ (future / admin)
 ┌─────────────────────────────────────────────────────────┐
 │                 Backend (Spring Boot)                     │
 │  Port 8080 - Admin API, Analytics, User Management       │
 └─────────────────────────────────────────────────────────┘
 ```
+
+## Product Catalog Data Flow
+
+```
+GET /api/products
+       │
+       ├── db.printSize.findMany({ isActive: true })   ← prices, dimensions
+       │          (fallback: FALLBACK_SIZES array)
+       │
+       └── products-meta.json                          ← images, descriptions,
+                                                          ratings, TikTok URLs,
+                                                          accent colors, features
+       │
+       └── merged ProductListing[]  →  ProductCatalog component
+                                    →  /products/[id] page
+```
+
+## Page Routes
+
+| Route | Description |
+|-------|-------------|
+| `/` | Home page — hero, upload flow, product catalog, cart |
+| `/products/[id]` | Individual product detail (gallery, specs, reviews, TikTok) |
+| `/payment-status` | ToyyibPay redirect landing page |
+| `/faq` | Frequently asked questions |
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/products` | Full product catalog (DB + meta merged) |
+| GET | `/api/products/[id]` | Single product detail |
+| POST | `/api/orders` | Create new order |
+| GET | `/api/orders` | Get order by order number |
+| PUT | `/api/orders` | Update order status (admin) |
+| DELETE | `/api/orders` | Cancel order |
+| POST | `/api/toyyibpay/create-bill` | Create ToyyibPay bill |
+| POST | `/api/toyyibpay/callback` | ToyyibPay webhook callback |
+| GET/POST | `/api/auth/[...nextauth]` | NextAuth.js (Google OAuth) |
+| GET/PUT | `/api/user/profile` | User profile management |
+| GET/POST/PUT/DELETE | `/api/reviews` | Customer reviews |
+| GET | `/api/print-sizes` | Legacy print size list |
 
 ## Payment Flow Diagram
 
@@ -67,21 +118,6 @@ flowchart TD
     style S fill:#e8f5e9
     style V fill:#e8f5e9
 ```
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/orders` | Create new order |
-| GET | `/api/orders` | Get order by order number |
-| PUT | `/api/orders` | Update order status (admin) |
-| DELETE | `/api/orders` | Cancel order |
-| POST | `/api/toyyibpay/create-bill` | Create ToyyibPay bill |
-| POST | `/api/toyyibpay/callback` | ToyyibPay webhook callback |
-| GET/POST | `/api/auth/[...nextauth]` | NextAuth.js (Google OAuth) |
-| GET/PUT | `/api/user/profile` | User profile management |
-| GET/POST/PUT/DELETE | `/api/reviews` | Customer reviews |
-| GET | `/api/print-sizes` | Available print sizes |
 
 ## Order Status Flow
 
@@ -139,6 +175,26 @@ pending → failed    (payment declined, status=0)
 - `sessionId` (unique per browser session)
 - `userId?` (linked when user logs in)
 
+## i18n Architecture
+
+Language toggle (ENG / MY) is managed by `LanguageContext`:
+
+```
+LanguageContext
+├── lang: 'en' | 'my'
+├── setLang: (lang: Lang) => void
+└── t: Trans  ← all UI strings keyed by name
+
+Usage in any component:
+  const { t, lang, setLang } = useLanguage();
+```
+
+Toggle UI (header in `page.tsx`):
+```tsx
+<button onClick={() => setLang('en')}>ENG</button>
+<button onClick={() => setLang('my')}>MY</button>
+```
+
 ## Theme System
 
 4 built-in color themes:
@@ -148,3 +204,28 @@ pending → failed    (payment declined, status=0)
 - Mint Fresh
 
 Theme is persisted in `ThemeContext` and applied via CSS variables.
+
+## Image Compression
+
+`src/lib/imageCompression.ts` — client-side compression before Supabase upload:
+- Uses `heic2any` for HEIC/HEIF → JPEG conversion (iOS photos)
+- Compresses to WhatsApp HD quality equivalent
+- Requires `npm install heic2any`
+
+## Next.js 16 Gotchas
+
+### Dynamic route params must be awaited
+
+In Next.js 15+, `params` in App Router route handlers is a `Promise`:
+
+```ts
+// ✅ Correct
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+}
+
+// ❌ Wrong — id will be undefined, returns 404 for all requests
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const { id } = params;
+}
+```

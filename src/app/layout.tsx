@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { NextAuthProvider } from "@/providers/NextAuthProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -43,12 +44,14 @@ export default function RootLayout({
         className={`${dmSans.variable} antialiased bg-background text-foreground`}
       >
         <ThemeProvider>
-          <NextAuthProvider>
-            <AuthProvider>
-              {children}
-              <Toaster />
-            </AuthProvider>
-          </NextAuthProvider>
+          <LanguageProvider>
+            <NextAuthProvider>
+              <AuthProvider>
+                {children}
+                <Toaster />
+              </AuthProvider>
+            </NextAuthProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

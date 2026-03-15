@@ -14,7 +14,7 @@ import {
   Truck, 
   Clock,
   Star,
-  Image as ImageIcon,
+  Image as _ImageIcon,
   ChevronRight,
   Sparkles,
   Heart,
@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,6 +58,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { compressImage, WHATSAPP_HD_SETTINGS } from '@/lib/imageCompression';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { ProductCatalog } from '@/components/ProductCatalog';
 import {
   Dialog,
   DialogContent,
@@ -143,14 +145,6 @@ interface Review {
   };
 }
 
-// Print sizes data
-const printSizes: PrintSize[] = [
-  { id: '2r', name: '2R', displayName: '2R (2.5 x 3.5 inches)', width: 2.5, height: 3.5, price: 0.50, description: 'Wallet size - Perfect for keepsakes' },
-  { id: '3r', name: '3R', displayName: '3R (3.5 x 5 inches)', width: 3.5, height: 5, price: 0.75, description: 'Standard photo size - Great for albums' },
-  { id: '4r', name: '4R', displayName: '4R (4 x 6 inches)', width: 4, height: 6, price: 1.00, description: 'Most popular - Classic polaroid style' },
-  { id: 'a4', name: 'A4', displayName: 'A4 (8.3 x 11.7 inches)', width: 8.3, height: 11.7, price: 3.50, description: 'Poster size - Perfect for displays' }
-];
-
 const malaysiaStates = [
   { id: 'w', name: 'West Malaysia (Semenanjung)', shippingCost: 7 },
   { id: 'e_sabah', name: 'Sabah', shippingCost: 11 },
@@ -162,34 +156,35 @@ const getShippingCost = (stateId: string): number => {
   return state ? state.shippingCost : 11;
 };
 
-// Customer testimonials data
-const customerTestimonials = [
-  { id: 1, name: 'Sarah Mitchell', location: 'New York, USA', image: '/images/customer-1.png', rating: 5, text: 'Absolutely love my polaroid prints! The quality is amazing and they arrived so quickly. Perfect for my scrapbook!', printType: '4R Classic' },
-  { id: 2, name: 'James & Emily', location: 'London, UK', image: '/images/customer-2.png', rating: 5, text: 'We ordered prints for our anniversary and couldn\'t be happier. The custom text feature made them extra special!', printType: 'Mixed Sizes' },
-  { id: 3, name: 'Margaret & Tommy', location: 'Sydney, Australia', image: '/images/customer-3.png', rating: 5, text: 'My grandson and I love looking through our polaroid memories together. Thank you for such beautiful quality!', printType: 'A4 Poster' },
-  { id: 4, name: 'Party Squad', location: 'Toronto, Canada', image: '/images/customer-4.png', rating: 5, text: 'Ordered 50 prints for our friend\'s birthday party. Everyone loved taking home a memory! Great prices too.', printType: '3R Standard' }
-];
-
-// Product videos data
-const productVideos = [
-  { id: 1, title: 'How It Works', description: 'Watch how we transform your digital photos into beautiful polaroid prints', thumbnail: '/images/product-collection.png', duration: '1:30' },
-  { id: 2, title: 'Premium Quality', description: 'See our printing process and premium photo paper in action', thumbnail: '/images/product-printing.png', duration: '2:15' },
-  { id: 3, title: 'Custom Text Feature', description: 'Learn how to add personal messages to your polaroid prints', thumbnail: '/images/product-custom.png', duration: '1:45' }
-];
-
-// Order status config
-const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Loader2 },
-  posted: { label: 'Posted', color: 'bg-purple-100 text-purple-800', icon: Package },
-  on_delivery: { label: 'On Delivery', color: 'bg-indigo-100 text-indigo-800', icon: Truck },
-  delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
-  refunded: { label: 'Refunded', color: 'bg-gray-100 text-gray-800', icon: RefreshCwIcon }
-};
-
 export default function PolaroidPrintPage() {
+  const { lang, setLang, t } = useLanguage();
   const { user, profile, loading: authLoading, signInWithGoogle, signOut } = useAuth();
+
+  // Derived from translations
+  const printSizes: PrintSize[] = [
+    { id: '2r', name: '2R', displayName: t.size_2r_display, width: 2.5, height: 3.5, price: 0.50, description: t.size_2r_desc },
+    { id: '3r', name: '3R', displayName: t.size_3r_display, width: 3.5, height: 5, price: 0.75, description: t.size_3r_desc },
+    { id: '4r', name: '4R', displayName: t.size_4r_display, width: 4, height: 6, price: 1.00, description: t.size_4r_desc },
+    { id: 'a4', name: 'A4', displayName: t.size_a4_display, width: 8.3, height: 11.7, price: 3.50, description: t.size_a4_desc },
+  ];
+  const customerTestimonials = t.testimonials.map((item, i) => ({
+    ...item,
+    image: `/images/customer-${i + 1}.png`,
+    rating: 5,
+  }));
+  const productVideos = t.videos.map((item, i) => ({
+    ...item,
+    thumbnail: ['/images/product-collection.png', '/images/product-printing.png', '/images/product-custom.png'][i],
+  }));
+  const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
+    pending: { label: t.status_pending, color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+    processing: { label: t.status_processing, color: 'bg-blue-100 text-blue-800', icon: Loader2 },
+    posted: { label: t.status_posted, color: 'bg-purple-100 text-purple-800', icon: Package },
+    on_delivery: { label: t.status_on_delivery, color: 'bg-indigo-100 text-indigo-800', icon: Truck },
+    delivered: { label: t.status_delivered, color: 'bg-green-100 text-green-800', icon: CheckCircle },
+    cancelled: { label: t.status_cancelled, color: 'bg-red-100 text-red-800', icon: XCircle },
+    refunded: { label: t.status_refunded, color: 'bg-gray-100 text-gray-800', icon: RefreshCwIcon },
+  };
   
   // State
   const [currentStep, setCurrentStep] = useState(-1);
@@ -361,9 +356,9 @@ export default function PolaroidPrintPage() {
       const promises = Array.from(files).map(file => processFile(file));
       const processedPhotos = await Promise.all(promises);
       setPhotos(prev => [...prev, ...processedPhotos]);
-      toast.success(`Added ${fileCount} photo${fileCount > 1 ? 's' : ''}!`);
+      toast.success(t.toast_photos_added(fileCount));
     } catch (error) {
-      toast.error('Failed to process some photos');
+      toast.error(t.toast_compress_fail);
     } finally {
       setIsUploading(false);
 
@@ -385,7 +380,7 @@ export default function PolaroidPrintPage() {
 
   const addToCart = useCallback(() => {
     if (photos.length === 0) {
-      toast.error('Please upload at least one photo');
+      toast.error(t.toast_no_photo);
       return;
     }
 
@@ -402,7 +397,7 @@ export default function PolaroidPrintPage() {
     };
 
     setCart(prev => [...prev, newItem]);
-    toast.success(`Added ${photos.length} photo${photos.length > 1 ? 's' : ''} × ${quantity} to cart!`);
+    toast.success(t.toast_cart_added(photos.length, quantity));
     
     // Reset
     setPhotos([]);
@@ -412,7 +407,7 @@ export default function PolaroidPrintPage() {
 
   const removeFromCart = useCallback((itemId: string) => {
     setCart(prev => prev.filter(item => item.id !== itemId));
-    toast.success('Item removed from cart');
+    toast.success(t.toast_removed);
   }, []);
 
   const updateCartQuantity = useCallback((itemId: string, newQuantity: number) => {
@@ -426,12 +421,12 @@ export default function PolaroidPrintPage() {
     console.log('handleCheckout clicked, paymentMethod:', paymentMethod);
     
     if (!orderFormData.customerName || !orderFormData.customerEmail) {
-      toast.error('Please fill in required fields');
+      toast.error(t.toast_fill_required);
       return;
     }
 
     if (!orderFormData.customerState) {
-      toast.error('Please select your state');
+      toast.error(t.toast_select_state);
       return;
     }
 
@@ -502,14 +497,14 @@ export default function PolaroidPrintPage() {
         setCurrentStep(4);
         setCart([]);
         localStorage.removeItem('polaroid_cart');
-        toast.success('Order placed successfully!');
+        toast.success(t.toast_order_success);
       } else {
         console.error('Order creation failed:', data);
         throw new Error(data.error || 'Failed to place order');
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      toast.error('Failed to place order. Please try again.');
+      toast.error(t.toast_order_fail);
     } finally {
       setIsProcessing(false);
     }
@@ -523,19 +518,19 @@ export default function PolaroidPrintPage() {
       const data = await response.json();
       
       if (data.success) {
-        toast.success('Order cancelled successfully');
+        toast.success(t.toast_cancel_success);
         fetchUserOrders();
       } else {
-        toast.error(data.error || 'Failed to cancel order');
+        toast.error(data.error || t.toast_cancel_fail);
       }
     } catch {
-      toast.error('Failed to cancel order');
+      toast.error(t.toast_cancel_fail);
     }
   }, [fetchUserOrders]);
 
   const handleTrackOrder = useCallback(async () => {
     if (!trackingInput.trim()) {
-      toast.error('Please enter an order number');
+      toast.error(t.toast_enter_order);
       return;
     }
 
@@ -546,10 +541,10 @@ export default function PolaroidPrintPage() {
       if (data.success && data.order) {
         setTrackingOrder(data.order);
       } else {
-        toast.error('Order not found');
+        toast.error(t.toast_not_found);
       }
     } catch {
-      toast.error('Failed to track order');
+      toast.error(t.toast_track_fail);
     }
   }, [trackingInput]);
 
@@ -557,7 +552,7 @@ export default function PolaroidPrintPage() {
     if (!selectedOrderForReview || !profile) return;
     
     if (!reviewForm.title || !reviewForm.comment) {
-      toast.error('Please fill in all fields');
+      toast.error(t.toast_fill_all);
       return;
     }
 
@@ -576,23 +571,23 @@ export default function PolaroidPrintPage() {
       const data = await response.json();
       
       if (data.success) {
-        toast.success('Review submitted successfully!');
+        toast.success(t.toast_review_success);
         setShowReviewModal(false);
         setSelectedOrderForReview(null);
         setReviewForm({ rating: 5, title: '', comment: '' });
         fetchReviews();
         fetchUserOrders();
       } else {
-        toast.error(data.error || 'Failed to submit review');
+        toast.error(data.error || t.toast_review_fail);
       }
     } catch {
-      toast.error('Failed to submit review');
+      toast.error(t.toast_review_fail);
     }
   }, [selectedOrderForReview, profile, reviewForm, fetchReviews, fetchUserOrders]);
 
   const handleCopyTrackingNumber = useCallback((trackingNum: string) => {
     navigator.clipboard.writeText(trackingNum);
-    toast.success('Tracking number copied!');
+    toast.success(t.toast_tracking_copied);
   }, []);
 
   // Render functions
@@ -603,27 +598,27 @@ export default function PolaroidPrintPage() {
         <div className="space-y-6 text-center lg:text-left">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <Badge variant="secondary" className="mb-4 px-4 py-1.5">
-              <Sparkles className="w-3.5 h-3.5 mr-2" /> Premium Polaroid Prints
+              <Sparkles className="w-3.5 h-3.5 mr-2" /> {t.badge_premium}
             </Badge>
           </motion.div>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-            Turn Your Memories Into{' '}<span className="text-primary">Timeless Art</span>
+            {t.hero_title1}{' '}<span className="text-primary">{t.hero_title2}</span>
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0">
-            Transform your digital photos into beautiful physical polaroid prints. Choose from multiple sizes, add custom text, and create memories that last forever.
+            {t.hero_desc}
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
             <Button size="lg" className="text-lg px-8" onClick={() => setCurrentStep(0)}>
-              Start Creating <ArrowRight className="ml-2 w-5 h-5" />
+              {t.btn_start} <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8" onClick={() => document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' })}>
-              View Pricing
+              {t.btn_pricing}
             </Button>
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="flex items-center justify-center lg:justify-start gap-8 pt-4">
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">{[1, 2, 3, 4].map((i) => (<div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-primary border-2 border-background" />))}</div>
-              <span className="text-sm text-muted-foreground">10,000+ happy customers</span>
+              <span className="text-sm text-muted-foreground">{t.hero_customers}</span>
             </div>
             <div className="flex items-center gap-1">
               {[...Array(5)].map((_, i) => (<Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />))}
@@ -640,8 +635,8 @@ export default function PolaroidPrintPage() {
                   <Truck className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">Fast Delivery</p>
-                  <p className="text-xs text-muted-foreground">3-5 business days</p>
+                  <p className="text-sm font-semibold">{t.hero_delivery_title}</p>
+                  <p className="text-xs text-muted-foreground">{t.hero_delivery_sub}</p>
                 </div>
               </div>
             </motion.div>
@@ -651,8 +646,8 @@ export default function PolaroidPrintPage() {
                   <Sparkles className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">Premium Quality</p>
-                  <p className="text-xs text-muted-foreground">Photo-grade paper</p>
+                  <p className="text-sm font-semibold">{t.hero_quality_title}</p>
+                  <p className="text-xs text-muted-foreground">{t.hero_quality_sub}</p>
                 </div>
               </div>
             </motion.div>
@@ -666,17 +661,17 @@ export default function PolaroidPrintPage() {
     <section className="py-16 px-6">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Why Choose Polaroid Glossy MY?</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">We make printing your memories easy, affordable, and beautiful</p>
+          <h2 className="text-3xl font-bold mb-4">{t.features_title}</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">{t.features_desc}</p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { icon: Zap, title: 'Quick & Easy', description: 'Upload your photos, choose a size, and checkout in under 2 minutes' },
-            { icon: Shield, title: 'Quality Guaranteed', description: 'Premium photo paper with vibrant colors that last for years' },
-            { icon: Heart, title: 'Personal Touch', description: 'Add custom text to make each print uniquely yours' },
-            { icon: Truck, title: 'Fast Shipping', description: 'RM7 for East Malaysia, RM11 for West Malaysia, delivered in 3-5 business days' },
-            { icon: RefreshCw, title: 'Easy Reorders', description: 'Your uploaded photos are saved for quick reordering anytime' },
-            { icon: Sparkles, title: 'Multiple Sizes', description: 'From wallet-size 2R to poster-size A4, we have you covered' }
+            { icon: Zap, title: t.feat1_title, description: t.feat1_desc },
+            { icon: Shield, title: t.feat2_title, description: t.feat2_desc },
+            { icon: Heart, title: t.feat3_title, description: t.feat3_desc },
+            { icon: Truck, title: t.feat4_title, description: t.feat4_desc },
+            { icon: RefreshCw, title: t.feat5_title, description: t.feat5_desc },
+            { icon: Sparkles, title: t.feat6_title, description: t.feat6_desc }
           ].map((feature, index) => (
             <motion.div key={feature.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }}>
               <Card className="h-full hover:shadow-lg transition-shadow">
@@ -699,9 +694,9 @@ export default function PolaroidPrintPage() {
     <section className="py-16 px-6 bg-gradient-to-b from-background to-muted/20">
       <div className="max-w-6xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-          <Badge variant="secondary" className="mb-4"><Users className="w-3.5 h-3.5 mr-2" />Happy Customers</Badge>
-          <h2 className="text-3xl font-bold mb-4">Loved by Thousands</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">See what our customers are saying about their polaroid prints</p>
+          <Badge variant="secondary" className="mb-4"><Users className="w-3.5 h-3.5 mr-2" />{t.badge_happy}</Badge>
+          <h2 className="text-3xl font-bold mb-4">{t.gallery_title}</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">{t.gallery_desc}</p>
         </motion.div>
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {customerTestimonials.map((testimonial, index) => (
@@ -746,7 +741,7 @@ export default function PolaroidPrintPage() {
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
-          {[{ value: '10,000+', label: 'Happy Customers' }, { value: '500,000+', label: 'Photos Printed' }, { value: '4.9/5', label: 'Average Rating' }, { value: '30+', label: 'Countries Served' }].map((stat, index) => (
+          {[{ value: '10,000+', label: t.stat1 }, { value: '500,000+', label: t.stat2 }, { value: '4.9/5', label: t.stat3 }, { value: '30+', label: t.stat4 }].map((stat, index) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="text-center">
               <p className="text-3xl md:text-4xl font-bold text-primary">{stat.value}</p>
               <p className="text-muted-foreground">{stat.label}</p>
@@ -761,9 +756,9 @@ export default function PolaroidPrintPage() {
     <section className="py-16 px-6">
       <div className="max-w-6xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-          <Badge variant="secondary" className="mb-4"><Play className="w-3.5 h-3.5 mr-2" />Product Showcase</Badge>
-          <h2 className="text-3xl font-bold mb-4">See Our Products in Action</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">Discover how we create beautiful polaroid prints from your digital memories</p>
+          <Badge variant="secondary" className="mb-4"><Play className="w-3.5 h-3.5 mr-2" />{t.badge_showcase}</Badge>
+          <h2 className="text-3xl font-bold mb-4">{t.videos_title}</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">{t.videos_desc}</p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-8">
           <Card className="overflow-hidden group cursor-pointer">
@@ -804,9 +799,9 @@ export default function PolaroidPrintPage() {
           ))}
         </div>
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-16">
-          <h3 className="text-2xl font-bold text-center mb-8">Our Simple Process</h3>
+          <h3 className="text-2xl font-bold text-center mb-8">{t.process_title}</h3>
           <div className="grid md:grid-cols-4 gap-4">
-            {[{ step: 1, title: 'Upload', description: 'Choose your favorite photos', icon: Upload }, { step: 2, title: 'Customize', description: 'Select size & add text', icon: Sparkles }, { step: 3, title: 'Print', description: 'We print with premium quality', icon: Camera }, { step: 4, title: 'Deliver', description: 'Fast shipping to your door', icon: Truck }].map((item, index) => (
+            {[{ step: 1, title: t.proc1_title, description: t.proc1_desc, icon: Upload }, { step: 2, title: t.proc2_title, description: t.proc2_desc, icon: Sparkles }, { step: 3, title: t.proc3_title, description: t.proc3_desc, icon: Camera }, { step: 4, title: t.proc4_title, description: t.proc4_desc, icon: Truck }].map((item, index) => (
               <motion.div key={item.step} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="relative">
                 <Card className="text-center p-6 h-full">
                   <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -829,45 +824,21 @@ export default function PolaroidPrintPage() {
     <section id="pricing-section" className="py-16 px-6 bg-muted/30">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Simple, Transparent Pricing</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">Choose from our range of print sizes, all at affordable prices</p>
+          <h2 className="text-3xl font-bold mb-4">{t.pricing_title}</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">{t.pricing_desc}</p>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {printSizes.map((size, index) => (
-            <motion.div key={size.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }}>
-              <Card className={cn("h-full hover:shadow-lg transition-all cursor-pointer", size.id === '4r' && "ring-2 ring-primary shadow-lg")}>
-                <CardHeader className="text-center pb-2">
-                  {size.id === '4r' && <Badge className="mx-auto mb-2">Most Popular</Badge>}
-                  <CardTitle className="text-2xl">{size.name}</CardTitle>
-                  <CardDescription>{size.displayName}</CardDescription>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <div className="flex justify-center mb-4">
-                    <div className="bg-muted rounded border-2 border-dashed border-border flex items-center justify-center" style={{ width: `${size.width * 16}px`, height: `${size.height * 16}px` }}>
-                      <ImageIcon className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">{size.description}</p>
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold text-primary">RM{size.price.toFixed(2)}</span>
-                    <span className="text-muted-foreground">/print</span>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full" variant={size.id === '4r' ? 'default' : 'outline'} onClick={() => { setSelectedSize(size); setCurrentStep(0); }}>
-                    Get Started
-                  </Button>
-                </CardFooter>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-        <p className="text-center text-muted-foreground mt-8"><span className="font-medium">RM7 flat-rate shipping</span> for East Malaysia • <span className="font-medium">RM11 flat-rate shipping</span> for West Malaysia</p>
+        <ProductCatalog
+          onSelect={(size) => {
+            setSelectedSize(size as typeof printSizes[0]);
+            setCurrentStep(0);
+          }}
+        />
+        <p className="text-center text-muted-foreground mt-8">{t.shipping_note}</p>
         
         {/* Customer Reviews */}
         {reviews.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-16">
-            <h3 className="text-2xl font-bold text-center mb-8">Customer Reviews</h3>
+            <h3 className="text-2xl font-bold text-center mb-8">{t.reviews_title}</h3>
             <div className="grid md:grid-cols-3 gap-6">
               {reviews.slice(0, 6).map((review) => (
                 <Card key={review.id}>
@@ -877,7 +848,7 @@ export default function PolaroidPrintPage() {
                     </div>
                     <h4 className="font-semibold">{review.title}</h4>
                     <p className="text-sm text-muted-foreground mt-1">{review.comment}</p>
-                    <p className="text-xs text-muted-foreground mt-2">By {review.user?.name || 'Anonymous'}</p>
+                    <p className="text-xs text-muted-foreground mt-2">{t.review_by} {review.user?.name || t.review_anon}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -891,8 +862,8 @@ export default function PolaroidPrintPage() {
   const renderUploadStep = () => (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-foreground mb-2">Upload Your Photos</h2>
-        <p className="text-muted-foreground">Upload multiple photos to transform into beautiful polaroid prints</p>
+        <h2 className="text-3xl font-bold text-foreground mb-2">{t.upload_title}</h2>
+        <p className="text-muted-foreground">{t.upload_desc}</p>
       </div>
 
       <div className="max-w-4xl mx-auto">
@@ -923,15 +894,15 @@ export default function PolaroidPrintPage() {
             </div>
             <div>
               {isUploading ? (
-                <p className="text-lg font-medium">Compressing photos...</p>
+                <p className="text-lg font-medium">{t.upload_compressing}</p>
               ) : (
                 <>
-                  <p className="text-lg font-medium">Drop your photos here</p>
-                  <p className="text-sm text-muted-foreground">or click to browse • Select multiple photos at once</p>
+                  <p className="text-lg font-medium">{t.upload_drop}</p>
+                  <p className="text-sm text-muted-foreground">{t.upload_browse}</p>
                 </>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">Supports: JPG, PNG, WEBP, HEIC (Max 25MB each)</p>
+            <p className="text-xs text-muted-foreground">{t.upload_formats}</p>
           </div>
         </div>
 
@@ -939,9 +910,9 @@ export default function PolaroidPrintPage() {
         {photos.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">{photos.length} photo{photos.length > 1 ? 's' : ''} uploaded</h3>
+              <h3 className="text-lg font-semibold">{t.upload_count(photos.length)}</h3>
               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                <Plus className="w-4 h-4 mr-2" /> Add More
+                <Plus className="w-4 h-4 mr-2" /> {t.btn_addmore}
               </Button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -965,7 +936,7 @@ export default function PolaroidPrintPage() {
                   </Button>
                   <input
                     type="text"
-                    placeholder="Add caption..."
+                    placeholder={t.caption_placeholder}
                     value={photo.customText || ''}
                     onChange={(e) => updatePhotoText(photo.id, e.target.value)}
                     className="mt-1 w-full text-xs px-2 py-1 border rounded"
@@ -981,7 +952,7 @@ export default function PolaroidPrintPage() {
         {photos.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 space-y-6">
             <div>
-              <h3 className="text-lg font-semibold mb-4">Select Print Size</h3>
+              <h3 className="text-lg font-semibold mb-4">{t.select_size_title}</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {printSizes.map((size) => (
                   <Card
@@ -992,7 +963,7 @@ export default function PolaroidPrintPage() {
                     <CardContent className="p-4 text-center">
                       <p className="font-semibold">{size.name}</p>
                       <p className="text-2xl font-bold text-primary">RM{size.price.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">/print</p>
+                      <p className="text-xs text-muted-foreground">{t.per_print}</p>
                     </CardContent>
                   </Card>
                 ))}
@@ -1000,7 +971,7 @@ export default function PolaroidPrintPage() {
             </div>
 
             <div className="flex items-center justify-center gap-4">
-              <Label className="text-lg">Quantity per photo:</Label>
+              <Label className="text-lg">{t.qty_label}</Label>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
                   <Minus className="w-4 h-4" />
@@ -1016,8 +987,8 @@ export default function PolaroidPrintPage() {
               <CardContent className="py-4">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-lg font-semibold">{photos.length} photo{photos.length > 1 ? 's' : ''} × {quantity} print{quantity > 1 ? 's' : ''} each</p>
-                    <p className="text-sm text-muted-foreground">Total: {photos.length * quantity} prints</p>
+                    <p className="text-lg font-semibold">{t.summary_prints(photos.length, quantity)}</p>
+                    <p className="text-sm text-muted-foreground">{t.summary_total(photos.length * quantity)}</p>
                   </div>
                   <span className="font-bold text-primary text-3xl">
                     RM{(selectedSize.price * photos.length * quantity).toFixed(2)}
@@ -1027,7 +998,7 @@ export default function PolaroidPrintPage() {
             </Card>
 
             <Button className="w-full" size="lg" onClick={addToCart}>
-              <ShoppingCart className="w-5 h-5 mr-2" /> Add to Cart
+              <ShoppingCart className="w-5 h-5 mr-2" /> {t.btn_addcart}
             </Button>
           </motion.div>
         )}
@@ -1038,8 +1009,8 @@ export default function PolaroidPrintPage() {
   const renderCartStep = () => (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-foreground mb-2">Your Cart</h2>
-        <p className="text-muted-foreground">Review your items before checkout</p>
+        <h2 className="text-3xl font-bold text-foreground mb-2">{t.cart_title}</h2>
+        <p className="text-muted-foreground">{t.cart_desc}</p>
       </div>
 
       {cart.length === 0 ? (
@@ -1047,10 +1018,10 @@ export default function PolaroidPrintPage() {
           <div className="w-24 h-24 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
             <ShoppingCart className="w-12 h-12 text-muted-foreground" />
           </div>
-          <h3 className="text-xl font-semibold mb-2">Your cart is empty</h3>
-          <p className="text-muted-foreground mb-6">Upload some photos to get started</p>
+          <h3 className="text-xl font-semibold mb-2">{t.cart_empty_title}</h3>
+          <p className="text-muted-foreground mb-6">{t.cart_empty_desc}</p>
           <Button onClick={() => setCurrentStep(0)}>
-            <Upload className="w-4 h-4 mr-2" /> Upload Photos
+            <Upload className="w-4 h-4 mr-2" /> {t.btn_upload}
           </Button>
         </div>
       ) : (
@@ -1075,7 +1046,7 @@ export default function PolaroidPrintPage() {
                         <div className="flex justify-between items-start">
                           <div>
                             <h4 className="font-semibold">{item.size.displayName}</h4>
-                            <p className="text-sm text-muted-foreground">{item.photos.length} photo{item.photos.length > 1 ? 's' : ''} × {item.quantity} print{item.quantity > 1 ? 's' : ''} each</p>
+                            <p className="text-sm text-muted-foreground">{t.cart_item_desc(item.photos.length, item.quantity)}</p>
                           </div>
                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeFromCart(item.id)}>
                             <Trash2 className="w-4 h-4" />
@@ -1105,16 +1076,16 @@ export default function PolaroidPrintPage() {
             <CardContent className="p-6">
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Photos ({totalPhotos} prints)</span>
+                  <span className="text-muted-foreground">{t.cart_total_label(totalPhotos)}</span>
                   <span>RM{cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Shipping</span>
+                  <span className="text-muted-foreground">{t.label_shipping}</span>
                   <span>RM{getShippingCost(orderFormData.customerState).toFixed(2)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-lg font-bold">
-                  <span>Total</span>
+                  <span>{t.label_total}</span>
                   <span className="text-primary">RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</span>
                 </div>
               </div>
@@ -1123,10 +1094,10 @@ export default function PolaroidPrintPage() {
 
           <div className="flex gap-4 mt-6">
             <Button variant="outline" className="flex-1" onClick={() => setCurrentStep(0)}>
-              <Plus className="w-4 h-4 mr-2" /> Add More Photos
+              <Plus className="w-4 h-4 mr-2" /> {t.btn_addmore_photos}
             </Button>
             <Button className="flex-1" onClick={() => setCurrentStep(3)}>
-              Proceed to Checkout <ChevronRight className="w-4 h-4 ml-2" />
+              {t.btn_checkout} <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         </div>
@@ -1137,56 +1108,56 @@ export default function PolaroidPrintPage() {
   const renderCheckoutStep = () => (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-foreground mb-2">Checkout</h2>
-        <p className="text-muted-foreground">Complete your order</p>
+        <h2 className="text-3xl font-bold text-foreground mb-2">{t.checkout_title}</h2>
+        <p className="text-muted-foreground">{t.checkout_desc}</p>
       </div>
 
       <div className="max-w-2xl mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle>Contact Information</CardTitle>
+            <CardTitle>{t.label_contact}</CardTitle>
             {user && (
-              <CardDescription>Logged in as {profile?.email || user.email}</CardDescription>
+              <CardDescription>{t.logged_as(profile?.email || user.email || '')}</CardDescription>
             )}
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name *</Label>
-              <Input id="name" placeholder="John Doe" value={orderFormData.customerName} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerName: e.target.value }))} />
+              <Label htmlFor="name">{t.label_fullname}</Label>
+              <Input id="name" placeholder={t.placeholder_name} value={orderFormData.customerName} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerName: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address *</Label>
-              <Input id="email" type="email" placeholder="john@example.com" value={orderFormData.customerEmail} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerEmail: e.target.value }))} />
+              <Label htmlFor="email">{t.label_email}</Label>
+              <Input id="email" type="email" placeholder={t.placeholder_email} value={orderFormData.customerEmail} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerEmail: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="phone">{t.label_phone}</Label>
               <Input id="phone" type="tel" placeholder="+60 123 456789" value={orderFormData.customerPhone} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="state">State *</Label>
+              <Label htmlFor="state">{t.label_state}</Label>
               <Select value={orderFormData.customerState} onValueChange={(value) => setOrderFormData(prev => ({ ...prev, customerState: value }))}>
                 <SelectTrigger id="state">
-                  <SelectValue placeholder="Select your state" />
+                  <SelectValue placeholder={t.placeholder_state} />
                 </SelectTrigger>
                 <SelectContent>
                   {malaysiaStates.map((state) => (
                     <SelectItem key={state.id} value={state.id}>
-                      {state.name} (RM{state.shippingCost} shipping)
+                      {state.name} {t.state_shipping(state.shippingCost)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="notes">Special Instructions</Label>
-              <Textarea id="notes" placeholder="Any special requests for your order..." value={orderFormData.notes} onChange={(e) => setOrderFormData(prev => ({ ...prev, notes: e.target.value }))} />
+              <Label htmlFor="notes">{t.label_notes}</Label>
+              <Textarea id="notes" placeholder={t.placeholder_notes} value={orderFormData.notes} onChange={(e) => setOrderFormData(prev => ({ ...prev, notes: e.target.value }))} />
             </div>
           </CardContent>
         </Card>
 
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Payment Method</CardTitle>
+            <CardTitle>{t.label_payment}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1202,7 +1173,7 @@ export default function PolaroidPrintPage() {
                     {paymentMethod === 'bank_transfer' && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>
                   <div>
-                    <p className="font-semibold">Bank Transfer</p>
+                    <p className="font-semibold">{t.pay_bank}</p>
                     <p className="text-xs text-muted-foreground">Maybank</p>
                   </div>
                 </div>
@@ -1220,7 +1191,7 @@ export default function PolaroidPrintPage() {
                   </div>
                   <div>
                     <p className="font-semibold">ToyyibPay</p>
-                    <p className="text-xs text-muted-foreground">Online Payment</p>
+                    <p className="text-xs text-muted-foreground">{t.pay_online}</p>
                   </div>
                 </div>
               </div>
@@ -1228,18 +1199,18 @@ export default function PolaroidPrintPage() {
 
             {paymentMethod === 'bank_transfer' && (
               <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
-                <p className="font-semibold">Bank Transfer Details:</p>
-                <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
-                <p><span className="text-muted-foreground">Account Name:</span> Acachiaa Empire</p>
-                <p><span className="text-muted-foreground">Account Number:</span> 123456789012</p>
-                <p className="text-xs text-muted-foreground mt-2">Please transfer the exact amount and upload your receipt after placing order.</p>
+                <p className="font-semibold">{t.bank_details_title}</p>
+                <p><span className="text-muted-foreground">{t.bank_name}</span> Maybank</p>
+                <p><span className="text-muted-foreground">{t.bank_account_name}</span> Acachiaa Empire</p>
+                <p><span className="text-muted-foreground">{t.bank_account_no}</span> 123456789012</p>
+                <p className="text-xs text-muted-foreground mt-2">{t.bank_note}</p>
               </div>
             )}
 
             {paymentMethod === 'toyyibpay' && (
               <div className="bg-muted rounded-lg p-4 text-sm">
-                <p className="font-semibold">Pay with ToyyibPay:</p>
-                <p className="text-muted-foreground">You will be redirected to ToyyibPay to complete your payment securely.</p>
+                <p className="font-semibold">{t.toyyibpay_title}</p>
+                <p className="text-muted-foreground">{t.toyyibpay_desc}</p>
               </div>
             )}
           </CardContent>
@@ -1247,28 +1218,28 @@ export default function PolaroidPrintPage() {
 
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Order Summary</CardTitle>
+            <CardTitle>{t.order_summary_title}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {cart.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm">
-                  <span>{item.size.name} - {item.photos.length} photo{item.photos.length > 1 ? 's' : ''} × {item.quantity}</span>
+                  <span>{t.checkout_item(item.size.name, item.photos.length, item.quantity)}</span>
                   <span>RM{(item.size.price * item.photos.length * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
               <Separator />
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
+                <span className="text-muted-foreground">{t.label_subtotal}</span>
                 <span>RM{cartTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Shipping</span>
+                <span className="text-muted-foreground">{t.label_shipping}</span>
                 <span>RM{getShippingCost(orderFormData.customerState).toFixed(2)}</span>
               </div>
               <Separator />
               <div className="flex justify-between text-lg font-bold">
-                <span>Total</span>
+                <span>{t.label_total}</span>
                 <span className="text-primary">RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</span>
               </div>
             </div>
@@ -1276,9 +1247,9 @@ export default function PolaroidPrintPage() {
         </Card>
 
         <div className="flex gap-4 mt-6">
-          <Button variant="outline" className="flex-1" onClick={() => setCurrentStep(2)}>Back to Cart</Button>
+          <Button variant="outline" className="flex-1" onClick={() => setCurrentStep(2)}>{t.btn_back_cart}</Button>
           <Button className="flex-1" onClick={handleCheckout} disabled={isProcessing}>
-            {isProcessing ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Processing...</>) : (<><CreditCard className="w-4 h-4 mr-2" />{paymentMethod === 'toyyibpay' ? 'Pay with ToyyibPay' : 'Place Order'}</>)}
+            {isProcessing ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />{t.btn_processing}</>) : (<><CreditCard className="w-4 h-4 mr-2" />{paymentMethod === 'toyyibpay' ? t.btn_pay_toyyibpay : t.btn_place_order}</>)}
           </Button>
         </div>
       </div>
@@ -1292,14 +1263,14 @@ export default function PolaroidPrintPage() {
           <div className="w-24 h-24 mx-auto bg-yellow-100 rounded-full flex items-center justify-center mb-6">
             <Clock className="w-12 h-12 text-yellow-600" />
           </div>
-          <h2 className="text-3xl font-bold text-foreground mb-2">Awaiting Payment</h2>
-          <p className="text-muted-foreground mb-2">Please make your payment within <span className="font-semibold text-yellow-600">24 hours</span>.</p>
-          <p className="text-sm text-muted-foreground mb-6">Your order will be processed once we receive your payment.</p>
+          <h2 className="text-3xl font-bold text-foreground mb-2">{t.confirm_await_title}</h2>
+          <p className="text-muted-foreground mb-2">{t.confirm_await_desc('24')}</p>
+          <p className="text-sm text-muted-foreground mb-6">{t.confirm_await_sub}</p>
           <Card className="max-w-md mx-auto">
             <CardContent className="py-6">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Order Number:</span>
+                  <span className="text-muted-foreground">{t.label_order_no}</span>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold">{orderNumber}</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyTrackingNumber(orderNumber)}>
@@ -1308,18 +1279,18 @@ export default function PolaroidPrintPage() {
                   </div>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email:</span>
+                  <span className="text-muted-foreground">{t.label_email_short}</span>
                   <span>{orderFormData.customerEmail}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
           <div className="bg-muted rounded-lg p-4 text-sm max-w-md mx-auto mt-6">
-            <p className="font-semibold mb-2">Bank Transfer Details:</p>
-            <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
-            <p><span className="text-muted-foreground">Account Name:</span> Acachiaa Empire</p>
-            <p><span className="text-muted-foreground">Account Number:</span> 123456789012</p>
-            <p className="font-semibold mt-2">Total: RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</p>
+            <p className="font-semibold mb-2">{t.bank_details_title}</p>
+            <p><span className="text-muted-foreground">{t.bank_name}</span> Maybank</p>
+            <p><span className="text-muted-foreground">{t.bank_account_name}</span> Acachiaa Empire</p>
+            <p><span className="text-muted-foreground">{t.bank_account_no}</span> 123456789012</p>
+            <p className="font-semibold mt-2">{t.confirm_total((cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2))}</p>
           </div>
         </>
       ) : (
@@ -1327,13 +1298,13 @@ export default function PolaroidPrintPage() {
           <div className="w-24 h-24 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-6">
             <Check className="w-12 h-12 text-green-600" />
           </div>
-          <h2 className="text-3xl font-bold text-foreground mb-2">Order Confirmed!</h2>
-          <p className="text-muted-foreground mb-6">Thank you for your order. We&apos;ll start printing your beautiful polaroids right away!</p>
+          <h2 className="text-3xl font-bold text-foreground mb-2">{t.confirm_success_title}</h2>
+          <p className="text-muted-foreground mb-6">{t.confirm_success_desc}</p>
           <Card className="max-w-md mx-auto">
             <CardContent className="py-6">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Order Number:</span>
+                  <span className="text-muted-foreground">{t.label_order_no}</span>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold">{orderNumber}</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyTrackingNumber(orderNumber)}>
@@ -1342,7 +1313,7 @@ export default function PolaroidPrintPage() {
                   </div>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email:</span>
+                  <span className="text-muted-foreground">{t.label_email_short}</span>
                   <span>{orderFormData.customerEmail}</span>
                 </div>
               </div>
@@ -1350,18 +1321,18 @@ export default function PolaroidPrintPage() {
           </Card>
         </>
       )}
-      
+
       {/* Order Status Progress Bar */}
       <div className="mt-8">
         <p className="text-sm text-muted-foreground mb-4">
-          {paymentMethod === 'bank_transfer' ? 'Order Status:' : 'Track your order:'}
+          {paymentMethod === 'bank_transfer' ? t.label_order_status : t.label_track_order}
         </p>
         <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
           {[
-            { key: 'received', label: 'Order Received', icon: Check },
-            { key: 'pending', label: 'Pending Payment', icon: Clock },
-            { key: 'processing', label: 'Processing', icon: Sparkles },
-            { key: 'delivery', label: 'Delivery', icon: Truck },
+            { key: 'received', label: t.step_received, icon: Check },
+            { key: 'pending', label: t.step_pending_pay, icon: Clock },
+            { key: 'processing', label: t.step_processing_conf, icon: Sparkles },
+            { key: 'delivery', label: t.step_delivery, icon: Truck },
           ].map((step, index) => {
             const isActive = paymentMethod === 'bank_transfer' 
               ? index <= 1  // Show pending as current for bank transfer
@@ -1387,10 +1358,10 @@ export default function PolaroidPrintPage() {
 
       <div className="flex gap-4 mt-8 justify-center">
         <Button variant="outline" onClick={() => { setShowTrackingModal(true); setTrackingInput(orderNumber); }}>
-          <Search className="w-4 h-4 mr-2" /> Track Order
+          <Search className="w-4 h-4 mr-2" /> {t.btn_track}
         </Button>
         <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerState: 'w', notes: '' }); }}>
-          <Plus className="w-4 h-4 mr-2" /> Create Another Order
+          <Plus className="w-4 h-4 mr-2" /> {t.btn_new_order}
         </Button>
       </div>
     </motion.div>
@@ -1442,14 +1413,14 @@ export default function PolaroidPrintPage() {
                   </div>
                   <div className="p-2">
                     <Button variant="ghost" className="w-full justify-start" onClick={() => { setShowUserMenu(false); setShowOrdersModal(true); }}>
-                      <PackageOpen className="w-4 h-4 mr-2" /> My Orders
+                      <PackageOpen className="w-4 h-4 mr-2" /> {t.menu_orders}
                     </Button>
                     <Button variant="ghost" className="w-full justify-start" onClick={() => { setShowUserMenu(false); setShowTrackingModal(true); }}>
-                      <Search className="w-4 h-4 mr-2" /> Track Order
+                      <Search className="w-4 h-4 mr-2" /> {t.menu_track}
                     </Button>
                     <Separator className="my-2" />
                     <Button variant="ghost" className="w-full justify-start text-destructive" onClick={() => { setShowUserMenu(false); signOut(); }}>
-                      <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                      <LogOut className="w-4 h-4 mr-2" /> {t.btn_signout}
                     </Button>
                   </div>
                 </motion.div>
@@ -1459,7 +1430,7 @@ export default function PolaroidPrintPage() {
         </>
       ) : (
         <Button onClick={signInWithGoogle}>
-          <LogIn className="w-4 h-4 mr-2" /> Sign In
+          <LogIn className="w-4 h-4 mr-2" /> {t.btn_signin}
         </Button>
       )}
     </div>
@@ -1477,22 +1448,36 @@ export default function PolaroidPrintPage() {
               </div>
               <div className="text-left">
                 <h1 className="text-xl font-bold">Polaroid Glossy MY</h1>
-                <p className="text-xs text-muted-foreground">Turn memories into art</p>
+                <p className="text-xs text-muted-foreground">{t.tagline}</p>
               </div>
             </button>
 
             <div className="flex items-center gap-4">
+              <div className="flex items-center border rounded-lg overflow-hidden">
+                <button
+                  className={cn("px-2 py-1 text-xs font-semibold transition-colors", lang === 'en' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+                  onClick={() => setLang('en')}
+                >
+                  ENG
+                </button>
+                <button
+                  className={cn("px-2 py-1 text-xs font-semibold transition-colors", lang === 'my' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+                  onClick={() => setLang('my')}
+                >
+                  MY
+                </button>
+              </div>
               <ThemeSwitcher />
               <Button variant="ghost" asChild>
                 <Link href="/faq">
-                  <MessageSquare className="w-4 h-4 mr-2" /> FAQ
+                  <MessageSquare className="w-4 h-4 mr-2" /> {t.nav_faq}
                 </Link>
               </Button>
               <Button variant="ghost" onClick={() => setShowTrackingModal(true)}>
-                <Search className="w-4 h-4 mr-2" /> Track Order
+                <Search className="w-4 h-4 mr-2" /> {t.nav_track}
               </Button>
               {currentStep >= 0 && !orderComplete && (
-                <Button variant="ghost" onClick={() => setCurrentStep(-1)}>Home</Button>
+                <Button variant="ghost" onClick={() => setCurrentStep(-1)}>{t.nav_home}</Button>
               )}
               {renderUserMenu()}
               <Button variant="outline" className="relative" onClick={() => setShowCart(!showCart)}>
@@ -1511,7 +1496,7 @@ export default function PolaroidPrintPage() {
         <div className="border-b bg-muted/30">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-center gap-2 md:gap-4">
-              {[{ id: 'upload', title: 'Upload Photos', icon: Upload }, { id: 'cart', title: 'Cart', icon: ShoppingCart }, { id: 'checkout', title: 'Checkout', icon: CreditCard }].map((step, index) => (
+              {[{ id: 'upload', title: t.step_upload, icon: Upload }, { id: 'cart', title: t.step_cart, icon: ShoppingCart }, { id: 'checkout', title: t.step_checkout, icon: CreditCard }].map((step, index) => (
                 <div key={step.id} className="flex items-center">
                   <button
                     onClick={() => { if (index <= currentStep || (index === 1 && cart.length > 0)) setCurrentStep(index === 1 ? 2 : index); }}
@@ -1555,14 +1540,14 @@ export default function PolaroidPrintPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowCart(false)} />
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 20 }} className="fixed right-0 top-0 h-full w-full max-w-md bg-background border-l shadow-xl z-50 flex flex-col">
               <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold">Cart ({totalPhotos} photos)</h3>
+                <h3 className="text-lg font-semibold">{t.drawer_title(totalPhotos)}</h3>
                 <Button variant="ghost" size="icon" onClick={() => setShowCart(false)}><X className="w-5 h-5" /></Button>
               </div>
               <ScrollArea className="flex-1 p-4">
                 {cart.length === 0 ? (
                   <div className="text-center py-8">
                     <ShoppingCart className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Your cart is empty</p>
+                    <p className="text-muted-foreground">{t.drawer_empty}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1577,7 +1562,7 @@ export default function PolaroidPrintPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm">{item.size.name}</p>
-                              <p className="text-xs text-muted-foreground">{item.photos.length} photos × {item.quantity}</p>
+                              <p className="text-xs text-muted-foreground">{t.drawer_item(item.photos.length, item.quantity)}</p>
                               <p className="text-sm font-bold">RM{(item.size.price * item.photos.length * item.quantity).toFixed(2)}</p>
                             </div>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeFromCart(item.id)}><X className="w-4 h-4" /></Button>
@@ -1591,10 +1576,10 @@ export default function PolaroidPrintPage() {
               {cart.length > 0 && (
                 <div className="border-t p-4 space-y-4">
                   <div className="flex justify-between text-lg font-bold">
-                    <span>Total ({totalPhotos} prints)</span>
+                    <span>{t.drawer_total(totalPhotos)}</span>
                     <span>RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</span>
                   </div>
-                  <Button className="w-full" onClick={() => { setShowCart(false); setCurrentStep(2); }}>View Cart & Checkout</Button>
+                  <Button className="w-full" onClick={() => { setShowCart(false); setCurrentStep(2); }}>{t.btn_view_cart}</Button>
                 </div>
               )}
             </motion.div>
@@ -1606,14 +1591,14 @@ export default function PolaroidPrintPage() {
       <Dialog open={showOrdersModal} onOpenChange={setShowOrdersModal}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>My Orders</DialogTitle>
-            <DialogDescription>View and manage your orders</DialogDescription>
+            <DialogTitle>{t.orders_title}</DialogTitle>
+            <DialogDescription>{t.orders_desc}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             {userOrders.length === 0 ? (
               <div className="text-center py-8">
                 <PackageOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No orders yet</p>
+                <p className="text-muted-foreground">{t.orders_empty}</p>
               </div>
             ) : (
               userOrders.map((order) => (
@@ -1633,17 +1618,17 @@ export default function PolaroidPrintPage() {
                       <div className="flex gap-2">
                         {order.trackingNumber && (
                           <Button variant="outline" size="sm" onClick={() => handleCopyTrackingNumber(order.trackingNumber!)}>
-                            <Copy className="w-3 h-3 mr-1" /> Copy Tracking
+                            <Copy className="w-3 h-3 mr-1" /> {t.btn_copy_tracking}
                           </Button>
                         )}
                         {order.status === 'delivered' && !reviews.find(r => r.orderId === order.id) && (
                           <Button size="sm" onClick={() => { setSelectedOrderForReview(order); setShowReviewModal(true); setShowOrdersModal(false); }}>
-                            <MessageSquare className="w-3 h-3 mr-1" /> Write Review
+                            <MessageSquare className="w-3 h-3 mr-1" /> {t.btn_write_review}
                           </Button>
                         )}
                         {['pending', 'processing'].includes(order.status) && (
                           <Button variant="destructive" size="sm" onClick={() => handleCancelOrder(order.id)}>
-                            <XCircle className="w-3 h-3 mr-1" /> Cancel
+                            <XCircle className="w-3 h-3 mr-1" /> {t.btn_cancel}
                           </Button>
                         )}
                       </div>
@@ -1660,8 +1645,8 @@ export default function PolaroidPrintPage() {
       <Dialog open={showTrackingModal} onOpenChange={setShowTrackingModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Track Your Order</DialogTitle>
-            <DialogDescription>Enter your order number to track status</DialogDescription>
+            <DialogTitle>{t.track_title}</DialogTitle>
+            <DialogDescription>{t.track_desc}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="flex gap-2">
@@ -1682,7 +1667,7 @@ export default function PolaroidPrintPage() {
                   </div>
                   {trackingOrder.trackingNumber && (
                     <div className="bg-muted p-2 rounded mb-4">
-                      <p className="text-xs text-muted-foreground">Tracking Number</p>
+                      <p className="text-xs text-muted-foreground">{t.label_tracking_no}</p>
                       <p className="font-mono">{trackingOrder.trackingNumber}</p>
                     </div>
                   )}
@@ -1715,12 +1700,12 @@ export default function PolaroidPrintPage() {
       <Dialog open={showReviewModal} onOpenChange={setShowReviewModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Write a Review</DialogTitle>
-            <DialogDescription>Share your experience with this order</DialogDescription>
+            <DialogTitle>{t.review_title}</DialogTitle>
+            <DialogDescription>{t.review_desc}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
-              <Label>Rating</Label>
+              <Label>{t.label_rating}</Label>
               <div className="flex gap-1 mt-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button key={star} onClick={() => setReviewForm(prev => ({ ...prev, rating: star }))}>
@@ -1730,14 +1715,14 @@ export default function PolaroidPrintPage() {
               </div>
             </div>
             <div>
-              <Label htmlFor="review-title">Title</Label>
-              <Input id="review-title" placeholder="Great quality prints!" value={reviewForm.title} onChange={(e) => setReviewForm(prev => ({ ...prev, title: e.target.value }))} />
+              <Label htmlFor="review-title">{t.label_review_title}</Label>
+              <Input id="review-title" placeholder={t.placeholder_review_title} value={reviewForm.title} onChange={(e) => setReviewForm(prev => ({ ...prev, title: e.target.value }))} />
             </div>
             <div>
-              <Label htmlFor="review-comment">Your Review</Label>
-              <Textarea id="review-comment" placeholder="Tell us about your experience..." rows={4} value={reviewForm.comment} onChange={(e) => setReviewForm(prev => ({ ...prev, comment: e.target.value }))} />
+              <Label htmlFor="review-comment">{t.label_review_comment}</Label>
+              <Textarea id="review-comment" placeholder={t.placeholder_review_comment} rows={4} value={reviewForm.comment} onChange={(e) => setReviewForm(prev => ({ ...prev, comment: e.target.value }))} />
             </div>
-            <Button className="w-full" onClick={handleSubmitReview}>Submit Review</Button>
+            <Button className="w-full" onClick={handleSubmitReview}>{t.btn_submit_review}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1748,15 +1733,15 @@ export default function PolaroidPrintPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <XCircle className="w-5 h-5" />
-              Google Sign-In Setup Required
+              {t.oauth_title}
             </DialogTitle>
             <DialogDescription>
-              The Google OAuth is not configured for this domain. Please follow the steps below to fix this.
+              {t.oauth_desc}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="bg-muted p-4 rounded-lg space-y-3">
-              <p className="font-medium">Step 1: Go to Google Cloud Console</p>
+              <p className="font-medium">{t.oauth_step1}</p>
               <a 
                 href="https://console.cloud.google.com/apis/credentials" 
                 target="_blank" 
@@ -1767,19 +1752,19 @@ export default function PolaroidPrintPage() {
               </a>
             </div>
             <div className="bg-muted p-4 rounded-lg space-y-2">
-              <p className="font-medium">Step 2: Edit your OAuth 2.0 Client ID</p>
-              <p className="text-sm text-muted-foreground">Find the client ID that starts with: <code className="bg-background px-1 rounded">912176079688-q853e78d3l9n6tpatt72fj86iepato98</code></p>
+              <p className="font-medium">{t.oauth_step2}</p>
+              <p className="text-sm text-muted-foreground">{t.oauth_step2_desc} <code className="bg-background px-1 rounded">912176079688-q853e78d3l9n6tpatt72fj86iepato98</code></p>
             </div>
             <div className="bg-muted p-4 rounded-lg space-y-2">
-              <p className="font-medium">Step 3: Add Authorized JavaScript origins</p>
-              <p className="text-sm text-muted-foreground">Add your current domain (the URL you see in your browser address bar)</p>
+              <p className="font-medium">{t.oauth_step3}</p>
+              <p className="text-sm text-muted-foreground">{t.oauth_step3_desc}</p>
               <p className="text-xs bg-background p-2 rounded font-mono break-all">
                 {typeof window !== 'undefined' ? window.location.origin : ''}
               </p>
             </div>
             <div className="bg-muted p-4 rounded-lg space-y-2">
-              <p className="font-medium">Step 4: Add Authorized redirect URI</p>
-              <p className="text-sm text-muted-foreground">Add this exact redirect URI:</p>
+              <p className="font-medium">{t.oauth_step4}</p>
+              <p className="text-sm text-muted-foreground">{t.oauth_step4_desc}</p>
               <p className="text-xs bg-background p-2 rounded font-mono break-all">
                 {typeof window !== 'undefined' ? `${window.location.origin}/api/auth/callback/google` : ''}
               </p>
@@ -1790,27 +1775,27 @@ export default function PolaroidPrintPage() {
                 onClick={() => {
                   if (typeof window !== 'undefined') {
                     navigator.clipboard.writeText(`${window.location.origin}/api/auth/callback/google`);
-                    toast.success('Redirect URI copied!');
+                    toast.success(t.toast_uri_copied);
                   }
                 }}
               >
-                <Copy className="w-3 h-3 mr-2" /> Copy Redirect URI
+                <Copy className="w-3 h-3 mr-2" /> {t.btn_copy_uri}
               </Button>
             </div>
             <div className="bg-muted p-4 rounded-lg space-y-2">
-              <p className="font-medium">Step 5: Save and wait</p>
-              <p className="text-sm text-muted-foreground">After saving, wait a few minutes for changes to propagate, then try signing in again.</p>
+              <p className="font-medium">{t.oauth_step5}</p>
+              <p className="text-sm text-muted-foreground">{t.oauth_step5_desc}</p>
             </div>
           </div>
           <div className="flex gap-2 mt-4">
             <Button variant="outline" onClick={() => setShowOAuthErrorModal(false)}>
-              Close
+              {t.btn_close}
             </Button>
             <Button onClick={() => {
               setShowOAuthErrorModal(false);
               signInWithGoogle();
             }}>
-              Try Again
+              {t.btn_try_again}
             </Button>
           </div>
         </DialogContent>
@@ -1825,35 +1810,35 @@ export default function PolaroidPrintPage() {
                 <Camera className="w-6 h-6 text-primary" />
                 <span className="font-bold">Polaroid Glossy MY</span>
               </div>
-              <p className="text-sm text-muted-foreground">Transform your digital memories into beautiful physical polaroid prints.</p>
+              <p className="text-sm text-muted-foreground">{t.footer_desc}</p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Print Sizes</h4>
+              <h4 className="font-semibold mb-4">{t.footer_sizes}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 {printSizes.map(size => (<li key={size.id}>{size.displayName} - RM{size.price.toFixed(2)}</li>))}
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Features</h4>
+              <h4 className="font-semibold mb-4">{t.footer_features}</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Premium Quality</li>
-                <li className="flex items-center gap-2"><Truck className="w-4 h-4 text-primary" /> Fast Shipping</li>
-                <li className="flex items-center gap-2"><Heart className="w-4 h-4 text-primary" /> Custom Text</li>
-                <li className="flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> 3-4 Working Days</li>
-                <li><Link href="/faq" className="hover:underline">FAQ & Warranty</Link></li>
+                <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> {t.feat_premium}</li>
+                <li className="flex items-center gap-2"><Truck className="w-4 h-4 text-primary" /> {t.feat_shipping}</li>
+                <li className="flex items-center gap-2"><Heart className="w-4 h-4 text-primary" /> {t.feat_text}</li>
+                <li className="flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> {t.feat_days}</li>
+                <li><Link href="/faq" className="hover:underline">{t.footer_faq}</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Why Choose Us?</h4>
+              <h4 className="font-semibold mb-4">{t.footer_why}</h4>
               <div className="flex items-center gap-1 mb-2">
                 {[...Array(5)].map((_, i) => (<Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />))}
                 <span className="text-sm ml-2">4.9/5</span>
               </div>
-              <p className="text-sm text-muted-foreground">Trusted by over 10,000+ happy customers worldwide</p>
+              <p className="text-sm text-muted-foreground">{t.footer_trust}</p>
             </div>
           </div>
           <Separator className="my-8" />
-          <div className="text-center text-sm text-muted-foreground">© 2024 Polaroid Glossy MY. All rights reserved.</div>
+          <div className="text-center text-sm text-muted-foreground">{t.footer_copy}</div>
         </div>
       </footer>
     </div>
