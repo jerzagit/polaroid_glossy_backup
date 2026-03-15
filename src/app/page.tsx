@@ -962,7 +962,7 @@ export default function PolaroidPrintPage() {
                     variant="destructive"
                     size="icon"
                     disabled={photo.uploading}
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
                     onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
                   >
                     <X className="w-3 h-3" />
