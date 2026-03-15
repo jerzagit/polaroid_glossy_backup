@@ -228,6 +228,7 @@ export default function PolaroidPrintPage() {
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadSessionId = useRef<string>(crypto.randomUUID());
 
   const cartTotal = cart.reduce((sum, item) => sum + item.size.price * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -332,6 +333,7 @@ export default function PolaroidPrintPage() {
       // Upload to S3 in the background — update state when done
       const formData = new FormData();
       formData.append('file', compressedFile);
+      formData.append('sessionId', uploadSessionId.current);
       fetch('/api/upload', { method: 'POST', body: formData })
         .then(r => r.json())
         .then((data: { success: boolean; url?: string }) => {

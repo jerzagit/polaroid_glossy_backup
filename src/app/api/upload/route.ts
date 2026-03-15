@@ -26,15 +26,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const sessionId = (formData.get('sessionId') as string | null)?.trim() || randomUUID();
+
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Organised by date so the bucket is easy to browse: orders/YYYY-MM-DD/uuid.ext
-    const date = new Date().toISOString().slice(0, 10);
     const ext = file.type === 'image/jpeg' ? 'jpg'
                : file.type === 'image/png'  ? 'png'
                : file.type === 'image/webp' ? 'webp'
                : 'jpg';
-    const key = `orders/${date}/${randomUUID()}.${ext}`;
+    // All photos for one checkout session go into the same folder: orders/{sessionId}/
+    const key = `orders/${sessionId}/${randomUUID()}.${ext}`;
 
     const url = await uploadToS3(buffer, key, file.type);
 

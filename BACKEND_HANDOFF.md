@@ -270,11 +270,13 @@ All customer-uploaded photos are stored in **Amazon S3** before the order is pla
 | Development | `polaroid-glossy-dev` | `us-east-1` |
 | Production | `polaroid-glossy-prod` | `ap-southeast-1` |
 
-**S3 key format:** `orders/YYYY-MM-DD/{uuid}.jpg`
+**S3 key format:** `orders/{sessionId}/{uuid}.jpg`
+
+> `sessionId` is a UUID generated once per checkout session — all photos from one order share the same folder.
 
 **Image URL format (dev):**
 ```
-https://polaroid-glossy-dev.s3.us-east-1.amazonaws.com/orders/2026-03-15/abc123.jpg
+https://polaroid-glossy-dev.s3.us-east-1.amazonaws.com/orders/a3f8c2d1-9b4e-4f2a-8c6d-1e2f3a4b5c6d/7e9f1a2b.jpg
 ```
 
 **Image URL format (prod — via CloudFront):**
@@ -292,8 +294,9 @@ https://YOUR-CLOUDFRONT-ID.cloudfront.net/orders/2026-03-15/abc123.jpg
 
 The backend (admin) can:
 - **View** images by opening the URL directly in a browser
-- **Download** images by fetching the URL (they are publicly readable in dev; via CloudFront in prod)
-- **Batch download** by iterating `order_items.images[]` for an order
+- **Download** images by fetching the URL (publicly readable in dev; via CloudFront in prod)
+- **Batch download** by iterating `order_items.images[]` for an order — all photos for one order are already in the same S3 folder
+- **Key extraction** — use `s3Url.substring(s3Url.indexOf("/orders/") + 1)` to get the S3 key from any URL regardless of folder structure
 
 ### S3 IAM Credentials Strategy
 

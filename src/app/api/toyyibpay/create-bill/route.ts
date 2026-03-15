@@ -56,7 +56,19 @@ export async function POST(request: NextRequest) {
       body: formData.toString(),
     });
 
-    const result = await response.json();
+    const rawText = await response.text();
+    console.log('ToyyibPay raw response:', rawText);
+
+    let result;
+    try {
+      result = JSON.parse(rawText);
+    } catch {
+      console.error('ToyyibPay non-JSON response:', rawText);
+      return NextResponse.json(
+        { success: false, error: `ToyyibPay error: ${rawText}` },
+        { status: 502 }
+      );
+    }
 
     if (result && result[0] && result[0].BillCode) {
       const billCode = result[0].BillCode;
