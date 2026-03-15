@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireSession } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
+  const { error } = await requireSession();
+  if (error) return error;
+
   try {
     const body = await request.json();
     const { orderId, orderNumber, amount, customerEmail, customerName, customerPhone } = body;

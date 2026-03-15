@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireSession } from '@/lib/auth';
 
 interface OrderItemInput {
   sizeId: string;
@@ -48,97 +49,50 @@ async function ensurePrintSizes() {
   }
 }
 
-// GET /api/orders - Get orders (for user or admin)
+// GET /api/orders - Get own orders only
 export async function GET(request: NextRequest) {
+  const { session, error } = await requireSession();
+  if (error) return error;
+
+  const sessionEmail = session!.user!.email!;
+
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const email = searchParams.get('email');
     const orderNumber = searchParams.get('orderNumber');
-    
+
     if (orderNumber) {
-      // Get specific order by order number (for tracking)
       const order = await db.order.findUnique({
         where: { orderNumber },
         include: {
-          items: {
-            include: {
-              size: true
-            }
-          },
-          statusHistory: {
-            orderBy: { createdAt: 'desc' }
-          }
+          items: { include: { size: true } },
+          statusHistory: { orderBy: { createdAt: 'desc' } }
         }
       });
 
-      if (!order) {
-        return NextResponse.json(
-          { success: false, error: 'Order not found' },
-          { status: 404 }
-        );
+      if (!order) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+
+      // Only the order owner can view it
+      if (order.customerEmail.toLowerCase() !== sessionEmail.toLowerCase()) {
+        return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
       }
 
       return NextResponse.json({ success: true, order });
     }
 
-    let orders;
-    if (userId) {
-      // Get orders for specific user
-      orders = await db.order.findMany({
-        where: { userId },
-        include: {
-          items: {
-            include: {
-              size: true
-            }
-          },
-          statusHistory: {
-            orderBy: { createdAt: 'desc' },
-            take: 1
-          }
-        },
-        orderBy: { createdAt: 'desc' }
-      });
-    } else if (email) {
-      // Get orders by email (for guest users)
-      orders = await db.order.findMany({
-        where: { customerEmail: email },
-        include: {
-          items: {
-            include: {
-              size: true
-            }
-          },
-          statusHistory: {
-            orderBy: { createdAt: 'desc' },
-            take: 1
-          }
-        },
-        orderBy: { createdAt: 'desc' }
-      });
-    } else {
-      // Get all orders (admin - limited)
-      orders = await db.order.findMany({
-        include: {
-          items: {
-            include: {
-              size: true
-            }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 50
-      });
-    }
+    // Always scope to session user's email
+    const orders = await db.order.findMany({
+      where: { customerEmail: sessionEmail },
+      include: {
+        items: { include: { size: true } },
+        statusHistory: { orderBy: { createdAt: 'desc' }, take: 1 }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     return NextResponse.json({ success: true, orders });
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch orders' },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error('Error fetching orders:', err);
+    return NextResponse.json({ success: false, error: 'Failed to fetch orders' }, { status: 500 });
   }
 }
 
@@ -255,8 +209,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT /api/orders - Update order status (for admin use)
+// PUT /api/orders - Update order status (admin only via Spring Boot; blocked here)
 export async function PUT(request: NextRequest) {
+  const { error } = await requireSession();
+  if (error) return error;
+  // Status updates are handled by the Spring Boot admin backend
+  return NextResponse.json({ success: false, error: 'Use the admin backend to update order status' }, { status: 403 });
+
   try {
     const body = await request.json();
     const { orderId, status, trackingNumber, message } = body;
@@ -314,24 +273,26 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE /api/orders - Cancel an order
+// DELETE /api/orders - Cancel own order only
 export async function DELETE(request: NextRequest) {
+  const { session, error } = await requireSession();
+  if (error) return error;
+
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
     const cancelReason = searchParams.get('reason');
 
     if (!orderId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing orderId' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Missing orderId' }, { status: 400 });
     }
 
-    // Check if order can be cancelled
-    const order = await db.order.findUnique({
-      where: { id: orderId }
-    });
+    const order = await db.order.findUnique({ where: { id: orderId } });
+
+    // Verify the order belongs to the session user
+    if (order && order.customerEmail.toLowerCase() !== session!.user!.email!.toLowerCase()) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
 
     if (!order) {
       return NextResponse.json(

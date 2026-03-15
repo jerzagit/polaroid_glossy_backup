@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
 
 // PUT /api/admin/products/[id] — update print size pricing + product metadata
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   const { id } = await params;
   try {
     const body = await request.json();

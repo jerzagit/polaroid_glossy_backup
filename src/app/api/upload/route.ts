@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadToS3 } from '@/lib/s3';
+import { requireSession } from '@/lib/auth';
 import { randomUUID } from 'crypto';
 
 // Max file size: 25 MB
 const MAX_BYTES = 25 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
+  const { error } = await requireSession();
+  if (error) return error;
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
