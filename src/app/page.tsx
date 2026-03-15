@@ -950,13 +950,19 @@ export default function PolaroidPrintPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   className="relative group"
                 >
-                  <div className="aspect-square rounded-lg overflow-hidden border-2 border-border">
+                  <div className="aspect-square rounded-lg overflow-hidden border-2 border-border relative">
                     <img src={photo.preview} alt="Uploaded" className="w-full h-full object-cover" />
+                    {photo.uploading && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
                   </div>
                   <Button
                     variant="destructive"
                     size="icon"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    disabled={photo.uploading}
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                     onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
                   >
                     <X className="w-3 h-3" />
