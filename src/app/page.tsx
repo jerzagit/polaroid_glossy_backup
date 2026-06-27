@@ -162,6 +162,54 @@ const getShippingCost = (stateId: string): number => {
   return state ? state.shippingCost : 11;
 };
 
+const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080/api';
+
+const backendSizeIds: Record<string, string> = {
+  '2r': '2R',
+  '3r': '3R',
+  '4r': '4R',
+  a4: 'A4',
+};
+
+interface BackendUploadResponse {
+  key: string;
+  url: string;
+  fileName: string;
+}
+
+interface BackendOrderResponse {
+  id?: string;
+  orderNumber: string;
+  status: string;
+  total: number;
+  paymentStatus?: string;
+  trackingNumber?: string;
+  createdAt?: string;
+  statusHistory?: StatusHistory[];
+}
+
+async function backendRequest<T>(path: string, options: RequestInit & { authToken?: string } = {}): Promise<T> {
+  const { authToken, ...fetchOptions } = options;
+
+  const headers = new Headers(fetchOptions.headers);
+  if (authToken) {
+    headers.set('Authorization', `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(`${BACKEND_API_BASE}${path}`, { ...fetchOptions, headers });
+  const contentType = response.headers.get('content-type') || '';
+  const body = contentType.includes('application/json')
+    ? await response.json()
+    : await response.text();
+
+  if (!response.ok) {
+    const message = body?.message || body?.error || body || `Backend request failed with HTTP ${response.status}`;
+    throw new Error(message);
+  }
+
+  return body as T;
+}
+
 // Customer testimonials data
 const customerTestimonials = [
   { id: 1, name: 'Sarah Mitchell', location: 'New York, USA', image: '/images/customer-1.png', rating: 5, text: 'Absolutely love my polaroid prints! The quality is amazing and they arrived so quickly. Perfect for my scrapbook!', printType: '4R Classic' },
@@ -189,7 +237,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 };
 
 export default function PolaroidPrintPage() {
-  const { user, profile, loading: authLoading, signInWithGoogle, signOut } = useAuth();
+  const { user, profile, loading: authLoading, backendJwt, signInWithGoogle, signOut } = useAuth();
   
   // State
   const [currentStep, setCurrentStep] = useState(-1);
@@ -215,6 +263,7 @@ export default function PolaroidPrintPage() {
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
   const [trackingInput, setTrackingInput] = useState('');
+  const [trackingEmail, setTrackingEmail] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('bank_transfer');
   
@@ -235,6 +284,7 @@ export default function PolaroidPrintPage() {
   const cartTotal = cart.reduce((sum, item) => sum + item.size.price * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPhotos = cart.reduce((sum, item) => sum + item.photos.length * item.quantity, 0);
+  const totalUploadFiles = cart.reduce((sum, item) => sum + item.photos.length, 0);
 
   // Load cart from localStorage
   useEffect(() => {
@@ -423,8 +473,6 @@ export default function PolaroidPrintPage() {
   }, []);
 
   const handleCheckout = useCallback(async () => {
-    console.log('handleCheckout clicked, paymentMethod:', paymentMethod);
-    
     if (!orderFormData.customerName || !orderFormData.customerEmail) {
       toast.error('Please fill in required fields');
       return;
@@ -435,85 +483,176 @@ export default function PolaroidPrintPage() {
       return;
     }
 
-    const shippingCost = getShippingCost(orderFormData.customerState);
     setIsProcessing(true);
 
-    console.log('Starting checkout with paymentMethod:', paymentMethod);
-
     try {
-      const items = cart.map(item => ({
-        sizeId: item.sizeId,
-        quantity: item.quantity,
-        images: item.photos.map(p => p.preview),
-        customTexts: item.photos.map(p => p.customText || ''),
-        unitPrice: item.unitPrice
-      }));
-
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile?.id,
-          ...orderFormData,
-          items,
-          subtotal: cartTotal,
-          shipping: shippingCost,
-          total: cartTotal + shippingCost,
-          paymentMethod
-        })
-      });
-
-      const data = await response.json();
-      console.log('Order API response:', data);
-
-      if (data.success) {
-        if (paymentMethod === 'toyyibpay') {
-          console.log('Creating ToyyibPay bill...');
-          const billResponse = await fetch('/api/toyyibpay/create-bill', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: data.order.id,
-              orderNumber: data.order.orderNumber,
-              amount: cartTotal + shippingCost,
-              customerEmail: orderFormData.customerEmail,
-              customerName: orderFormData.customerName,
-              customerPhone: orderFormData.customerPhone
-            })
-          });
-
-          const billData = await billResponse.json();
-          console.log('ToyyibPay bill response:', billData);
-
-          if (billData.success && billData.paymentUrl) {
-            setOrderNumber(data.order.orderNumber);
-            setCart([]);
-            localStorage.removeItem('polaroid_cart');
-            window.location.href = billData.paymentUrl;
-            return;
-          } else {
-            console.error('Bill creation failed:', billData);
-            throw new Error(billData.error || 'Failed to create payment');
-          }
-        }
-
-        setOrderNumber(data.order.orderNumber);
-        setOrderComplete(true);
-        setCurrentStep(4);
-        setCart([]);
-        localStorage.removeItem('polaroid_cart');
-        toast.success('Order placed successfully!');
+      if (backendJwt) {
+        await handleBackendCheckout();
       } else {
-        console.error('Order creation failed:', data);
-        throw new Error(data.error || 'Failed to place order');
+        await handleLocalCheckout();
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      toast.error('Failed to place order. Please try again.');
+      toast.dismiss('checkout-upload');
+      toast.dismiss('checkout-order');
+      toast.error(error instanceof Error ? error.message : 'Failed to place order. Please try again.');
     } finally {
       setIsProcessing(false);
     }
-  }, [orderFormData, cart, cartTotal, profile?.id, paymentMethod]);
+  }, [orderFormData, cart, paymentMethod, backendJwt]);
+
+  const handleBackendCheckout = async () => {
+    // Step 1: Create order first on Spring Boot backend (items without image URLs)
+    const orderItems = cart.map(item => ({
+      sizeId: backendSizeIds[item.sizeId] || item.sizeId.toUpperCase(),
+      quantity: item.quantity,
+      imageUrls: [] as string[],
+      customTexts: item.photos.map(p => p.customText || ''),
+    }));
+
+    toast.loading('Creating order...', { id: 'checkout-order' });
+
+    const order = await backendRequest<BackendOrderResponse>('/orders', {
+      method: 'POST',
+      authToken: backendJwt,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName: orderFormData.customerName,
+        customerEmail: orderFormData.customerEmail,
+        customerPhone: orderFormData.customerPhone,
+        customerState: orderFormData.customerState,
+        items: orderItems,
+      }),
+    });
+
+    toast.dismiss('checkout-order');
+
+    // Step 2: Upload photos with real order number
+    let uploadedCount = 0;
+    const totalFiles = cart.reduce((sum, item) => sum + item.photos.length, 0);
+
+    for (const item of cart) {
+      for (const photo of item.photos) {
+        const formData = new FormData();
+        formData.append('file', photo.file);
+        formData.append('orderId', order.orderNumber);
+        toast.loading(`Uploading photo ${uploadedCount + 1}/${totalFiles}`, { id: 'checkout-upload' });
+        await backendRequest<BackendUploadResponse>('/files/upload', {
+          method: 'POST',
+          authToken: backendJwt,
+          body: formData,
+        });
+        uploadedCount += 1;
+      }
+    }
+
+    toast.dismiss('checkout-upload');
+
+    // Step 3: Payment
+    if (paymentMethod === 'toyyibpay') {
+      const payment = await backendRequest<{ paymentUrl?: string }>(`/orders/${encodeURIComponent(order.orderNumber)}/pay`, {
+        method: 'POST',
+        authToken: backendJwt,
+      });
+
+      if (payment.paymentUrl) {
+        setOrderNumber(order.orderNumber);
+        setCart([]);
+        localStorage.removeItem('polaroid_cart');
+        window.location.href = payment.paymentUrl;
+        return;
+      }
+
+      throw new Error('Backend did not return a payment URL');
+    }
+
+    setOrderNumber(order.orderNumber);
+    setOrderComplete(true);
+    setCurrentStep(4);
+    setCart([]);
+    localStorage.removeItem('polaroid_cart');
+    toast.success('Order placed successfully!');
+  };
+
+  const handleLocalCheckout = async () => {
+    // Fallback guest checkout via Next.js API routes (Prisma)
+    const items = cart.map(item => ({
+      sizeId: item.sizeId,
+      quantity: item.quantity,
+      images: [] as string[],
+      customTexts: item.photos.map(p => p.customText || ''),
+      unitPrice: item.unitPrice,
+    }));
+
+    const shippingCost = getShippingCost(orderFormData.customerState);
+    const subtotal = cart.reduce((sum, item) => sum + item.size.price * item.quantity, 0);
+    const total = subtotal + shippingCost;
+
+    toast.loading('Creating order...', { id: 'checkout-order' });
+
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: profile?.id || undefined,
+        customerName: orderFormData.customerName,
+        customerEmail: orderFormData.customerEmail,
+        customerPhone: orderFormData.customerPhone,
+        customerState: orderFormData.customerState,
+        notes: orderFormData.notes,
+        items,
+        subtotal,
+        shipping: shippingCost,
+        total,
+        paymentMethod,
+      }),
+    });
+
+    toast.dismiss('checkout-order');
+
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to create order');
+    }
+
+    const order = data.order;
+
+    if (paymentMethod === 'toyyibpay') {
+      toast.loading('Redirecting to ToyyibPay...', { id: 'checkout-pay' });
+      const payRes = await fetch('/api/toyyibpay/create-bill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          amount: total,
+          customerEmail: orderFormData.customerEmail,
+          customerName: orderFormData.customerName,
+          customerPhone: orderFormData.customerPhone,
+        }),
+      });
+
+      toast.dismiss('checkout-pay');
+      const payData = await payRes.json();
+
+      if (payData.success && payData.paymentUrl) {
+        setOrderNumber(order.orderNumber);
+        setCart([]);
+        localStorage.removeItem('polaroid_cart');
+        window.location.href = payData.paymentUrl;
+        return;
+      }
+
+      throw new Error(payData.error || 'Failed to create payment');
+    }
+
+    setOrderNumber(order.orderNumber);
+    setOrderComplete(true);
+    setCurrentStep(4);
+    setCart([]);
+    localStorage.removeItem('polaroid_cart');
+    toast.success('Order placed successfully!');
+  };
 
   const handleCancelOrder = useCallback(async (orderId: string) => {
     try {
@@ -540,18 +679,41 @@ export default function PolaroidPrintPage() {
     }
 
     try {
-      const response = await fetch(`/api/orders?orderNumber=${trackingInput}`);
-      const data = await response.json();
-      
-      if (data.success && data.order) {
-        setTrackingOrder(data.order);
-      } else {
-        toast.error('Order not found');
+      let path = `/orders/${encodeURIComponent(trackingInput)}`;
+      const searchParams = new URLSearchParams();
+
+      if (trackingEmail.trim()) {
+        searchParams.set('email', trackingEmail.trim());
       }
-    } catch {
-      toast.error('Failed to track order');
+
+      const queryString = searchParams.toString();
+      if (queryString) {
+        path += `?${queryString}`;
+      }
+
+      const options: RequestInit & { authToken?: string } = {};
+      if (backendJwt) {
+        options.authToken = backendJwt;
+      }
+
+      const order = await backendRequest<BackendOrderResponse>(path, options);
+      setTrackingOrder({
+        id: order.id || order.orderNumber,
+        orderNumber: order.orderNumber,
+        status: order.status?.toLowerCase() || 'pending',
+        total: Number(order.total || 0),
+        items: [],
+        createdAt: order.createdAt || new Date().toISOString(),
+        trackingNumber: order.trackingNumber,
+        statusHistory: order.statusHistory?.map((history) => ({
+          ...history,
+          status: history.status?.toLowerCase() || history.status,
+        })),
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to track order');
     }
-  }, [trackingInput]);
+  }, [trackingInput, trackingEmail, backendJwt]);
 
   const handleSubmitReview = useCallback(async () => {
     if (!selectedOrderForReview || !profile) return;
@@ -1661,13 +1823,14 @@ export default function PolaroidPrintPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Track Your Order</DialogTitle>
-            <DialogDescription>Enter your order number to track status</DialogDescription>
+            <DialogDescription>Enter your order number and email to track status</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
-            <div className="flex gap-2">
-              <Input placeholder="PP-XXXXXXXXXX" value={trackingInput} onChange={(e) => setTrackingInput(e.target.value.toUpperCase())} />
-              <Button onClick={handleTrackOrder}><Search className="w-4 h-4" /></Button>
+            <div className="space-y-2">
+              <Input placeholder="Order number (e.g. PP-XXXXXXXXXX)" value={trackingInput} onChange={(e) => setTrackingInput(e.target.value.toUpperCase())} />
+              <Input type="email" placeholder="Email used during checkout" value={trackingEmail} onChange={(e) => setTrackingEmail(e.target.value)} />
             </div>
+            <Button className="w-full" onClick={handleTrackOrder}><Search className="w-4 h-4 mr-2" /> Track Order</Button>
             {trackingOrder && (
               <Card className="mt-4">
                 <CardContent className="p-4">

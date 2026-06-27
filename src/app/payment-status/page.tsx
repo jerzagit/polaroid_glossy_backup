@@ -6,11 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, XCircle, Clock, Loader2, Camera, ArrowLeft } from 'lucide-react';
 
+const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080/api';
+
 function PaymentStatusContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<'success' | 'pending' | 'failed' | null>(null);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
 
   useEffect(() => {
     const refno = searchParams.get('refno');
@@ -18,21 +21,46 @@ function PaymentStatusContent() {
     const order_id = searchParams.get('order_id') || searchParams.get('orderId');
     const statusParam = searchParams.get('status') || searchParams.get('status_id');
 
+    if (order_id) {
+      setOrderNumber(order_id);
+    }
+
     if (statusParam === '1' || statusParam === '2') {
       setStatus(statusParam === '1' ? 'success' : 'pending');
+      setLoading(false);
     } else if (refno && billcode) {
       setStatus('success');
+      setLoading(false);
     } else if (order_id) {
       fetchOrderStatus(order_id);
     } else {
       setStatus('failed');
+      setLoading(false);
     }
-    setLoading(false);
   }, [searchParams]);
 
-  const fetchOrderStatus = async (orderNumber: string) => {
+  const fetchOrderStatus = async (orderNum: string) => {
     try {
-      const res = await fetch(`/api/orders?orderNumber=${orderNumber}`);
+      // First try Spring Boot backend
+      const backendRes = await fetch(`${BACKEND_API_BASE}/orders/${encodeURIComponent(orderNum)}`);
+      if (backendRes.ok) {
+        const backendData = await backendRes.json();
+        if (backendData.paymentStatus === 'PAID') {
+          setStatus('success');
+          setLoading(false);
+          return;
+        } else if (backendData.paymentStatus === 'PENDING') {
+          setStatus('pending');
+          setLoading(false);
+          return;
+        }
+      }
+    } catch {
+      // Fall through to Next.js API route
+    }
+
+    try {
+      const res = await fetch(`/api/orders?orderNumber=${orderNum}`);
       const data = await res.json();
       if (data.success && data.order) {
         if (data.order.paymentStatus === 'paid') {
@@ -46,6 +74,8 @@ function PaymentStatusContent() {
     } catch (error) {
       console.error('Error fetching order:', error);
       setStatus('failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,9 +100,9 @@ function PaymentStatusContent() {
               <p className="text-muted-foreground mb-6">
                 Thank you for your payment. Your order is being processed.
               </p>
-              {searchParams.get('order_id') && (
+              {orderNumber && (
                 <p className="text-sm text-muted-foreground mb-6">
-                  Order Number: <span className="font-mono font-semibold">{searchParams.get('order_id')}</span>
+                  Order Number: <span className="font-mono font-semibold">{orderNumber}</span>
                 </p>
               )}
             </>
@@ -87,6 +117,11 @@ function PaymentStatusContent() {
               <p className="text-muted-foreground mb-6">
                 Your payment is being processed. Please wait a moment.
               </p>
+              {orderNumber && (
+                <p className="text-sm text-muted-foreground mb-6">
+                  Order Number: <span className="font-mono font-semibold">{orderNumber}</span>
+                </p>
+              )}
             </>
           )}
 

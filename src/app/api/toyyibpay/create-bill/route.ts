@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+/**
+ * DEPRECATED: ToyyibPay bill creation should go through the Spring Boot backend.
+ * Use POST /api/orders/{orderNumber}/pay on the backend instead.
+ *
+ * This route is kept as a fallback for guest checkout (no backend JWT).
+ * It will be removed once all users are migrated to the Spring Boot backend.
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
