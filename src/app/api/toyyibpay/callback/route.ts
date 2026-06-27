@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import crypto from 'crypto';
 
+/**
+ * DEPRECATED: ToyyibPay callback should point to the Spring Boot backend.
+ * Configure TOYYIBPAY_CALLBACK_URL to point to the Fly backend:
+ *   https://your-fly-app.fly.dev/api/webhooks/toyyibpay
+ *
+ * This route is kept as a fallback for legacy guest checkouts.
+ * It will be removed once all users are migrated to the Spring Boot backend.
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.formData();
