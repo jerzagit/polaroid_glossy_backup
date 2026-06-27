@@ -152,15 +152,42 @@ const printSizes: PrintSize[] = [
 ];
 
 const malaysiaStates = [
-  { id: 'w', name: 'West Malaysia (Semenanjung)', shippingCost: 7 },
-  { id: 'e_sabah', name: 'Sabah', shippingCost: 11 },
-  { id: 'e_sarawak', name: 'Sarawak', shippingCost: 11 },
+  { id: 'johor', name: 'Johor', shippingCost: 7 },
+  { id: 'kedah', name: 'Kedah', shippingCost: 7 },
+  { id: 'kelantan', name: 'Kelantan', shippingCost: 7 },
+  { id: 'melaka', name: 'Melaka', shippingCost: 7 },
+  { id: 'negeri_sembilan', name: 'Negeri Sembilan', shippingCost: 7 },
+  { id: 'pahang', name: 'Pahang', shippingCost: 7 },
+  { id: 'perak', name: 'Perak', shippingCost: 7 },
+  { id: 'perlis', name: 'Perlis', shippingCost: 7 },
+  { id: 'pulau_pinang', name: 'Pulau Pinang', shippingCost: 7 },
+  { id: 'selangor', name: 'Selangor', shippingCost: 7 },
+  { id: 'terengganu', name: 'Terengganu', shippingCost: 7 },
+  { id: 'kuala_lumpur', name: 'Kuala Lumpur', shippingCost: 7 },
+  { id: 'putrajaya', name: 'Putrajaya', shippingCost: 7 },
+  { id: 'labuan', name: 'Labuan', shippingCost: 11 },
+  { id: 'sabah', name: 'Sabah', shippingCost: 11 },
+  { id: 'sarawak', name: 'Sarawak', shippingCost: 11 },
 ];
 
 const getShippingCost = (stateId: string): number => {
   const state = malaysiaStates.find(s => s.id === stateId);
   return state ? state.shippingCost : 11;
 };
+
+const normalizeMalaysiaPhone = (value: string): string => {
+  let digits = value.replace(/\D/g, '');
+
+  if (digits.startsWith('60')) {
+    digits = digits.slice(2);
+  } else if (digits.startsWith('6')) {
+    digits = digits.slice(1);
+  }
+
+  return digits.slice(0, 11);
+};
+
+const normalizeMalaysiaPostcode = (value: string): string => value.replace(/\D/g, '').slice(0, 5);
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080/api';
 const USE_LOCAL_PAYMENT_MOCK = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
@@ -325,7 +352,12 @@ export default function PolaroidPrintPage() {
     customerName: '',
     customerEmail: '',
     customerPhone: '',
-    customerState: 'w',
+    customerHouseUnitNo: '',
+    customerAddressLine1: '',
+    customerAddressLine2: '',
+    customerPostcode: '',
+    customerState: 'selangor',
+    customerCountry: 'Malaysia',
     notes: ''
   });
   
@@ -561,8 +593,18 @@ export default function PolaroidPrintPage() {
       return;
     }
 
-    if (!orderFormData.customerState) {
-      toast.error('Please select your state');
+    if (!orderFormData.customerHouseUnitNo || !orderFormData.customerAddressLine1) {
+      toast.error('Please fill in your house/unit number and address line 1');
+      return;
+    }
+
+    if (!/^\d{5}$/.test(orderFormData.customerPostcode)) {
+      toast.error('Please enter a valid 5-digit Malaysia postcode');
+      return;
+    }
+
+    if (!orderFormData.customerState || orderFormData.customerCountry !== 'Malaysia') {
+      toast.error('Please select your Malaysia delivery state');
       return;
     }
 
@@ -604,7 +646,12 @@ export default function PolaroidPrintPage() {
         customerName: orderFormData.customerName,
         customerEmail: orderFormData.customerEmail,
         customerPhone: orderFormData.customerPhone,
+        customerHouseUnitNo: orderFormData.customerHouseUnitNo,
+        customerAddressLine1: orderFormData.customerAddressLine1,
+        customerAddressLine2: orderFormData.customerAddressLine2,
+        customerPostcode: orderFormData.customerPostcode,
         customerState: orderFormData.customerState,
+        customerCountry: orderFormData.customerCountry,
         items: orderItems,
       }),
     });
@@ -1300,7 +1347,36 @@ export default function PolaroidPrintPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" placeholder="+60 123 456789" value={orderFormData.customerPhone} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: e.target.value }))} />
+              <div className="flex overflow-hidden rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <div className="flex items-center border-r border-input px-3 text-sm font-medium text-muted-foreground">
+                  +60
+                </div>
+                <Input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="13 456 7890"
+                  value={orderFormData.customerPhone}
+                  onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: normalizeMalaysiaPhone(e.target.value) }))}
+                  className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="houseUnitNo">House / Unit No *</Label>
+              <Input id="houseUnitNo" placeholder="No. 12A / Unit B-10-3" value={orderFormData.customerHouseUnitNo} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerHouseUnitNo: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="addressLine1">Address Line 1 *</Label>
+              <Input id="addressLine1" placeholder="Street name, building, taman, or kampung" value={orderFormData.customerAddressLine1} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerAddressLine1: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="addressLine2">Address Line 2</Label>
+              <Input id="addressLine2" placeholder="Additional address details (optional)" value={orderFormData.customerAddressLine2} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerAddressLine2: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="postcode">Postcode *</Label>
+              <Input id="postcode" type="text" inputMode="numeric" maxLength={5} placeholder="43000" value={orderFormData.customerPostcode} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPostcode: normalizeMalaysiaPostcode(e.target.value) }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="state">State *</Label>
@@ -1316,6 +1392,10 @@ export default function PolaroidPrintPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">Country *</Label>
+              <Input id="country" value={orderFormData.customerCountry} readOnly aria-readonly="true" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="notes">Special Instructions</Label>
@@ -1529,7 +1609,7 @@ export default function PolaroidPrintPage() {
         <Button variant="outline" onClick={() => { setShowTrackingModal(true); setTrackingInput(orderNumber); }}>
           <Search className="w-4 h-4 mr-2" /> Track Order
         </Button>
-        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerState: 'w', notes: '' }); }}>
+        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerHouseUnitNo: '', customerAddressLine1: '', customerAddressLine2: '', customerPostcode: '', customerState: 'selangor', customerCountry: 'Malaysia', notes: '' }); }}>
           <Plus className="w-4 h-4 mr-2" /> Create Another Order
         </Button>
       </div>
