@@ -41,7 +41,6 @@ function PaymentStatusContent() {
 
   const fetchOrderStatus = async (orderNum: string) => {
     try {
-      // First try Spring Boot backend
       const backendRes = await fetch(`${BACKEND_API_BASE}/orders/${encodeURIComponent(orderNum)}`);
       if (backendRes.ok) {
         const backendData = await backendRes.json();
@@ -55,26 +54,10 @@ function PaymentStatusContent() {
           return;
         }
       }
-    } catch {
-      // Fall through to Next.js API route
-    }
-
-    try {
-      const res = await fetch(`/api/orders?orderNumber=${orderNum}`);
-      const data = await res.json();
-      if (data.success && data.order) {
-        if (data.order.paymentStatus === 'paid') {
-          setStatus('success');
-        } else if (data.order.paymentStatus === 'pending') {
-          setStatus('pending');
-        } else {
-          setStatus('failed');
-        }
-      }
     } catch (error) {
       console.error('Error fetching order:', error);
-      setStatus('failed');
     } finally {
+      setStatus((currentStatus) => currentStatus || 'failed');
       setLoading(false);
     }
   };
