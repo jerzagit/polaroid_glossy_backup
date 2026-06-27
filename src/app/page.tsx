@@ -356,8 +356,47 @@ export default function PolaroidPrintPage() {
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
-    const fileCount = files.length;
-    
+    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    const MAX_FILE_SIZE = 25 * 1024 * 1024;
+
+    const rejectedFiles: string[] = [];
+    const validFiles: File[] = [];
+
+    for (const file of Array.from(files)) {
+      const isHeic = file.name.toLowerCase().match(/\.(heic|heif)$/);
+      const isAllowedMime = ALLOWED_IMAGE_TYPES.includes(file.type);
+      const isAllowedExtension = file.name.toLowerCase().match(/\.(jpg|jpeg|png|webp|heic|heif)$/);
+
+      if (!isAllowedMime && !isHeic) {
+        rejectedFiles.push(`${file.name} (unsupported format)`);
+        continue;
+      }
+
+      if (!isAllowedExtension) {
+        rejectedFiles.push(`${file.name} (unsupported extension)`);
+        continue;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        rejectedFiles.push(`${file.name} (exceeds 25MB limit)`);
+        continue;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (rejectedFiles.length > 0) {
+      toast.error(`Skipped ${rejectedFiles.length} file${rejectedFiles.length > 1 ? 's' : ''}:\n${rejectedFiles.join('\n')}`, { duration: 5000 });
+    }
+
+    if (validFiles.length === 0) {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     const processFile = async (file: File): Promise<PhotoItem> => {
       try {
         const compressedFile = await compressImage(file, WHATSAPP_HD_SETTINGS);
@@ -408,10 +447,10 @@ export default function PolaroidPrintPage() {
     };
     
     try {
-      const promises = Array.from(files).map(file => processFile(file));
+      const promises = validFiles.map(file => processFile(file));
       const processedPhotos = await Promise.all(promises);
       setPhotos(prev => [...prev, ...processedPhotos]);
-      toast.success(`Added ${fileCount} photo${fileCount > 1 ? 's' : ''}!`);
+      toast.success(`Added ${processedPhotos.length} photo${processedPhotos.length > 1 ? 's' : ''}!`);
     } catch (error) {
       toast.error('Failed to process some photos');
     } finally {
@@ -1070,7 +1109,7 @@ export default function PolaroidPrintPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept=".jpg,.jpeg,.png,.webp,.heic,.heif"
             multiple
             className="hidden"
             onChange={handlePhotoUpload}
@@ -1093,7 +1132,7 @@ export default function PolaroidPrintPage() {
                 </>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">Supports: JPG, PNG, WEBP, HEIC (Max 25MB each)</p>
+            <p className="text-xs text-muted-foreground">JPG, PNG, WEBP, HEIC only • Max 25MB per file</p>
           </div>
         </div>
 
