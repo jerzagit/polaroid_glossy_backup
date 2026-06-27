@@ -14,7 +14,12 @@ interface OrderInput {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
+  customerHouseUnitNo?: string;
+  customerAddressLine1?: string;
+  customerAddressLine2?: string;
+  customerPostcode?: string;
   customerState?: string;
+  customerCountry?: string;
   notes?: string;
   items: OrderItemInput[];
   subtotal: number;
@@ -148,12 +153,36 @@ export async function POST(request: NextRequest) {
     const body: OrderInput = await request.json();
     console.log('Order request body:', JSON.stringify(body, null, 2));
     
-    const { userId, customerName, customerEmail, customerPhone, customerState, notes, items, subtotal, shipping, total, paymentMethod } = body;
+    const {
+      userId,
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerHouseUnitNo,
+      customerAddressLine1,
+      customerAddressLine2,
+      customerPostcode,
+      customerState,
+      customerCountry,
+      notes,
+      items,
+      subtotal,
+      shipping,
+      total,
+      paymentMethod
+    } = body;
 
     // Validate required fields
-    if (!customerName || !customerEmail || !items || items.length === 0) {
+    if (!customerName || !customerEmail || !customerHouseUnitNo || !customerAddressLine1 || !customerPostcode || !customerState || !items || items.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    if (!/^\d{5}$/.test(customerPostcode)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid Malaysia postcode' },
         { status: 400 }
       );
     }
@@ -186,7 +215,12 @@ export async function POST(request: NextRequest) {
           customerName,
           customerEmail,
           customerPhone: customerPhone || null,
-          customerState: customerState || 'w',
+          customerHouseUnitNo,
+          customerAddressLine1,
+          customerAddressLine2: customerAddressLine2 || null,
+          customerPostcode,
+          customerState,
+          customerCountry: customerCountry || 'Malaysia',
           status: 'pending',
           subtotal,
           shipping: shippingCost,
