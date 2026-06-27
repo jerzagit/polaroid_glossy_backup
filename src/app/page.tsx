@@ -205,6 +205,11 @@ interface BackendUploadResponse {
   fileName: string;
 }
 
+interface BackendAuthResponse {
+  token?: string;
+  refreshToken?: string;
+}
+
 interface BackendOrderResponse {
   id?: string;
   orderNumber: string;
@@ -587,6 +592,28 @@ export default function PolaroidPrintPage() {
     ));
   }, []);
 
+  const createCheckoutSession = async () => {
+    const data = await backendRequest<BackendAuthResponse>('/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: orderFormData.customerEmail,
+        name: orderFormData.customerName,
+      }),
+    });
+
+    if (!data.token) {
+      throw new Error('Unable to create checkout session');
+    }
+
+    localStorage.setItem('backend_jwt', data.token);
+    if (data.refreshToken) {
+      localStorage.setItem('backend_refresh_token', data.refreshToken);
+    }
+
+    return data.token;
+  };
+
   const handleCheckout = useCallback(async () => {
     if (!orderFormData.customerName || !orderFormData.customerEmail) {
       toast.error('Please fill in required fields');
@@ -611,12 +638,8 @@ export default function PolaroidPrintPage() {
     setIsProcessing(true);
 
     try {
-      if (!backendJwt) {
-        toast.error('Please sign in before checkout so your order is saved in the backend.');
-        await signInWithGoogle();
-        return;
-      }
-      await handleBackendCheckout();
+      const checkoutToken = backendJwt || await createCheckoutSession();
+      await handleBackendCheckout(checkoutToken);
     } catch (error) {
       console.error('Checkout error:', error);
       toast.dismiss('checkout-upload');
@@ -625,9 +648,9 @@ export default function PolaroidPrintPage() {
     } finally {
       setIsProcessing(false);
     }
-  }, [orderFormData, cart, paymentMethod, backendJwt, signInWithGoogle]);
+  }, [orderFormData, cart, paymentMethod, backendJwt]);
 
-  const handleBackendCheckout = async () => {
+  const handleBackendCheckout = async (checkoutToken: string) => {
     // Step 1: Create order first on Spring Boot backend (items without image URLs)
     const orderItems = cart.map(item => ({
       sizeId: backendSizeIds[item.sizeId] || item.sizeId.toUpperCase(),
@@ -640,7 +663,7 @@ export default function PolaroidPrintPage() {
 
     const order = await backendRequest<BackendOrderResponse>('/orders', {
       method: 'POST',
-      authToken: backendJwt,
+      authToken: checkoutToken,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customerName: orderFormData.customerName,
@@ -677,7 +700,7 @@ export default function PolaroidPrintPage() {
         toast.loading(`Uploading photo ${uploadedCount + 1}/${totalFiles}`, { id: 'checkout-upload' });
         await backendRequest<BackendUploadResponse>('/files/upload', {
           method: 'POST',
-          authToken: backendJwt,
+          authToken: checkoutToken,
           body: formData,
         });
         uploadedCount += 1;
@@ -692,7 +715,7 @@ export default function PolaroidPrintPage() {
         toast.loading('Completing local mock payment...', { id: 'checkout-pay' });
         await backendRequest<BackendOrderResponse>(`/orders/${encodeURIComponent(order.orderNumber)}/mock-pay`, {
           method: 'POST',
-          authToken: backendJwt,
+          authToken: checkoutToken,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'PAID' }),
         });
@@ -707,7 +730,7 @@ export default function PolaroidPrintPage() {
 
       const payment = await backendRequest<{ paymentUrl?: string }>(`/orders/${encodeURIComponent(order.orderNumber)}/pay`, {
         method: 'POST',
-        authToken: backendJwt,
+        authToken: checkoutToken,
       });
 
       if (payment.paymentUrl) {
@@ -1457,9 +1480,24 @@ export default function PolaroidPrintPage() {
             )}
 
             {paymentMethod === 'toyyibpay' && (
-              <div className="bg-muted rounded-lg p-4 text-sm">
-                <p className="font-semibold">Pay with ToyyibPay:</p>
-                <p className="text-muted-foreground">You will be redirected to ToyyibPay to complete your payment securely.</p>
+              <div className="bg-muted rounded-lg p-4 text-sm space-y-3">
+                <div>
+                  <p className="font-semibold">Pay with ToyyibPay:</p>
+                  <p className="text-muted-foreground">You will be redirected to ToyyibPay to complete your payment securely.</p>
+                </div>
+                <Button className="w-full" onClick={handleCheckout} disabled={isProcessing}>
+                  {isProcessing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Continue to ToyyibPay
+                    </>
+                  )}
+                </Button>
               </div>
             )}
           </CardContent>
