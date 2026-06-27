@@ -1480,9 +1480,24 @@ export default function PolaroidPrintPage() {
             )}
 
             {paymentMethod === 'toyyibpay' && (
-              <div className="bg-muted rounded-lg p-4 text-sm">
-                <p className="font-semibold">Pay with ToyyibPay:</p>
-                <p className="text-muted-foreground">You will be redirected to ToyyibPay to complete your payment securely.</p>
+              <div className="bg-muted rounded-lg p-4 text-sm space-y-3">
+                <div>
+                  <p className="font-semibold">Pay with ToyyibPay:</p>
+                  <p className="text-muted-foreground">You will be redirected to ToyyibPay to complete your payment securely.</p>
+                </div>
+                <Button className="w-full" onClick={handleCheckout} disabled={isProcessing}>
+                  {isProcessing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Continue to ToyyibPay
+                    </>
+                  )}
+                </Button>
               </div>
             )}
           </CardContent>
