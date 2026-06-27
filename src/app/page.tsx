@@ -163,6 +163,7 @@ const getShippingCost = (stateId: string): number => {
 };
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080/api';
+const USE_LOCAL_PAYMENT_MOCK = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
 
 const backendSizeIds: Record<string, string> = {
   '2r': '2R',
@@ -185,6 +186,18 @@ interface BackendOrderResponse {
   paymentStatus?: string;
   trackingNumber?: string;
   createdAt?: string;
+  shippedAt?: string;
+  deliveredAt?: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+  items?: Array<{
+    id: string;
+    sizeId: string;
+    sizeName?: string;
+    quantity: number;
+    images?: string;
+    totalPrice: number;
+  }>;
   statusHistory?: StatusHistory[];
 }
 
@@ -208,6 +221,46 @@ async function backendRequest<T>(path: string, options: RequestInit & { authToke
   }
 
   return body as T;
+}
+
+function mapBackendOrder(order: BackendOrderResponse): Order {
+  return {
+    id: order.id || order.orderNumber,
+    orderNumber: order.orderNumber,
+    status: order.status?.toLowerCase() || 'pending',
+    total: Number(order.total || 0),
+    items: (order.items || []).map((item) => {
+      const size = printSizes.find((printSize) => (
+        printSize.id.toLowerCase() === item.sizeId?.toLowerCase()
+        || printSize.name.toLowerCase() === item.sizeId?.toLowerCase()
+      )) || {
+        id: item.sizeId,
+        name: item.sizeId,
+        displayName: item.sizeName || item.sizeId,
+        width: 0,
+        height: 0,
+        price: Number(item.totalPrice || 0) / Math.max(item.quantity || 1, 1),
+      };
+
+      return {
+        id: item.id,
+        size,
+        quantity: item.quantity,
+        images: item.images || '[]',
+        totalPrice: Number(item.totalPrice || 0),
+      };
+    }),
+    createdAt: order.createdAt || new Date().toISOString(),
+    trackingNumber: order.trackingNumber,
+    shippedAt: order.shippedAt,
+    deliveredAt: order.deliveredAt,
+    cancelledAt: order.cancelledAt,
+    cancelReason: order.cancelReason,
+    statusHistory: order.statusHistory?.map((history) => ({
+      ...history,
+      status: history.status?.toLowerCase() || history.status,
+    })),
+  };
 }
 
 // Customer testimonials data
@@ -319,7 +372,7 @@ export default function PolaroidPrintPage() {
     if (user && showOrdersModal) {
       fetchUserOrders();
     }
-  }, [user, showOrdersModal]);
+  }, [user, backendJwt, showOrdersModal]);
 
   // Load reviews
   useEffect(() => {
@@ -327,28 +380,19 @@ export default function PolaroidPrintPage() {
   }, []);
 
   const fetchUserOrders = async () => {
-    if (!user) return;
+    if (!user || !backendJwt) return;
     try {
-      const response = await fetch(`/api/orders?userId=${profile?.id}`);
-      const data = await response.json();
-      if (data.success) {
-        setUserOrders(data.orders);
-      }
+      const data = await backendRequest<{ content?: BackendOrderResponse[] }>('/orders/my', {
+        authToken: backendJwt,
+      });
+      setUserOrders((data.content || []).map(mapBackendOrder));
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
   };
 
   const fetchReviews = async () => {
-    try {
-      const response = await fetch('/api/reviews');
-      const data = await response.json();
-      if (data.success) {
-        setReviews(data.reviews);
-      }
-    } catch (error) {
-      console.error('Error fetching reviews:', error);
-    }
+    setReviews([]);
   };
 
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -525,11 +569,12 @@ export default function PolaroidPrintPage() {
     setIsProcessing(true);
 
     try {
-      if (backendJwt) {
-        await handleBackendCheckout();
-      } else {
-        await handleLocalCheckout();
+      if (!backendJwt) {
+        toast.error('Please sign in before checkout so your order is saved in the backend.');
+        await signInWithGoogle();
+        return;
       }
+      await handleBackendCheckout();
     } catch (error) {
       console.error('Checkout error:', error);
       toast.dismiss('checkout-upload');
@@ -538,7 +583,7 @@ export default function PolaroidPrintPage() {
     } finally {
       setIsProcessing(false);
     }
-  }, [orderFormData, cart, paymentMethod, backendJwt]);
+  }, [orderFormData, cart, paymentMethod, backendJwt, signInWithGoogle]);
 
   const handleBackendCheckout = async () => {
     // Step 1: Create order first on Spring Boot backend (items without image URLs)
@@ -566,29 +611,48 @@ export default function PolaroidPrintPage() {
 
     toast.dismiss('checkout-order');
 
-    // Step 2: Upload photos with real order number
-    let uploadedCount = 0;
-    const totalFiles = cart.reduce((sum, item) => sum + item.photos.length, 0);
+    // Step 2: Upload photos with real order number. In local mock mode, avoid real Supabase storage.
+    if (!(USE_LOCAL_PAYMENT_MOCK && window.location.hostname === 'localhost')) {
+      let uploadedCount = 0;
+      const totalFiles = cart.reduce((sum, item) => sum + item.photos.length, 0);
 
-    for (const item of cart) {
-      for (const photo of item.photos) {
-        const formData = new FormData();
-        formData.append('file', photo.file);
-        formData.append('orderId', order.orderNumber);
-        toast.loading(`Uploading photo ${uploadedCount + 1}/${totalFiles}`, { id: 'checkout-upload' });
-        await backendRequest<BackendUploadResponse>('/files/upload', {
-          method: 'POST',
-          authToken: backendJwt,
-          body: formData,
-        });
-        uploadedCount += 1;
+      for (const item of cart) {
+        for (const photo of item.photos) {
+          const formData = new FormData();
+          formData.append('file', photo.file);
+          formData.append('orderId', order.orderNumber);
+          toast.loading(`Uploading photo ${uploadedCount + 1}/${totalFiles}`, { id: 'checkout-upload' });
+          await backendRequest<BackendUploadResponse>('/files/upload', {
+            method: 'POST',
+            authToken: backendJwt,
+            body: formData,
+          });
+          uploadedCount += 1;
+        }
       }
-    }
 
-    toast.dismiss('checkout-upload');
+      toast.dismiss('checkout-upload');
+    }
 
     // Step 3: Payment
     if (paymentMethod === 'toyyibpay') {
+      if (USE_LOCAL_PAYMENT_MOCK && window.location.hostname === 'localhost') {
+        toast.loading('Completing local mock payment...', { id: 'checkout-pay' });
+        await backendRequest<BackendOrderResponse>(`/orders/${encodeURIComponent(order.orderNumber)}/mock-pay`, {
+          method: 'POST',
+          authToken: backendJwt,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'PAID' }),
+        });
+        toast.dismiss('checkout-pay');
+
+        setOrderNumber(order.orderNumber);
+        setCart([]);
+        localStorage.removeItem('polaroid_cart');
+        window.location.href = `/payment-status?order_id=${encodeURIComponent(order.orderNumber)}&status=1&mock=1`;
+        return;
+      }
+
       const payment = await backendRequest<{ paymentUrl?: string }>(`/orders/${encodeURIComponent(order.orderNumber)}/pay`, {
         method: 'POST',
         authToken: backendJwt,
@@ -613,103 +677,11 @@ export default function PolaroidPrintPage() {
     toast.success('Order placed successfully!');
   };
 
-  const handleLocalCheckout = async () => {
-    // Fallback guest checkout via Next.js API routes (Prisma)
-    const items = cart.map(item => ({
-      sizeId: item.sizeId,
-      quantity: item.quantity,
-      images: [] as string[],
-      customTexts: item.photos.map(p => p.customText || ''),
-      unitPrice: item.unitPrice,
-    }));
-
-    const shippingCost = getShippingCost(orderFormData.customerState);
-    const subtotal = cart.reduce((sum, item) => sum + item.size.price * item.quantity, 0);
-    const total = subtotal + shippingCost;
-
-    toast.loading('Creating order...', { id: 'checkout-order' });
-
-    const res = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: profile?.id || undefined,
-        customerName: orderFormData.customerName,
-        customerEmail: orderFormData.customerEmail,
-        customerPhone: orderFormData.customerPhone,
-        customerState: orderFormData.customerState,
-        notes: orderFormData.notes,
-        items,
-        subtotal,
-        shipping: shippingCost,
-        total,
-        paymentMethod,
-      }),
-    });
-
-    toast.dismiss('checkout-order');
-
-    const data = await res.json();
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to create order');
-    }
-
-    const order = data.order;
-
-    if (paymentMethod === 'toyyibpay') {
-      toast.loading('Redirecting to ToyyibPay...', { id: 'checkout-pay' });
-      const payRes = await fetch('/api/toyyibpay/create-bill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          amount: total,
-          customerEmail: orderFormData.customerEmail,
-          customerName: orderFormData.customerName,
-          customerPhone: orderFormData.customerPhone,
-        }),
-      });
-
-      toast.dismiss('checkout-pay');
-      const payData = await payRes.json();
-
-      if (payData.success && payData.paymentUrl) {
-        setOrderNumber(order.orderNumber);
-        setCart([]);
-        localStorage.removeItem('polaroid_cart');
-        window.location.href = payData.paymentUrl;
-        return;
-      }
-
-      throw new Error(payData.error || 'Failed to create payment');
-    }
-
-    setOrderNumber(order.orderNumber);
-    setOrderComplete(true);
-    setCurrentStep(4);
-    setCart([]);
-    localStorage.removeItem('polaroid_cart');
-    toast.success('Order placed successfully!');
-  };
-
   const handleCancelOrder = useCallback(async (orderId: string) => {
-    try {
-      const response = await fetch(`/api/orders?orderId=${orderId}&reason=Customer requested cancellation`, {
-        method: 'DELETE'
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        toast.success('Order cancelled successfully');
-        fetchUserOrders();
-      } else {
-        toast.error(data.error || 'Failed to cancel order');
-      }
-    } catch {
-      toast.error('Failed to cancel order');
-    }
-  }, [fetchUserOrders]);
+    toast.info('Customer cancellation is not available in the backend API yet. Please contact admin with this order ID.', {
+      description: orderId,
+    });
+  }, []);
 
   const handleTrackOrder = useCallback(async () => {
     if (!trackingInput.trim()) {
@@ -736,19 +708,7 @@ export default function PolaroidPrintPage() {
       }
 
       const order = await backendRequest<BackendOrderResponse>(path, options);
-      setTrackingOrder({
-        id: order.id || order.orderNumber,
-        orderNumber: order.orderNumber,
-        status: order.status?.toLowerCase() || 'pending',
-        total: Number(order.total || 0),
-        items: [],
-        createdAt: order.createdAt || new Date().toISOString(),
-        trackingNumber: order.trackingNumber,
-        statusHistory: order.statusHistory?.map((history) => ({
-          ...history,
-          status: history.status?.toLowerCase() || history.status,
-        })),
-      });
+      setTrackingOrder(mapBackendOrder(order));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to track order');
     }
@@ -762,34 +722,8 @@ export default function PolaroidPrintPage() {
       return;
     }
 
-    try {
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.id,
-          orderId: selectedOrderForReview.id,
-          sizeId: selectedOrderForReview.items[0]?.size.id,
-          ...reviewForm
-        })
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        toast.success('Review submitted successfully!');
-        setShowReviewModal(false);
-        setSelectedOrderForReview(null);
-        setReviewForm({ rating: 5, title: '', comment: '' });
-        fetchReviews();
-        fetchUserOrders();
-      } else {
-        toast.error(data.error || 'Failed to submit review');
-      }
-    } catch {
-      toast.error('Failed to submit review');
-    }
-  }, [selectedOrderForReview, profile, reviewForm, fetchReviews, fetchUserOrders]);
+    toast.info('Reviews are not available in the backend API yet.');
+  }, [selectedOrderForReview, profile, reviewForm]);
 
   const handleCopyTrackingNumber = useCallback((trackingNum: string) => {
     navigator.clipboard.writeText(trackingNum);
