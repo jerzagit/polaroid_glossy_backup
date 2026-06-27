@@ -611,28 +611,33 @@ export default function PolaroidPrintPage() {
 
     toast.dismiss('checkout-order');
 
-    // Step 2: Upload photos with real order number. In local mock mode, avoid real Supabase storage.
-    if (!(USE_LOCAL_PAYMENT_MOCK && window.location.hostname === 'localhost')) {
-      let uploadedCount = 0;
-      const totalFiles = cart.reduce((sum, item) => sum + item.photos.length, 0);
+    // Step 2: Upload photos with real order number before payment.
+    const backendItems = order.items || [];
+    let uploadedCount = 0;
+    const totalFiles = cart.reduce((sum, item) => sum + item.photos.length, 0);
 
-      for (const item of cart) {
-        for (const photo of item.photos) {
-          const formData = new FormData();
-          formData.append('file', photo.file);
-          formData.append('orderId', order.orderNumber);
-          toast.loading(`Uploading photo ${uploadedCount + 1}/${totalFiles}`, { id: 'checkout-upload' });
-          await backendRequest<BackendUploadResponse>('/files/upload', {
-            method: 'POST',
-            authToken: backendJwt,
-            body: formData,
-          });
-          uploadedCount += 1;
+    for (const [cartIndex, item] of cart.entries()) {
+      const backendItemId = backendItems[cartIndex]?.id;
+
+      for (const photo of item.photos) {
+        const formData = new FormData();
+        formData.append('file', photo.file);
+        formData.append('orderId', order.orderNumber);
+        if (backendItemId) {
+          formData.append('orderItemId', backendItemId);
         }
-      }
 
-      toast.dismiss('checkout-upload');
+        toast.loading(`Uploading photo ${uploadedCount + 1}/${totalFiles}`, { id: 'checkout-upload' });
+        await backendRequest<BackendUploadResponse>('/files/upload', {
+          method: 'POST',
+          authToken: backendJwt,
+          body: formData,
+        });
+        uploadedCount += 1;
+      }
     }
+
+    toast.dismiss('checkout-upload');
 
     // Step 3: Payment
     if (paymentMethod === 'toyyibpay') {
