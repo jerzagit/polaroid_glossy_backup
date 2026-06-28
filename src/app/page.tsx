@@ -43,7 +43,9 @@ import {
   CheckCircle,
   ClockIcon,
   TruckIcon,
-  Loader2
+  Loader2,
+  Menu,
+  Home
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -74,6 +76,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
 // Types
 interface PrintSize {
@@ -376,6 +385,7 @@ export default function PolaroidPrintPage() {
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('bank_transfer');
   const [showBMCheckout, setShowBMCheckout] = useState(false);
   const [showBMConfirmation, setShowBMConfirmation] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   // Form
   const [orderFormData, setOrderFormData] = useState({
@@ -1848,31 +1858,64 @@ export default function PolaroidPrintPage() {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <button className="flex items-center gap-2" onClick={() => setCurrentStep(-1)}>
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
-                <Camera className="w-6 h-6 text-white" />
+            <button className="flex items-center gap-2 min-w-0" onClick={() => setCurrentStep(-1)}>
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center shrink-0">
+                <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="text-left">
-                <h1 className="text-xl font-bold">Polaroid Glossy MY</h1>
-                <p className="text-xs text-muted-foreground">Turn memories into art</p>
+              <div className="text-left min-w-0">
+                <h1 className="text-sm sm:text-xl font-bold truncate">Polaroid Glossy MY</h1>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Turn memories into art</p>
               </div>
             </button>
 
-            <div className="flex items-center gap-4">
-              <ThemeSwitcher />
-              <Button variant="ghost" asChild>
-                <Link href="/faq">
-                  <MessageSquare className="w-4 h-4 mr-2" /> FAQ
-                </Link>
-              </Button>
-              <Button variant="ghost" onClick={() => setShowTrackingModal(true)}>
-                <Search className="w-4 h-4 mr-2" /> Track Order
-              </Button>
-              {currentStep >= 0 && !orderComplete && (
-                <Button variant="ghost" onClick={() => setCurrentStep(-1)}>Home</Button>
-              )}
+            <div className="flex items-center gap-1 sm:gap-2">
+              <div className="hidden md:flex items-center gap-1 sm:gap-2">
+                <ThemeSwitcher />
+                <Button variant="ghost" size="sm" asChild className="px-2 sm:px-3">
+                  <Link href="/faq">
+                    <MessageSquare className="w-4 h-4" />
+                    <span className="ml-2">FAQ</span>
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowTrackingModal(true)} className="px-2 sm:px-3">
+                  <Search className="w-4 h-4" />
+                  <span className="ml-2">Track</span>
+                </Button>
+                {currentStep >= 0 && !orderComplete && (
+                  <Button variant="ghost" size="sm" onClick={() => setCurrentStep(-1)} className="px-2 sm:px-3">Home</Button>
+                )}
+              </div>
+              <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+                <SheetTrigger asChild className="md:hidden">
+                  <Button variant="ghost" size="icon">
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-72">
+                  <SheetHeader>
+                    <SheetTitle>Menu</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col gap-2 mt-6">
+                    <Button variant="ghost" className="justify-start" asChild onClick={() => setShowMobileMenu(false)}>
+                      <Link href="/faq">
+                        <MessageSquare className="w-4 h-4 mr-3" /> FAQ
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" className="justify-start" onClick={() => { setShowMobileMenu(false); setShowTrackingModal(true); }}>
+                      <Search className="w-4 h-4 mr-3" /> Track Order
+                    </Button>
+                    {currentStep >= 0 && !orderComplete && (
+                      <Button variant="ghost" className="justify-start" onClick={() => { setShowMobileMenu(false); setCurrentStep(-1); }}>
+                        <Home className="w-4 h-4 mr-3" /> Home
+                      </Button>
+                    )}
+                    <Separator className="my-2" />
+                    <ThemeSwitcher />
+                  </div>
+                </SheetContent>
+              </Sheet>
               {renderUserMenu()}
-              <Button variant="outline" className="relative" onClick={() => setShowCart(!showCart)}>
+              <Button variant="outline" size="icon" className="relative" onClick={() => setShowCart(!showCart)}>
                 <ShoppingCart className="w-5 h-5" />
                 {cartCount > 0 && (
                   <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0">{cartCount}</Badge>
