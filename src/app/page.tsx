@@ -929,29 +929,29 @@ export default function PolaroidPrintPage() {
   );
 
   const renderFeaturesSection = () => (
-    <section className="py-16 px-6">
+    <section className="py-10 md:py-16 px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Why Choose Polaroid Glossy MY?</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">We make printing your memories easy, affordable, and beautiful</p>
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold mb-2 md:mb-4">Why Choose Polaroid Glossy MY?</h2>
+          <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">We make printing your memories easy, affordable, and beautiful</p>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
           {[
-            { icon: Zap, title: 'Quick & Easy', description: 'Upload your photos, choose a size, and checkout in under 2 minutes' },
-            { icon: Shield, title: 'Quality Guaranteed', description: 'Premium photo paper with vibrant colors that last for years' },
-            { icon: Heart, title: 'Personal Touch', description: 'Add custom text to make each print uniquely yours' },
-            { icon: Truck, title: 'Fast Shipping', description: 'RM7 for East Malaysia, RM11 for West Malaysia, delivered in 3-5 business days' },
-            { icon: RefreshCw, title: 'Easy Reorders', description: 'Your uploaded photos are saved for quick reordering anytime' },
-            { icon: Sparkles, title: 'Multiple Sizes', description: 'From wallet-size 2R to poster-size A4, we have you covered' }
+            { icon: Zap, title: 'Quick & Easy', description: 'Upload, pick size, checkout in 2 minutes' },
+            { icon: Shield, title: 'Quality Guaranteed', description: 'Premium paper with vibrant colors' },
+            { icon: Heart, title: 'Personal Touch', description: 'Add custom text to each print' },
+            { icon: Truck, title: 'Fast Shipping', description: 'RM7-11, delivered in 3-5 days' },
+            { icon: RefreshCw, title: 'Easy Reorders', description: 'Photos saved for quick reorder' },
+            { icon: Sparkles, title: 'Multiple Sizes', description: 'From 2R wallet to A4 poster' }
           ].map((feature, index) => (
             <motion.div key={feature.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }}>
               <Card className="h-full hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                    <feature.icon className="w-6 h-6 text-primary" />
+                <CardContent className="p-4 md:pt-6">
+                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2 md:mb-4">
+                    <feature.icon className="w-4 h-4 md:w-6 md:h-6 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
-                  <p className="text-muted-foreground">{feature.description}</p>
+                  <h3 className="font-semibold text-sm md:text-lg mb-1 md:mb-2">{feature.title}</h3>
+                  <p className="text-xs md:text-base text-muted-foreground">{feature.description}</p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -962,34 +962,34 @@ export default function PolaroidPrintPage() {
   );
 
   const renderCustomerGallery = () => (
-    <section className="py-16 px-6 bg-gradient-to-b from-background to-muted/20">
+    <section className="py-10 md:py-16 px-6 bg-gradient-to-b from-background to-muted/20">
       <div className="max-w-6xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-8 md:mb-12">
           <Badge variant="secondary" className="mb-4"><Users className="w-3.5 h-3.5 mr-2" />Happy Customers</Badge>
-          <h2 className="text-3xl font-bold mb-4">Loved by Thousands</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">See what our customers are saying about their polaroid prints</p>
+          <h2 className="text-2xl md:text-3xl font-bold mb-2 md:mb-4">Loved by Thousands</h2>
+          <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">See what our customers are saying about their polaroid prints</p>
         </motion.div>
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-12">
           {customerTestimonials.map((testimonial, index) => (
             <motion.div key={testimonial.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }}>
               <Card className="h-full hover:shadow-lg transition-all">
-                <CardContent className="p-6">
-                  <div className="flex gap-4">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex gap-3 md:gap-4">
                     <div className="flex-shrink-0">
                       <div className="relative">
-                        <img src={testimonial.image} alt={testimonial.name} className="w-20 h-20 rounded-full object-cover border-2 border-primary/20" />
-                        <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">{testimonial.printType}</div>
+                        <img src={testimonial.image} alt={testimonial.name} className="w-14 h-14 md:w-20 md:h-20 rounded-full object-cover border-2 border-primary/20" />
+                        <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full">{testimonial.printType}</div>
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1 mb-1">{[...Array(testimonial.rating)].map((_, i) => (<Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />))}</div>
-                      <h4 className="font-semibold">{testimonial.name}</h4>
-                      <p className="text-sm text-muted-foreground">{testimonial.location}</p>
+                      <div className="flex items-center gap-1 mb-1">{[...Array(testimonial.rating)].map((_, i) => (<Star key={i} className="w-3 h-3 md:w-4 md:h-4 fill-yellow-400 text-yellow-400" />))}</div>
+                      <h4 className="font-semibold text-sm md:text-base">{testimonial.name}</h4>
+                      <p className="text-xs md:text-sm text-muted-foreground">{testimonial.location}</p>
                     </div>
                   </div>
-                  <div className="mt-4 relative">
-                    <Quote className="absolute -top-2 -left-1 w-6 h-6 text-primary/20" />
-                    <p className="text-muted-foreground pl-6 italic">&ldquo;{testimonial.text}&rdquo;</p>
+                  <div className="mt-3 md:mt-4 relative">
+                    <Quote className="absolute -top-2 -left-1 w-4 h-4 md:w-6 md:h-6 text-primary/20" />
+                    <p className="text-xs md:text-base text-muted-foreground pl-5 md:pl-6 italic">&ldquo;{testimonial.text}&rdquo;</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1000,22 +1000,22 @@ export default function PolaroidPrintPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {customerTestimonials.map((customer, index) => (
               <motion.div key={customer.id} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="relative group cursor-pointer">
-                <img src={customer.image} alt={`Customer ${customer.id}`} className="w-full h-48 md:h-64 object-cover rounded-lg transition-transform group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-end p-4">
+                <img src={customer.image} alt={`Customer ${customer.id}`} className="w-full h-32 md:h-64 object-cover rounded-lg transition-transform group-hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-end p-3 md:p-4">
                   <div className="text-white">
-                    <p className="font-semibold">{customer.name}</p>
-                    <p className="text-sm text-white/80">{customer.printType}</p>
+                    <p className="font-semibold text-xs md:text-base">{customer.name}</p>
+                    <p className="text-[10px] md:text-sm text-white/80">{customer.printType}</p>
                   </div>
                 </div>
               </motion.div>
             ))}
           </div>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mt-8 md:mt-12">
           {[{ value: '10,000+', label: 'Happy Customers' }, { value: '500,000+', label: 'Photos Printed' }, { value: '4.9/5', label: 'Average Rating' }, { value: '30+', label: 'Countries Served' }].map((stat, index) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="text-center">
-              <p className="text-3xl md:text-4xl font-bold text-primary">{stat.value}</p>
-              <p className="text-muted-foreground">{stat.label}</p>
+              <p className="text-2xl md:text-4xl font-bold text-primary">{stat.value}</p>
+              <p className="text-xs md:text-base text-muted-foreground">{stat.label}</p>
             </motion.div>
           ))}
         </motion.div>
@@ -1024,63 +1024,65 @@ export default function PolaroidPrintPage() {
   );
 
   const renderProductVideos = () => (
-    <section className="py-16 px-6">
+    <section className="py-10 md:py-16 px-6">
       <div className="max-w-6xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-          <Badge variant="secondary" className="mb-4"><Play className="w-3.5 h-3.5 mr-2" />Product Showcase</Badge>
-          <h2 className="text-3xl font-bold mb-4">See Our Products in Action</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">Discover how we create beautiful polaroid prints from your digital memories</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-8">
-          <Card className="overflow-hidden group cursor-pointer">
-            <div className="relative aspect-video">
-              <img src={productVideos[0].thumbnail} alt={productVideos[0].title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                <motion.div whileHover={{ scale: 1.1 }} className="w-20 h-20 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
-                  <Play className="w-8 h-8 text-primary ml-1" fill="currentColor" />
-                </motion.div>
-              </div>
-              <div className="absolute bottom-4 right-4 bg-black/70 text-white px-2 py-1 rounded text-sm">{productVideos[0].duration}</div>
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                <h3 className="text-xl font-bold text-white">{productVideos[0].title}</h3>
-                <p className="text-white/80">{productVideos[0].description}</p>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-        <div className="grid md:grid-cols-2 gap-6">
-          {productVideos.slice(1).map((video, index) => (
-            <motion.div key={video.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }}>
-              <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow">
-                <div className="relative aspect-video">
-                  <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
-                    <motion.div whileHover={{ scale: 1.1 }} className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
-                      <Play className="w-6 h-6 text-primary ml-1" fill="currentColor" />
-                    </motion.div>
-                  </div>
-                  <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-0.5 rounded text-xs">{video.duration}</div>
+        <div className="hidden md:block">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+            <Badge variant="secondary" className="mb-4"><Play className="w-3.5 h-3.5 mr-2" />Product Showcase</Badge>
+            <h2 className="text-3xl font-bold mb-4">See Our Products in Action</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">Discover how we create beautiful polaroid prints from your digital memories</p>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-8">
+            <Card className="overflow-hidden group cursor-pointer">
+              <div className="relative aspect-video">
+                <img src={productVideos[0].thumbnail} alt={productVideos[0].title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                  <motion.div whileHover={{ scale: 1.1 }} className="w-20 h-20 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
+                    <Play className="w-8 h-8 text-primary ml-1" fill="currentColor" />
+                  </motion.div>
                 </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg">{video.title}</h3>
-                  <p className="text-sm text-muted-foreground">{video.description}</p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                <div className="absolute bottom-4 right-4 bg-black/70 text-white px-2 py-1 rounded text-sm">{productVideos[0].duration}</div>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <h3 className="text-xl font-bold text-white">{productVideos[0].title}</h3>
+                  <p className="text-white/80">{productVideos[0].description}</p>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {productVideos.slice(1).map((video, index) => (
+              <motion.div key={video.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }}>
+                <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow">
+                  <div className="relative aspect-video">
+                    <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
+                      <motion.div whileHover={{ scale: 1.1 }} className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
+                        <Play className="w-6 h-6 text-primary ml-1" fill="currentColor" />
+                      </motion.div>
+                    </div>
+                    <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-0.5 rounded text-xs">{video.duration}</div>
+                  </div>
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold text-lg">{video.title}</h3>
+                    <p className="text-sm text-muted-foreground">{video.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
         </div>
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-16">
-          <h3 className="text-2xl font-bold text-center mb-8">Our Simple Process</h3>
-          <div className="grid md:grid-cols-4 gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-8 md:mt-16">
+          <h3 className="text-xl md:text-2xl font-bold text-center mb-6 md:mb-8">Our Simple Process</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {[{ step: 1, title: 'Upload', description: 'Choose your favorite photos', icon: Upload }, { step: 2, title: 'Customize', description: 'Select size & add text', icon: Sparkles }, { step: 3, title: 'Print', description: 'We print with premium quality', icon: Camera }, { step: 4, title: 'Deliver', description: 'Fast shipping to your door', icon: Truck }].map((item, index) => (
               <motion.div key={item.step} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="relative">
-                <Card className="text-center p-6 h-full">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <item.icon className="w-6 h-6 text-primary" />
+                <Card className="text-center p-4 md:p-6 h-full">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-4">
+                    <item.icon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                   </div>
-                  <div className="absolute -top-3 -left-3 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm">{item.step}</div>
-                  <h4 className="font-semibold mb-2">{item.title}</h4>
-                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                  <div className="absolute -top-2 -left-2 md:-top-3 md:-left-3 w-6 h-6 md:w-8 md:h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-[10px] md:text-sm">{item.step}</div>
+                  <h4 className="font-semibold text-sm md:text-base mb-1 md:mb-2">{item.title}</h4>
+                  <p className="text-[10px] md:text-sm text-muted-foreground">{item.description}</p>
                 </Card>
                 {index < 3 && <ChevronRight className="hidden md:block absolute top-1/2 -right-4 w-6 h-6 text-muted-foreground" />}
               </motion.div>
