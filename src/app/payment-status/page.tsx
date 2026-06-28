@@ -7,12 +7,27 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, XCircle, Clock, Loader2, Camera, ArrowLeft } from 'lucide-react';
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080/api';
+type PaymentUiStatus = 'success' | 'pending' | 'failed';
+
+const gatewayStatusToUiStatus = (value: string | null): PaymentUiStatus | null => {
+  if (value === '1') return 'success';
+  if (value === '2') return 'pending';
+  if (value === '3') return 'failed';
+  return null;
+};
+
+const paymentStatusToUiStatus = (value: string | null | undefined): PaymentUiStatus => {
+  const normalized = value?.toUpperCase();
+  if (normalized === 'PAID') return 'success';
+  if (normalized === 'PENDING') return 'pending';
+  return 'failed';
+};
 
 function PaymentStatusContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<'success' | 'pending' | 'failed' | null>(null);
+  const [status, setStatus] = useState<PaymentUiStatus | null>(null);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,42 +36,69 @@ function PaymentStatusContent() {
     const order_id = searchParams.get('order_id') || searchParams.get('orderId');
     const statusParam = searchParams.get('status') || searchParams.get('status_id');
 
-    if (order_id) {
-      setOrderNumber(order_id);
-    }
-
-    if (statusParam === '1' || statusParam === '2') {
-      setStatus(statusParam === '1' ? 'success' : 'pending');
-      setLoading(false);
-    } else if (refno && billcode) {
-      setStatus('success');
-      setLoading(false);
-    } else if (order_id) {
-      fetchOrderStatus(order_id);
-    } else {
-      setStatus('failed');
-      setLoading(false);
-    }
+    resolvePaymentReturn(order_id, billcode, refno, statusParam);
   }, [searchParams]);
 
-  const fetchOrderStatus = async (orderNum: string) => {
+  const resolvePaymentReturn = async (
+    orderId: string | null,
+    billcode: string | null,
+    refno: string | null,
+    statusParam: string | null
+  ) => {
+    const gatewayStatus = gatewayStatusToUiStatus(statusParam);
+    const params = new URLSearchParams();
+    if (orderId) params.set('order_id', orderId);
+    if (billcode) params.set('billcode', billcode);
+    if (refno) params.set('refno', refno);
+    if (statusParam) params.set('status_id', statusParam);
+
+    if (!orderId && !billcode && !refno) {
+      setStatus(gatewayStatus || 'failed');
+      setLoading(false);
+      return;
+    }
+
     try {
-      // First try Spring Boot backend
+      const backendRes = await fetch(`${BACKEND_API_BASE}/orders/payment-return?${params.toString()}`);
+      if (backendRes.ok) {
+        const data = await backendRes.json();
+        setOrderNumber(data.orderNumber);
+        setStatus(gatewayStatus || paymentStatusToUiStatus(data.paymentStatus));
+        setLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.error('Error resolving payment return:', error);
+    }
+
+    if (orderId) {
+      setOrderNumber(orderId);
+      await fetchOrderStatus(orderId, gatewayStatus);
+      return;
+    }
+
+    setStatus(gatewayStatus || 'failed');
+    setLoading(false);
+  };
+
+  const fetchOrderStatus = async (orderNum: string, fallbackStatus: PaymentUiStatus | null = null) => {
+    try {
       const backendRes = await fetch(`${BACKEND_API_BASE}/orders/${encodeURIComponent(orderNum)}`);
       if (backendRes.ok) {
         const backendData = await backendRes.json();
-        if (backendData.paymentStatus === 'PAID') {
-          setStatus('success');
-          setLoading(false);
-          return;
-        } else if (backendData.paymentStatus === 'PENDING') {
-          setStatus('pending');
-          setLoading(false);
-          return;
-        }
+        setOrderNumber(backendData.orderNumber || orderNum);
+        setStatus(paymentStatusToUiStatus(backendData.paymentStatus));
+        setLoading(false);
+        return;
       }
-    } catch {
-      // Fall through to Next.js API route
+    } catch (error) {
+      console.error('Error fetching backend order:', error);
+    }
+
+    if (fallbackStatus) {
+      setStatus(fallbackStatus);
+      setLoading(false);
+      return;
     }
 
     try {
