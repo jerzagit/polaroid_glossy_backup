@@ -39,6 +39,7 @@ import {
   PackageCheck,
   XCircle,
   RefreshCwIcon,
+  Languages,
   CheckCircle,
   ClockIcon,
   TruckIcon,
@@ -48,6 +49,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -372,6 +374,8 @@ export default function PolaroidPrintPage() {
   const [trackingEmail, setTrackingEmail] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('bank_transfer');
+  const [showBMCheckout, setShowBMCheckout] = useState(false);
+  const [showBMConfirmation, setShowBMConfirmation] = useState(false);
   
   // Form
   const [orderFormData, setOrderFormData] = useState({
@@ -397,6 +401,14 @@ export default function PolaroidPrintPage() {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPhotos = cart.reduce((sum, item) => sum + item.photos.length * item.quantity, 0);
   const totalUploadFiles = cart.reduce((sum, item) => sum + item.photos.length, 0);
+  const isFormValid =
+    orderFormData.customerName.trim() !== '' &&
+    orderFormData.customerEmail.trim() !== '' &&
+    /^01\d{8,9}$/.test(orderFormData.customerPhone) &&
+    orderFormData.customerAddressLine1.trim() !== '' &&
+    /^\d{5}$/.test(orderFormData.customerPostcode) &&
+    orderFormData.customerState !== '' &&
+    orderFormData.customerCity !== '';
 
   // Load cart from localStorage
   useEffect(() => {
@@ -1521,16 +1533,33 @@ export default function PolaroidPrintPage() {
 
             {paymentMethod === 'bank_transfer' && (
               <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
-                <p className="font-semibold">Bank Transfer Details / <span lang="ms">Butiran Pindahan Bank</span></p>
-                <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
-                <p><span className="text-muted-foreground">Account Name / <span lang="ms">Nama Akaun</span>:</span> Acachiaa Empire</p>
-                <p><span className="text-muted-foreground">Account Number / <span lang="ms">Nombor Akaun</span>:</span> 123456789012</p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  After payment, please send your receipt to <strong>+60126620463 (WhatsApp)</strong> or email <strong>payment@polaroidglossy.my</strong> with your order number as reference.
-                </p>
-                <p className="text-xs text-muted-foreground" lang="ms">
-                  Selepas pembayaran, sila hantar resit anda ke <strong>+60126620463 (WhatsApp)</strong> atau emel <strong>payment@polaroidglossy.my</strong> dengan nombor pesanan sebagai rujukan.
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold">{showBMCheckout ? 'Butiran Pindahan Bank' : 'Bank Transfer Details'}</p>
+                  <div className="flex items-center gap-2">
+                    <Languages className="w-3 h-3 text-muted-foreground" />
+                    <Switch checked={showBMCheckout} onCheckedChange={setShowBMCheckout} />
+                    <span className="text-xs text-muted-foreground">BM</span>
+                  </div>
+                </div>
+                {showBMCheckout ? (
+                  <>
+                    <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
+                    <p><span className="text-muted-foreground">Nama Akaun:</span> Acachiaa Empire</p>
+                    <p><span className="text-muted-foreground">Nombor Akaun:</span> 123456789012</p>
+                    <p className="text-xs text-muted-foreground mt-2" lang="ms">
+                      Selepas pembayaran, sila hantar resit anda ke <strong>+60126620463 (WhatsApp)</strong> atau emel <strong>payment@polaroidglossy.my</strong> dengan nombor pesanan sebagai rujukan.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
+                    <p><span className="text-muted-foreground">Account Name:</span> Acachiaa Empire</p>
+                    <p><span className="text-muted-foreground">Account Number:</span> 123456789012</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      After payment, please send your receipt to <strong>+60126620463 (WhatsApp)</strong> or email <strong>payment@polaroidglossy.my</strong> with your order number as reference.
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
@@ -1590,7 +1619,7 @@ export default function PolaroidPrintPage() {
 
         <div className="flex gap-4 mt-6">
           <Button variant="outline" className="flex-1" onClick={() => setCurrentStep(2)}>Back to Cart</Button>
-          <Button className="flex-1" onClick={handleCheckout} disabled={isProcessing}>
+          <Button className="flex-1" onClick={handleCheckout} disabled={isProcessing || !isFormValid}>
             {isProcessing ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Processing...</>) : (<><CreditCard className="w-4 h-4 mr-2" />{paymentMethod === 'toyyibpay' ? 'Pay with ToyyibPay' : 'Place Order'}</>)}
           </Button>
         </div>
@@ -1629,22 +1658,45 @@ export default function PolaroidPrintPage() {
             </CardContent>
           </Card>
           <div className="bg-muted rounded-lg p-4 text-sm max-w-md mx-auto mt-6">
-            <p className="font-semibold mb-2">Bank Transfer Details / <span lang="ms">Butiran Pindahan Bank</span></p>
-            <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
-            <p><span className="text-muted-foreground">Account Name / <span lang="ms">Nama Akaun</span>:</span> Acachiaa Empire</p>
-            <p><span className="text-muted-foreground">Account Number / <span lang="ms">Nombor Akaun</span>:</span> 123456789012</p>
-            <p className="font-semibold mt-2">Total: RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</p>
-            <div className="mt-3 pt-3 border-t border-border text-xs">
-              <p className="font-semibold">📋 After Payment / <span lang="ms">Selepas Pembayaran</span>:</p>
-              <ol className="list-decimal list-inside mt-1 space-y-1 text-muted-foreground">
-                <li>Send your receipt to <strong>+60126620463 (WhatsApp)</strong> or <strong>payment@polaroidglossy.my</strong></li>
-                <li>Include your order number: <strong>{orderNumber}</strong></li>
-                <li>We will confirm your payment within 24 hours</li>
-              </ol>
-              <p className="mt-2 text-muted-foreground" lang="ms">
-                Hantar resit pembayaran anda ke <strong>+60126620463 (WhatsApp)</strong> atau emel <strong>payment@polaroidglossy.my</strong> beserta nombor pesanan <strong>{orderNumber}</strong>. Kami akan sahkan pembayaran dalam masa 24 jam.
-              </p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-semibold">{showBMConfirmation ? 'Butiran Pindahan Bank' : 'Bank Transfer Details'}</p>
+              <div className="flex items-center gap-2">
+                <Languages className="w-3 h-3 text-muted-foreground" />
+                <Switch checked={showBMConfirmation} onCheckedChange={setShowBMConfirmation} />
+                <span className="text-xs text-muted-foreground">BM</span>
+              </div>
             </div>
+            {showBMConfirmation ? (
+              <>
+                <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
+                <p><span className="text-muted-foreground">Nama Akaun:</span> Acachiaa Empire</p>
+                <p><span className="text-muted-foreground">Nombor Akaun:</span> 123456789012</p>
+                <p className="font-semibold mt-2">Jumlah: RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</p>
+                <div className="mt-3 pt-3 border-t border-border text-xs">
+                  <p className="font-semibold">Selepas Pembayaran:</p>
+                  <ol className="list-decimal list-inside mt-1 space-y-1 text-muted-foreground" lang="ms">
+                    <li>Hantar resit anda ke <strong>+60126620463 (WhatsApp)</strong> atau <strong>payment@polaroidglossy.my</strong></li>
+                    <li>Sertakan nombor pesanan: <strong>{orderNumber}</strong></li>
+                    <li>Kami akan sahkan pembayaran dalam masa 24 jam</li>
+                  </ol>
+                </div>
+              </>
+            ) : (
+              <>
+                <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
+                <p><span className="text-muted-foreground">Account Name:</span> Acachiaa Empire</p>
+                <p><span className="text-muted-foreground">Account Number:</span> 123456789012</p>
+                <p className="font-semibold mt-2">Total: RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</p>
+                <div className="mt-3 pt-3 border-t border-border text-xs">
+                  <p className="font-semibold">After Payment:</p>
+                  <ol className="list-decimal list-inside mt-1 space-y-1 text-muted-foreground">
+                    <li>Send your receipt to <strong>+60126620463 (WhatsApp)</strong> or <strong>payment@polaroidglossy.my</strong></li>
+                    <li>Include your order number: <strong>{orderNumber}</strong></li>
+                    <li>We will confirm your payment within 24 hours</li>
+                  </ol>
+                </div>
+              </>
+            )}
           </div>
         </>
       ) : (
