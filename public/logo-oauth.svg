@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Polaroid frame -->
+  <rect x="70" y="120" width="372" height="340" rx="16" fill="white" stroke="#222" stroke-width="8"/>
+  <rect x="100" y="148" width="312" height="220" rx="8" fill="#f5f5f5" stroke="#ddd" stroke-width="3"/>
+  <!-- Photo area background -->
+  <rect x="100" y="148" width="312" height="220" rx="8" fill="#e8e8e8"/>
+  <!-- Camera body -->
+  <rect x="160" y="195" width="192" height="125" rx="16" fill="#333"/>
+  <rect x="175" y="210" width="162" height="95" rx="10" fill="#555"/>
+  <!-- Camera lens outer -->
+  <circle cx="256" cy="257" r="36" fill="#222"/>
+  <circle cx="256" cy="257" r="28" fill="#1a1a2e"/>
+  <circle cx="256" cy="257" r="18" fill="#16213e"/>
+  <circle cx="256" cy="257" r="8" fill="#0f3460" opacity="0.8"/>
+  <!-- Lens reflection -->
+  <circle cx="247" cy="248" r="5" fill="white" opacity="0.3"/>
+  <!-- Flash -->
+  <rect x="235" y="202" width="8" height="8" rx="2" fill="#ffd700"/>
+  <rect x="247" y="202" width="8" height="8" rx="2" fill="#ffd700"/>
+  <rect x="259" y="202" width="8" height="8" rx="2" fill="#ffd700"/>
+  <!-- Polaroid text label -->
+  <text x="256" y="415" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#333" text-anchor="middle" letter-spacing="3">POLAROID</text>
+  <!-- Small decorative dots -->
+  <circle cx="136" cy="290" r="4" fill="#ff6b6b" opacity="0.5"/>
+  <circle cx="376" cy="290" r="4" fill="#ffd93d" opacity="0.5"/>
+  <circle cx="136" cy="310" r="4" fill="#6bcb77" opacity="0.5"/>
+  <circle cx="376" cy="310" r="4" fill="#4d96ff" opacity="0.5"/>
+</svg>
