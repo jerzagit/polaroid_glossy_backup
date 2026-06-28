@@ -1392,11 +1392,16 @@ export default function PolaroidPrintPage() {
 
             {paymentMethod === 'bank_transfer' && (
               <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
-                <p className="font-semibold">Bank Transfer Details:</p>
+                <p className="font-semibold">Bank Transfer Details / <span lang="ms">Butiran Pindahan Bank</span></p>
                 <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
-                <p><span className="text-muted-foreground">Account Name:</span> Acachiaa Empire</p>
-                <p><span className="text-muted-foreground">Account Number:</span> 123456789012</p>
-                <p className="text-xs text-muted-foreground mt-2">Please transfer the exact amount and upload your receipt after placing order.</p>
+                <p><span className="text-muted-foreground">Account Name / <span lang="ms">Nama Akaun</span>:</span> Acachiaa Empire</p>
+                <p><span className="text-muted-foreground">Account Number / <span lang="ms">Nombor Akaun</span>:</span> 123456789012</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  After payment, please send your receipt to <strong>011-23456789 (WhatsApp)</strong> or email <strong>payment@polaroidglossy.my</strong> with your order number as reference.
+                </p>
+                <p className="text-xs text-muted-foreground" lang="ms">
+                  Selepas pembayaran, sila hantar resit anda ke <strong>011-23456789 (WhatsApp)</strong> atau emel <strong>payment@polaroidglossy.my</strong> dengan nombor pesanan sebagai rujukan.
+                </p>
               </div>
             )}
 
@@ -1456,9 +1461,10 @@ export default function PolaroidPrintPage() {
           <div className="w-24 h-24 mx-auto bg-yellow-100 rounded-full flex items-center justify-center mb-6">
             <Clock className="w-12 h-12 text-yellow-600" />
           </div>
-          <h2 className="text-3xl font-bold text-foreground mb-2">Awaiting Payment</h2>
+          <h2 className="text-3xl font-bold text-foreground mb-2">Awaiting Payment / <span lang="ms">Menunggu Pembayaran</span></h2>
           <p className="text-muted-foreground mb-2">Please make your payment within <span className="font-semibold text-yellow-600">24 hours</span>.</p>
-          <p className="text-sm text-muted-foreground mb-6">Your order will be processed once we receive your payment.</p>
+          <p className="text-sm text-muted-foreground mb-2" lang="ms">Sila buat pembayaran dalam tempoh <span className="font-semibold text-yellow-600">24 jam</span>.</p>
+          <p className="text-sm text-muted-foreground mb-6">Your order will be processed once we receive your payment. / <span lang="ms">Pesanan akan diproses selepas pembayaran diterima.</span></p>
           <Card className="max-w-md mx-auto">
             <CardContent className="py-6">
               <div className="space-y-2">
@@ -1479,11 +1485,22 @@ export default function PolaroidPrintPage() {
             </CardContent>
           </Card>
           <div className="bg-muted rounded-lg p-4 text-sm max-w-md mx-auto mt-6">
-            <p className="font-semibold mb-2">Bank Transfer Details:</p>
+            <p className="font-semibold mb-2">Bank Transfer Details / <span lang="ms">Butiran Pindahan Bank</span></p>
             <p><span className="text-muted-foreground">Bank:</span> Maybank</p>
-            <p><span className="text-muted-foreground">Account Name:</span> Acachiaa Empire</p>
-            <p><span className="text-muted-foreground">Account Number:</span> 123456789012</p>
+            <p><span className="text-muted-foreground">Account Name / <span lang="ms">Nama Akaun</span>:</span> Acachiaa Empire</p>
+            <p><span className="text-muted-foreground">Account Number / <span lang="ms">Nombor Akaun</span>:</span> 123456789012</p>
             <p className="font-semibold mt-2">Total: RM{(cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2)}</p>
+            <div className="mt-3 pt-3 border-t border-border text-xs">
+              <p className="font-semibold">📋 After Payment / <span lang="ms">Selepas Pembayaran</span>:</p>
+              <ol className="list-decimal list-inside mt-1 space-y-1 text-muted-foreground">
+                <li>Send your receipt to <strong>011-23456789 (WhatsApp)</strong> or <strong>payment@polaroidglossy.my</strong></li>
+                <li>Include your order number: <strong>{orderNumber}</strong></li>
+                <li>We will confirm your payment within 24 hours</li>
+              </ol>
+              <p className="mt-2 text-muted-foreground" lang="ms">
+                Hantar resit pembayaran anda ke <strong>011-23456789 (WhatsApp)</strong> atau emel <strong>payment@polaroidglossy.my</strong> beserta nombor pesanan <strong>{orderNumber}</strong>. Kami akan sahkan pembayaran dalam masa 24 jam.
+              </p>
+            </div>
           </div>
         </>
       ) : (
