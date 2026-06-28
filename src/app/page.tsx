@@ -521,6 +521,8 @@ export default function PolaroidPrintPage() {
         customerEmail: orderFormData.customerEmail,
         customerPhone: orderFormData.customerPhone,
         customerState: orderFormData.customerState,
+        customerCountry: orderFormData.customerCountry,
+        notes: orderFormData.notes,
         items: orderItems,
       }),
     });
