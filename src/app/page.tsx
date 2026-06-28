@@ -1477,10 +1477,10 @@ export default function PolaroidPrintPage() {
                 <p><span className="text-muted-foreground">Account Name / <span lang="ms">Nama Akaun</span>:</span> Acachiaa Empire</p>
                 <p><span className="text-muted-foreground">Account Number / <span lang="ms">Nombor Akaun</span>:</span> 123456789012</p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  After payment, please send your receipt to <strong>011-23456789 (WhatsApp)</strong> or email <strong>payment@polaroidglossy.my</strong> with your order number as reference.
+                  After payment, please send your receipt to <strong>+60126620463 (WhatsApp)</strong> or email <strong>payment@polaroidglossy.my</strong> with your order number as reference.
                 </p>
                 <p className="text-xs text-muted-foreground" lang="ms">
-                  Selepas pembayaran, sila hantar resit anda ke <strong>011-23456789 (WhatsApp)</strong> atau emel <strong>payment@polaroidglossy.my</strong> dengan nombor pesanan sebagai rujukan.
+                  Selepas pembayaran, sila hantar resit anda ke <strong>+60126620463 (WhatsApp)</strong> atau emel <strong>payment@polaroidglossy.my</strong> dengan nombor pesanan sebagai rujukan.
                 </p>
               </div>
             )}
@@ -1588,12 +1588,12 @@ export default function PolaroidPrintPage() {
             <div className="mt-3 pt-3 border-t border-border text-xs">
               <p className="font-semibold">📋 After Payment / <span lang="ms">Selepas Pembayaran</span>:</p>
               <ol className="list-decimal list-inside mt-1 space-y-1 text-muted-foreground">
-                <li>Send your receipt to <strong>011-23456789 (WhatsApp)</strong> or <strong>payment@polaroidglossy.my</strong></li>
+                <li>Send your receipt to <strong>+60126620463 (WhatsApp)</strong> or <strong>payment@polaroidglossy.my</strong></li>
                 <li>Include your order number: <strong>{orderNumber}</strong></li>
                 <li>We will confirm your payment within 24 hours</li>
               </ol>
               <p className="mt-2 text-muted-foreground" lang="ms">
-                Hantar resit pembayaran anda ke <strong>011-23456789 (WhatsApp)</strong> atau emel <strong>payment@polaroidglossy.my</strong> beserta nombor pesanan <strong>{orderNumber}</strong>. Kami akan sahkan pembayaran dalam masa 24 jam.
+                Hantar resit pembayaran anda ke <strong>+60126620463 (WhatsApp)</strong> atau emel <strong>payment@polaroidglossy.my</strong> beserta nombor pesanan <strong>{orderNumber}</strong>. Kami akan sahkan pembayaran dalam masa 24 jam.
               </p>
             </div>
           </div>
