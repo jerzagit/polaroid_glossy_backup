@@ -170,10 +170,31 @@ const malaysiaStates = [
   { id: 'sarawak', name: 'Sarawak', shippingCost: 11 },
 ];
 
+const malaysiaCitiesByState: Record<string, string[]> = {
+  johor: ['Johor Bahru', 'Batu Pahat', 'Kluang', 'Muar', 'Segamat'],
+  kedah: ['Alor Setar', 'Sungai Petani', 'Kulim', 'Langkawi', 'Jitra'],
+  kelantan: ['Kota Bharu', 'Pasir Mas', 'Tanah Merah', 'Tumpat', 'Machang'],
+  melaka: ['Melaka', 'Ayer Keroh', 'Alor Gajah', 'Jasin', 'Masjid Tanah'],
+  negeri_sembilan: ['Seremban', 'Port Dickson', 'Nilai', 'Bahau', 'Tampin'],
+  pahang: ['Kuantan', 'Temerloh', 'Bentong', 'Raub', 'Pekan'],
+  perak: ['Ipoh', 'Taiping', 'Teluk Intan', 'Sitiawan', 'Batu Gajah'],
+  perlis: ['Kangar', 'Arau', 'Padang Besar', 'Kuala Perlis'],
+  pulau_pinang: ['George Town', 'Butterworth', 'Bukit Mertajam', 'Bayan Lepas', 'Nibong Tebal'],
+  selangor: ['Shah Alam', 'Petaling Jaya', 'Subang Jaya', 'Klang', 'Kajang', 'Puchong'],
+  terengganu: ['Kuala Terengganu', 'Kemaman', 'Dungun', 'Marang', 'Besut'],
+  kuala_lumpur: ['Kuala Lumpur', 'Setapak', 'Cheras', 'Wangsa Maju', 'Bangsar'],
+  putrajaya: ['Putrajaya'],
+  labuan: ['Labuan'],
+  sabah: ['Kota Kinabalu', 'Sandakan', 'Tawau', 'Lahad Datu', 'Keningau'],
+  sarawak: ['Kuching', 'Miri', 'Sibu', 'Bintulu', 'Sri Aman'],
+};
+
 const getShippingCost = (stateId: string): number => {
   const state = malaysiaStates.find(s => s.id === stateId);
   return state ? state.shippingCost : 11;
 };
+
+const getCitiesForState = (stateId: string): string[] => malaysiaCitiesByState[stateId] || [];
 
 const normalizeMalaysiaPhone = (value: string): string => {
   let digits = value.replace(/\D/g, '');
@@ -362,6 +383,7 @@ export default function PolaroidPrintPage() {
     customerAddressLine2: '',
     customerPostcode: '',
     customerState: 'selangor',
+    customerCity: '',
     customerCountry: 'Malaysia',
     notes: ''
   });
@@ -620,8 +642,13 @@ export default function PolaroidPrintPage() {
       return;
     }
 
-    if (!orderFormData.customerHouseUnitNo || !orderFormData.customerAddressLine1) {
-      toast.error('Please fill in your house/unit number and address line 1');
+    if (!/^01\d{8,9}$/.test(orderFormData.customerPhone)) {
+      toast.error('Please enter a valid Malaysia contact number, for example 01118669786');
+      return;
+    }
+
+    if (!orderFormData.customerAddressLine1) {
+      toast.error('Please fill in Address Line 1');
       return;
     }
 
@@ -632,6 +659,11 @@ export default function PolaroidPrintPage() {
 
     if (!orderFormData.customerState || orderFormData.customerCountry !== 'Malaysia') {
       toast.error('Please select your Malaysia delivery state');
+      return;
+    }
+
+    if (!orderFormData.customerCity) {
+      toast.error('Please select your delivery city');
       return;
     }
 
@@ -669,11 +701,12 @@ export default function PolaroidPrintPage() {
         customerName: orderFormData.customerName,
         customerEmail: orderFormData.customerEmail,
         customerPhone: orderFormData.customerPhone,
-        customerHouseUnitNo: orderFormData.customerHouseUnitNo,
+        customerHouseUnitNo: orderFormData.customerAddressLine1,
         customerAddressLine1: orderFormData.customerAddressLine1,
         customerAddressLine2: orderFormData.customerAddressLine2,
         customerPostcode: orderFormData.customerPostcode,
         customerState: orderFormData.customerState,
+        customerCity: orderFormData.customerCity,
         customerCountry: orderFormData.customerCountry,
         notes: orderFormData.notes,
         items: orderItems,
@@ -1360,69 +1393,85 @@ export default function PolaroidPrintPage() {
               <CardDescription>Logged in as {profile?.email || user.email}</CardDescription>
             )}
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name *</Label>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-[128px_minmax(0,1fr)] items-center gap-3">
+              <Label htmlFor="name" className="whitespace-nowrap">Full Name *</Label>
               <Input id="name" placeholder="John Doe" value={orderFormData.customerName} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerName: e.target.value }))} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address *</Label>
+            <div className="grid grid-cols-[128px_minmax(0,1fr)] items-center gap-3">
+              <Label htmlFor="email" className="whitespace-nowrap">Email *</Label>
               <Input id="email" type="email" placeholder="john@example.com" value={orderFormData.customerEmail} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerEmail: e.target.value }))} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <div className="flex overflow-hidden rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                <div className="flex items-center border-r border-input px-3 text-sm font-medium text-muted-foreground">
-                  +60
-                </div>
-                <Input
-                  id="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="13 456 7890"
-                  value={orderFormData.customerPhone}
-                  onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: normalizeMalaysiaPhone(e.target.value) }))}
-                  className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
+            <div className="grid grid-cols-[128px_minmax(0,1fr)] items-center gap-3">
+              <Label htmlFor="phone" className="whitespace-nowrap">Contact *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                inputMode="numeric"
+                maxLength={11}
+                placeholder="01118669786"
+                value={orderFormData.customerPhone}
+                onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: normalizeMalaysiaPhone(e.target.value) }))}
+              />
+            </div>
+            <div className="grid grid-cols-[128px_minmax(0,1fr)] items-center gap-3">
+              <Label htmlFor="addressLine1" className="whitespace-nowrap">Address Line 1 *</Label>
+              <Input id="addressLine1" placeholder="Street, building, taman, or kampung" value={orderFormData.customerAddressLine1} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerAddressLine1: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-[128px_minmax(0,1fr)] items-center gap-3">
+              <Label htmlFor="addressLine2" className="whitespace-nowrap">Address Line 2</Label>
+              <Input id="addressLine2" placeholder="Additional details (optional)" value={orderFormData.customerAddressLine2} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerAddressLine2: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-[128px_minmax(0,1fr)] items-center gap-3">
+                <Label htmlFor="postcode" className="whitespace-nowrap">Zip/Postal Code *</Label>
+                <Input id="postcode" type="text" inputMode="numeric" maxLength={5} placeholder="43000" value={orderFormData.customerPostcode} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPostcode: normalizeMalaysiaPostcode(e.target.value) }))} />
+              </div>
+              <div className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3">
+                <Label htmlFor="state" className="whitespace-nowrap">State *</Label>
+                <Select
+                  value={orderFormData.customerState}
+                  onValueChange={(value) => setOrderFormData(prev => ({ ...prev, customerState: value, customerCity: '' }))}
+                >
+                  <SelectTrigger id="state" className="w-full">
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {malaysiaStates.map((state) => (
+                      <SelectItem key={state.id} value={state.id}>
+                        {state.name} (RM{state.shippingCost})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="houseUnitNo">House / Unit No *</Label>
-              <Input id="houseUnitNo" placeholder="No. 12A / Unit B-10-3" value={orderFormData.customerHouseUnitNo} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerHouseUnitNo: e.target.value }))} />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-[128px_minmax(0,1fr)] items-center gap-3">
+                <Label htmlFor="city" className="whitespace-nowrap">City *</Label>
+                <Select
+                  value={orderFormData.customerCity}
+                  onValueChange={(value) => setOrderFormData(prev => ({ ...prev, customerCity: value }))}
+                >
+                  <SelectTrigger id="city" className="w-full">
+                    <SelectValue placeholder="Select city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getCitiesForState(orderFormData.customerState).map((city) => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3">
+                <Label htmlFor="country" className="whitespace-nowrap">Country *</Label>
+                <Input id="country" value={orderFormData.customerCountry} readOnly aria-readonly="true" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="addressLine1">Address Line 1 *</Label>
-              <Input id="addressLine1" placeholder="Street name, building, taman, or kampung" value={orderFormData.customerAddressLine1} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerAddressLine1: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="addressLine2">Address Line 2</Label>
-              <Input id="addressLine2" placeholder="Additional address details (optional)" value={orderFormData.customerAddressLine2} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerAddressLine2: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="postcode">Postcode *</Label>
-              <Input id="postcode" type="text" inputMode="numeric" maxLength={5} placeholder="43000" value={orderFormData.customerPostcode} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPostcode: normalizeMalaysiaPostcode(e.target.value) }))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="state">State *</Label>
-              <Select value={orderFormData.customerState} onValueChange={(value) => setOrderFormData(prev => ({ ...prev, customerState: value }))}>
-                <SelectTrigger id="state">
-                  <SelectValue placeholder="Select your state" />
-                </SelectTrigger>
-                <SelectContent>
-                  {malaysiaStates.map((state) => (
-                    <SelectItem key={state.id} value={state.id}>
-                      {state.name} (RM{state.shippingCost} shipping)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="country">Country *</Label>
-              <Input id="country" value={orderFormData.customerCountry} readOnly aria-readonly="true" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Special Instructions</Label>
+            <div className="grid grid-cols-[128px_minmax(0,1fr)] items-start gap-3">
+              <Label htmlFor="notes" className="pt-3 whitespace-nowrap">Instructions</Label>
               <Textarea id="notes" placeholder="Any special requests for your order..." value={orderFormData.notes} onChange={(e) => setOrderFormData(prev => ({ ...prev, notes: e.target.value }))} />
             </div>
           </CardContent>
@@ -1665,7 +1714,7 @@ export default function PolaroidPrintPage() {
         <Button variant="outline" onClick={() => { setShowTrackingModal(true); setTrackingInput(orderNumber); }}>
           <Search className="w-4 h-4 mr-2" /> Track Order
         </Button>
-        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerHouseUnitNo: '', customerAddressLine1: '', customerAddressLine2: '', customerPostcode: '', customerState: 'selangor', customerCountry: 'Malaysia', notes: '' }); }}>
+        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerHouseUnitNo: '', customerAddressLine1: '', customerAddressLine2: '', customerPostcode: '', customerState: 'selangor', customerCity: '', customerCountry: 'Malaysia', notes: '' }); }}>
           <Plus className="w-4 h-4 mr-2" /> Create Another Order
         </Button>
       </div>
