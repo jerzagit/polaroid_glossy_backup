@@ -12,7 +12,7 @@ type PaymentUiStatus = 'success' | 'pending' | 'failed';
 const gatewayStatusToUiStatus = (value: string | null): PaymentUiStatus | null => {
   if (value === '1') return 'success';
   if (value === '2') return 'pending';
-  if (value === '3') return 'failed';
+  if (value === '0' || value === '3') return 'failed';
   return null;
 };
 
