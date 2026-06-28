@@ -115,8 +115,8 @@ function PaymentStatusContent() {
       }
     } catch (error) {
       console.error('Error fetching order:', error);
-      setStatus('failed');
     } finally {
+      setStatus((currentStatus) => currentStatus || 'failed');
       setLoading(false);
     }
   };

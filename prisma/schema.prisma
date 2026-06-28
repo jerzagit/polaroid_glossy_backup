@@ -72,7 +72,12 @@ model Order {
   customerName  String
   customerEmail String
   customerPhone String?
-  customerState String?         @default("w")
+  customerHouseUnitNo String?
+  customerAddressLine1 String?
+  customerAddressLine2 String?
+  customerPostcode String?
+  customerState String?         @default("selangor")
+  customerCountry String?       @default("Malaysia")
   status        String          @default("pending") // pending, processing, posted, on_delivery, delivered, cancelled, refunded
   subtotal      Float
   shipping      Float           @default(0)

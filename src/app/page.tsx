@@ -152,9 +152,22 @@ const printSizes: PrintSize[] = [
 ];
 
 const malaysiaStates = [
-  { id: 'w', name: 'West Malaysia (Semenanjung)', shippingCost: 7 },
-  { id: 'e_sabah', name: 'Sabah', shippingCost: 11 },
-  { id: 'e_sarawak', name: 'Sarawak', shippingCost: 11 },
+  { id: 'johor', name: 'Johor', shippingCost: 7 },
+  { id: 'kedah', name: 'Kedah', shippingCost: 7 },
+  { id: 'kelantan', name: 'Kelantan', shippingCost: 7 },
+  { id: 'melaka', name: 'Melaka', shippingCost: 7 },
+  { id: 'negeri_sembilan', name: 'Negeri Sembilan', shippingCost: 7 },
+  { id: 'pahang', name: 'Pahang', shippingCost: 7 },
+  { id: 'perak', name: 'Perak', shippingCost: 7 },
+  { id: 'perlis', name: 'Perlis', shippingCost: 7 },
+  { id: 'pulau_pinang', name: 'Pulau Pinang', shippingCost: 7 },
+  { id: 'selangor', name: 'Selangor', shippingCost: 7 },
+  { id: 'terengganu', name: 'Terengganu', shippingCost: 7 },
+  { id: 'kuala_lumpur', name: 'Kuala Lumpur', shippingCost: 7 },
+  { id: 'putrajaya', name: 'Putrajaya', shippingCost: 7 },
+  { id: 'labuan', name: 'Labuan', shippingCost: 11 },
+  { id: 'sabah', name: 'Sabah', shippingCost: 11 },
+  { id: 'sarawak', name: 'Sarawak', shippingCost: 11 },
 ];
 
 const getShippingCost = (stateId: string): number => {
@@ -162,7 +175,22 @@ const getShippingCost = (stateId: string): number => {
   return state ? state.shippingCost : 11;
 };
 
+const normalizeMalaysiaPhone = (value: string): string => {
+  let digits = value.replace(/\D/g, '');
+
+  if (digits.startsWith('60')) {
+    digits = digits.slice(2);
+  } else if (digits.startsWith('6')) {
+    digits = digits.slice(1);
+  }
+
+  return digits.slice(0, 11);
+};
+
+const normalizeMalaysiaPostcode = (value: string): string => value.replace(/\D/g, '').slice(0, 5);
+
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080/api';
+const USE_LOCAL_PAYMENT_MOCK = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
 
 const backendSizeIds: Record<string, string> = {
   '2r': '2R',
@@ -177,6 +205,11 @@ interface BackendUploadResponse {
   fileName: string;
 }
 
+interface BackendAuthResponse {
+  token?: string;
+  refreshToken?: string;
+}
+
 interface BackendOrderResponse {
   id?: string;
   orderNumber: string;
@@ -185,6 +218,18 @@ interface BackendOrderResponse {
   paymentStatus?: string;
   trackingNumber?: string;
   createdAt?: string;
+  shippedAt?: string;
+  deliveredAt?: string;
+  cancelledAt?: string;
+  cancelReason?: string;
+  items?: Array<{
+    id: string;
+    sizeId: string;
+    sizeName?: string;
+    quantity: number;
+    images?: string;
+    totalPrice: number;
+  }>;
   statusHistory?: StatusHistory[];
 }
 
@@ -208,6 +253,46 @@ async function backendRequest<T>(path: string, options: RequestInit & { authToke
   }
 
   return body as T;
+}
+
+function mapBackendOrder(order: BackendOrderResponse): Order {
+  return {
+    id: order.id || order.orderNumber,
+    orderNumber: order.orderNumber,
+    status: order.status?.toLowerCase() || 'pending',
+    total: Number(order.total || 0),
+    items: (order.items || []).map((item) => {
+      const size = printSizes.find((printSize) => (
+        printSize.id.toLowerCase() === item.sizeId?.toLowerCase()
+        || printSize.name.toLowerCase() === item.sizeId?.toLowerCase()
+      )) || {
+        id: item.sizeId,
+        name: item.sizeId,
+        displayName: item.sizeName || item.sizeId,
+        width: 0,
+        height: 0,
+        price: Number(item.totalPrice || 0) / Math.max(item.quantity || 1, 1),
+      };
+
+      return {
+        id: item.id,
+        size,
+        quantity: item.quantity,
+        images: item.images || '[]',
+        totalPrice: Number(item.totalPrice || 0),
+      };
+    }),
+    createdAt: order.createdAt || new Date().toISOString(),
+    trackingNumber: order.trackingNumber,
+    shippedAt: order.shippedAt,
+    deliveredAt: order.deliveredAt,
+    cancelledAt: order.cancelledAt,
+    cancelReason: order.cancelReason,
+    statusHistory: order.statusHistory?.map((history) => ({
+      ...history,
+      status: history.status?.toLowerCase() || history.status,
+    })),
+  };
 }
 
 // Customer testimonials data
@@ -272,7 +357,12 @@ export default function PolaroidPrintPage() {
     customerName: '',
     customerEmail: '',
     customerPhone: '',
-    customerState: 'w',
+    customerHouseUnitNo: '',
+    customerAddressLine1: '',
+    customerAddressLine2: '',
+    customerPostcode: '',
+    customerState: 'selangor',
+    customerCountry: 'Malaysia',
     notes: ''
   });
   
@@ -319,7 +409,7 @@ export default function PolaroidPrintPage() {
     if (user && showOrdersModal) {
       fetchUserOrders();
     }
-  }, [user, showOrdersModal]);
+  }, [user, backendJwt, showOrdersModal]);
 
   // Load reviews
   useEffect(() => {
@@ -327,28 +417,19 @@ export default function PolaroidPrintPage() {
   }, []);
 
   const fetchUserOrders = async () => {
-    if (!user) return;
+    if (!user || !backendJwt) return;
     try {
-      const response = await fetch(`/api/orders?userId=${profile?.id}`);
-      const data = await response.json();
-      if (data.success) {
-        setUserOrders(data.orders);
-      }
+      const data = await backendRequest<{ content?: BackendOrderResponse[] }>('/orders/my', {
+        authToken: backendJwt,
+      });
+      setUserOrders((data.content || []).map(mapBackendOrder));
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
   };
 
   const fetchReviews = async () => {
-    try {
-      const response = await fetch('/api/reviews');
-      const data = await response.json();
-      if (data.success) {
-        setReviews(data.reviews);
-      }
-    } catch (error) {
-      console.error('Error fetching reviews:', error);
-    }
+    setReviews([]);
   };
 
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -356,8 +437,47 @@ export default function PolaroidPrintPage() {
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
-    const fileCount = files.length;
-    
+    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    const MAX_FILE_SIZE = 25 * 1024 * 1024;
+
+    const rejectedFiles: string[] = [];
+    const validFiles: File[] = [];
+
+    for (const file of Array.from(files)) {
+      const isHeic = file.name.toLowerCase().match(/\.(heic|heif)$/);
+      const isAllowedMime = ALLOWED_IMAGE_TYPES.includes(file.type);
+      const isAllowedExtension = file.name.toLowerCase().match(/\.(jpg|jpeg|png|webp|heic|heif)$/);
+
+      if (!isAllowedMime && !isHeic) {
+        rejectedFiles.push(`${file.name} (unsupported format)`);
+        continue;
+      }
+
+      if (!isAllowedExtension) {
+        rejectedFiles.push(`${file.name} (unsupported extension)`);
+        continue;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        rejectedFiles.push(`${file.name} (exceeds 25MB limit)`);
+        continue;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (rejectedFiles.length > 0) {
+      toast.error(`Skipped ${rejectedFiles.length} file${rejectedFiles.length > 1 ? 's' : ''}:\n${rejectedFiles.join('\n')}`, { duration: 5000 });
+    }
+
+    if (validFiles.length === 0) {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     const processFile = async (file: File): Promise<PhotoItem> => {
       try {
         const compressedFile = await compressImage(file, WHATSAPP_HD_SETTINGS);
@@ -408,10 +528,10 @@ export default function PolaroidPrintPage() {
     };
     
     try {
-      const promises = Array.from(files).map(file => processFile(file));
+      const promises = validFiles.map(file => processFile(file));
       const processedPhotos = await Promise.all(promises);
       setPhotos(prev => [...prev, ...processedPhotos]);
-      toast.success(`Added ${fileCount} photo${fileCount > 1 ? 's' : ''}!`);
+      toast.success(`Added ${processedPhotos.length} photo${processedPhotos.length > 1 ? 's' : ''}!`);
     } catch (error) {
       toast.error('Failed to process some photos');
     } finally {
@@ -472,25 +592,54 @@ export default function PolaroidPrintPage() {
     ));
   }, []);
 
+  const createCheckoutSession = async () => {
+    const data = await backendRequest<BackendAuthResponse>('/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: orderFormData.customerEmail,
+        name: orderFormData.customerName,
+      }),
+    });
+
+    if (!data.token) {
+      throw new Error('Unable to create checkout session');
+    }
+
+    localStorage.setItem('backend_jwt', data.token);
+    if (data.refreshToken) {
+      localStorage.setItem('backend_refresh_token', data.refreshToken);
+    }
+
+    return data.token;
+  };
+
   const handleCheckout = useCallback(async () => {
     if (!orderFormData.customerName || !orderFormData.customerEmail) {
       toast.error('Please fill in required fields');
       return;
     }
 
-    if (!orderFormData.customerState) {
-      toast.error('Please select your state');
+    if (!orderFormData.customerHouseUnitNo || !orderFormData.customerAddressLine1) {
+      toast.error('Please fill in your house/unit number and address line 1');
+      return;
+    }
+
+    if (!/^\d{5}$/.test(orderFormData.customerPostcode)) {
+      toast.error('Please enter a valid 5-digit Malaysia postcode');
+      return;
+    }
+
+    if (!orderFormData.customerState || orderFormData.customerCountry !== 'Malaysia') {
+      toast.error('Please select your Malaysia delivery state');
       return;
     }
 
     setIsProcessing(true);
 
     try {
-      if (backendJwt) {
-        await handleBackendCheckout();
-      } else {
-        await handleLocalCheckout();
-      }
+      const checkoutToken = backendJwt || await createCheckoutSession();
+      await handleBackendCheckout(checkoutToken);
     } catch (error) {
       console.error('Checkout error:', error);
       toast.dismiss('checkout-upload');
@@ -501,7 +650,7 @@ export default function PolaroidPrintPage() {
     }
   }, [orderFormData, cart, paymentMethod, backendJwt]);
 
-  const handleBackendCheckout = async () => {
+  const handleBackendCheckout = async (checkoutToken: string) => {
     // Step 1: Create order first on Spring Boot backend (items without image URLs)
     const orderItems = cart.map(item => ({
       sizeId: backendSizeIds[item.sizeId] || item.sizeId.toUpperCase(),
@@ -514,12 +663,16 @@ export default function PolaroidPrintPage() {
 
     const order = await backendRequest<BackendOrderResponse>('/orders', {
       method: 'POST',
-      authToken: backendJwt,
+      authToken: checkoutToken,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customerName: orderFormData.customerName,
         customerEmail: orderFormData.customerEmail,
         customerPhone: orderFormData.customerPhone,
+        customerHouseUnitNo: orderFormData.customerHouseUnitNo,
+        customerAddressLine1: orderFormData.customerAddressLine1,
+        customerAddressLine2: orderFormData.customerAddressLine2,
+        customerPostcode: orderFormData.customerPostcode,
         customerState: orderFormData.customerState,
         customerCountry: orderFormData.customerCountry,
         notes: orderFormData.notes,
@@ -529,19 +682,26 @@ export default function PolaroidPrintPage() {
 
     toast.dismiss('checkout-order');
 
-    // Step 2: Upload photos with real order number
+    // Step 2: Upload photos with real order number before payment.
+    const backendItems = order.items || [];
     let uploadedCount = 0;
     const totalFiles = cart.reduce((sum, item) => sum + item.photos.length, 0);
 
-    for (const item of cart) {
+    for (const [cartIndex, item] of cart.entries()) {
+      const backendItemId = backendItems[cartIndex]?.id;
+
       for (const photo of item.photos) {
         const formData = new FormData();
         formData.append('file', photo.file);
         formData.append('orderId', order.orderNumber);
+        if (backendItemId) {
+          formData.append('orderItemId', backendItemId);
+        }
+
         toast.loading(`Uploading photo ${uploadedCount + 1}/${totalFiles}`, { id: 'checkout-upload' });
         await backendRequest<BackendUploadResponse>('/files/upload', {
           method: 'POST',
-          authToken: backendJwt,
+          authToken: checkoutToken,
           body: formData,
         });
         uploadedCount += 1;
@@ -552,9 +712,26 @@ export default function PolaroidPrintPage() {
 
     // Step 3: Payment
     if (paymentMethod === 'toyyibpay') {
+      if (USE_LOCAL_PAYMENT_MOCK && window.location.hostname === 'localhost') {
+        toast.loading('Completing local mock payment...', { id: 'checkout-pay' });
+        await backendRequest<BackendOrderResponse>(`/orders/${encodeURIComponent(order.orderNumber)}/mock-pay`, {
+          method: 'POST',
+          authToken: checkoutToken,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'PAID' }),
+        });
+        toast.dismiss('checkout-pay');
+
+        setOrderNumber(order.orderNumber);
+        setCart([]);
+        localStorage.removeItem('polaroid_cart');
+        window.location.href = `/payment-status?order_id=${encodeURIComponent(order.orderNumber)}&status=1&mock=1`;
+        return;
+      }
+
       const payment = await backendRequest<{ paymentUrl?: string }>(`/orders/${encodeURIComponent(order.orderNumber)}/pay`, {
         method: 'POST',
-        authToken: backendJwt,
+        authToken: checkoutToken,
       });
 
       if (payment.paymentUrl) {
@@ -576,103 +753,11 @@ export default function PolaroidPrintPage() {
     toast.success('Order placed successfully!');
   };
 
-  const handleLocalCheckout = async () => {
-    // Fallback guest checkout via Next.js API routes (Prisma)
-    const items = cart.map(item => ({
-      sizeId: item.sizeId,
-      quantity: item.quantity,
-      images: [] as string[],
-      customTexts: item.photos.map(p => p.customText || ''),
-      unitPrice: item.unitPrice,
-    }));
-
-    const shippingCost = getShippingCost(orderFormData.customerState);
-    const subtotal = cart.reduce((sum, item) => sum + item.size.price * item.quantity, 0);
-    const total = subtotal + shippingCost;
-
-    toast.loading('Creating order...', { id: 'checkout-order' });
-
-    const res = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: profile?.id || undefined,
-        customerName: orderFormData.customerName,
-        customerEmail: orderFormData.customerEmail,
-        customerPhone: orderFormData.customerPhone,
-        customerState: orderFormData.customerState,
-        notes: orderFormData.notes,
-        items,
-        subtotal,
-        shipping: shippingCost,
-        total,
-        paymentMethod,
-      }),
-    });
-
-    toast.dismiss('checkout-order');
-
-    const data = await res.json();
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to create order');
-    }
-
-    const order = data.order;
-
-    if (paymentMethod === 'toyyibpay') {
-      toast.loading('Redirecting to ToyyibPay...', { id: 'checkout-pay' });
-      const payRes = await fetch('/api/toyyibpay/create-bill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          amount: total,
-          customerEmail: orderFormData.customerEmail,
-          customerName: orderFormData.customerName,
-          customerPhone: orderFormData.customerPhone,
-        }),
-      });
-
-      toast.dismiss('checkout-pay');
-      const payData = await payRes.json();
-
-      if (payData.success && payData.paymentUrl) {
-        setOrderNumber(order.orderNumber);
-        setCart([]);
-        localStorage.removeItem('polaroid_cart');
-        window.location.href = payData.paymentUrl;
-        return;
-      }
-
-      throw new Error(payData.error || 'Failed to create payment');
-    }
-
-    setOrderNumber(order.orderNumber);
-    setOrderComplete(true);
-    setCurrentStep(4);
-    setCart([]);
-    localStorage.removeItem('polaroid_cart');
-    toast.success('Order placed successfully!');
-  };
-
   const handleCancelOrder = useCallback(async (orderId: string) => {
-    try {
-      const response = await fetch(`/api/orders?orderId=${orderId}&reason=Customer requested cancellation`, {
-        method: 'DELETE'
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        toast.success('Order cancelled successfully');
-        fetchUserOrders();
-      } else {
-        toast.error(data.error || 'Failed to cancel order');
-      }
-    } catch {
-      toast.error('Failed to cancel order');
-    }
-  }, [fetchUserOrders]);
+    toast.info('Customer cancellation is not available in the backend API yet. Please contact admin with this order ID.', {
+      description: orderId,
+    });
+  }, []);
 
   const handleTrackOrder = useCallback(async () => {
     if (!trackingInput.trim()) {
@@ -699,19 +784,7 @@ export default function PolaroidPrintPage() {
       }
 
       const order = await backendRequest<BackendOrderResponse>(path, options);
-      setTrackingOrder({
-        id: order.id || order.orderNumber,
-        orderNumber: order.orderNumber,
-        status: order.status?.toLowerCase() || 'pending',
-        total: Number(order.total || 0),
-        items: [],
-        createdAt: order.createdAt || new Date().toISOString(),
-        trackingNumber: order.trackingNumber,
-        statusHistory: order.statusHistory?.map((history) => ({
-          ...history,
-          status: history.status?.toLowerCase() || history.status,
-        })),
-      });
+      setTrackingOrder(mapBackendOrder(order));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to track order');
     }
@@ -725,34 +798,8 @@ export default function PolaroidPrintPage() {
       return;
     }
 
-    try {
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: profile.id,
-          orderId: selectedOrderForReview.id,
-          sizeId: selectedOrderForReview.items[0]?.size.id,
-          ...reviewForm
-        })
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        toast.success('Review submitted successfully!');
-        setShowReviewModal(false);
-        setSelectedOrderForReview(null);
-        setReviewForm({ rating: 5, title: '', comment: '' });
-        fetchReviews();
-        fetchUserOrders();
-      } else {
-        toast.error(data.error || 'Failed to submit review');
-      }
-    } catch {
-      toast.error('Failed to submit review');
-    }
-  }, [selectedOrderForReview, profile, reviewForm, fetchReviews, fetchUserOrders]);
+    toast.info('Reviews are not available in the backend API yet.');
+  }, [selectedOrderForReview, profile, reviewForm]);
 
   const handleCopyTrackingNumber = useCallback((trackingNum: string) => {
     navigator.clipboard.writeText(trackingNum);
@@ -1072,7 +1119,7 @@ export default function PolaroidPrintPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept=".jpg,.jpeg,.png,.webp,.heic,.heif"
             multiple
             className="hidden"
             onChange={handlePhotoUpload}
@@ -1095,7 +1142,7 @@ export default function PolaroidPrintPage() {
                 </>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">Supports: JPG, PNG, WEBP, HEIC (Max 25MB each)</p>
+            <p className="text-xs text-muted-foreground">JPG, PNG, WEBP, HEIC only • Max 25MB per file</p>
           </div>
         </div>
 
@@ -1324,7 +1371,36 @@ export default function PolaroidPrintPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" placeholder="+60 123 456789" value={orderFormData.customerPhone} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: e.target.value }))} />
+              <div className="flex overflow-hidden rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <div className="flex items-center border-r border-input px-3 text-sm font-medium text-muted-foreground">
+                  +60
+                </div>
+                <Input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="13 456 7890"
+                  value={orderFormData.customerPhone}
+                  onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: normalizeMalaysiaPhone(e.target.value) }))}
+                  className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="houseUnitNo">House / Unit No *</Label>
+              <Input id="houseUnitNo" placeholder="No. 12A / Unit B-10-3" value={orderFormData.customerHouseUnitNo} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerHouseUnitNo: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="addressLine1">Address Line 1 *</Label>
+              <Input id="addressLine1" placeholder="Street name, building, taman, or kampung" value={orderFormData.customerAddressLine1} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerAddressLine1: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="addressLine2">Address Line 2</Label>
+              <Input id="addressLine2" placeholder="Additional address details (optional)" value={orderFormData.customerAddressLine2} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerAddressLine2: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="postcode">Postcode *</Label>
+              <Input id="postcode" type="text" inputMode="numeric" maxLength={5} placeholder="43000" value={orderFormData.customerPostcode} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPostcode: normalizeMalaysiaPostcode(e.target.value) }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="state">State *</Label>
@@ -1340,6 +1416,10 @@ export default function PolaroidPrintPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">Country *</Label>
+              <Input id="country" value={orderFormData.customerCountry} readOnly aria-readonly="true" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="notes">Special Instructions</Label>
@@ -1406,9 +1486,24 @@ export default function PolaroidPrintPage() {
             )}
 
             {paymentMethod === 'toyyibpay' && (
-              <div className="bg-muted rounded-lg p-4 text-sm">
-                <p className="font-semibold">Pay with ToyyibPay:</p>
-                <p className="text-muted-foreground">You will be redirected to ToyyibPay to complete your payment securely.</p>
+              <div className="bg-muted rounded-lg p-4 text-sm space-y-3">
+                <div>
+                  <p className="font-semibold">Pay with ToyyibPay:</p>
+                  <p className="text-muted-foreground">You will be redirected to ToyyibPay to complete your payment securely.</p>
+                </div>
+                <Button className="w-full" onClick={handleCheckout} disabled={isProcessing}>
+                  {isProcessing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Continue to ToyyibPay
+                    </>
+                  )}
+                </Button>
               </div>
             )}
           </CardContent>
@@ -1570,7 +1665,7 @@ export default function PolaroidPrintPage() {
         <Button variant="outline" onClick={() => { setShowTrackingModal(true); setTrackingInput(orderNumber); }}>
           <Search className="w-4 h-4 mr-2" /> Track Order
         </Button>
-        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerState: 'w', notes: '' }); }}>
+        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerHouseUnitNo: '', customerAddressLine1: '', customerAddressLine2: '', customerPostcode: '', customerState: 'selangor', customerCountry: 'Malaysia', notes: '' }); }}>
           <Plus className="w-4 h-4 mr-2" /> Create Another Order
         </Button>
       </div>
