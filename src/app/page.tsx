@@ -225,7 +225,7 @@ const isBackendUploadableImage = (file: File): boolean => {
   return (file.type === 'image/jpeg' || file.type === 'image/png') && Boolean(extension);
 };
 
-const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080/api';
+const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
 const USE_LOCAL_PAYMENT_MOCK = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
 
 const backendSizeIds: Record<string, string> = {
@@ -277,7 +277,8 @@ async function backendRequest<T>(path: string, options: RequestInit & { authToke
     headers.set('Authorization', `Bearer ${authToken}`);
   }
 
-  const response = await fetch(`${BACKEND_API_BASE}${path}`, { ...fetchOptions, headers });
+  const url = `${BACKEND_API_BASE.replace(/\/+$/, '')}/api${path.startsWith('/') ? path : `/${path}`}`;
+  const response = await fetch(url, { ...fetchOptions, headers });
   const contentType = response.headers.get('content-type') || '';
   const body = contentType.includes('application/json')
     ? await response.json()
