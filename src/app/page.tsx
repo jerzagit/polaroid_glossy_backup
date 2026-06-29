@@ -703,7 +703,7 @@ export default function PolaroidPrintPage() {
     setIsProcessing(true);
 
     try {
-      const checkoutToken = backendJwt || await createCheckoutSession();
+      const checkoutToken = await createCheckoutSession();
       await handleBackendCheckout(checkoutToken);
     } catch (error) {
       console.error('Checkout error:', error);
@@ -713,7 +713,7 @@ export default function PolaroidPrintPage() {
     } finally {
       setIsProcessing(false);
     }
-  }, [orderFormData, cart, paymentMethod, backendJwt]);
+  }, [orderFormData, cart, paymentMethod]);
 
   const handleBackendCheckout = async (checkoutToken: string) => {
     // Step 1: Create order first on Spring Boot backend (items without image URLs)
