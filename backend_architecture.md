@@ -10,9 +10,10 @@
 7. [Security & Authentication](#7-security--authentication)
 8. [File Storage (Supabase)](#8-file-storage-supabase)
 9. [Payment Integration (ToyyibPay)](#9-payment-integration-toyyibpay)
-10. [Project Structure](#10-project-structure)
-11. [Configuration](#11-configuration)
-12. [Implementation Phases](#12-implementation-phases)
+10. [Product Management](#10-product-management)
+11. [Project Structure](#11-project-structure)
+12. [Configuration](#12-configuration)
+13. [Implementation Phases](#13-implementation-phases)
 
 ---
 
@@ -340,6 +341,37 @@ INSERT INTO print_sizes (id, name, display_name, width, height, price, descripti
 ('3r', '3R', '3R (3.5 x 5 inches)', 3.5, 5.0, 0.75, 'Standard photo size - Great for albums'),
 ('4r', '4R', '4R (4 x 6 inches)', 4.0, 6.0, 1.00, 'Most popular - Classic polaroid style'),
 ('a4', 'A4', 'A4 (8.3 x 11.7 inches)', 8.3, 11.7, 3.50, 'Poster size - Perfect for displays');
+
+-- =============================================
+-- PRODUCT METADATA TABLE
+-- Stores marketing content per print size.
+-- Decoupled from print_sizes (pricing layer).
+-- Currently driven by products-meta.json in
+-- Next.js; admin backend will own this table.
+-- =============================================
+CREATE TABLE product_meta (
+    id VARCHAR(10) PRIMARY KEY REFERENCES print_sizes(id) ON DELETE CASCADE,
+    short_description TEXT,
+    full_description TEXT,
+    tag VARCHAR(30) NOT NULL DEFAULT 'STANDARD',        -- e.g. MINI, CLASSIC, BESTSELLER, PREMIUM
+    accent_color VARCHAR(10) NOT NULL DEFAULT '#6366f1', -- hex color for UI highlights
+    images JSONB NOT NULL DEFAULT '[]',                 -- ordered array of image URLs
+    features JSONB NOT NULL DEFAULT '[]',               -- string array of feature chips
+    tiktok_videos JSONB NOT NULL DEFAULT '[]',          -- [{videoId, url, caption}]
+    rating DECIMAL(3,2) DEFAULT 4.8,                    -- aggregated or manually set
+    review_count INT DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_product_meta_id ON product_meta(id);
+
+-- Seed default metadata (mirrors products-meta.json)
+INSERT INTO product_meta (id, short_description, full_description, tag, accent_color, images, features, rating, review_count) VALUES
+('2r', 'Wallet-size polaroid, perfect for keepsakes and gifting.', 'The 2R print is our smallest and most affordable format — designed to fit perfectly in wallets, scrapbooks, and photo albums.', 'MINI', '#6366f1', '["images/customer-1.png","images/customer-2.png"]', '["Wallet-size","Keepsake ready","Pocket-friendly"]', 4.7, 312),
+('3r', 'Standard photo size, ideal for albums and framing.', 'The 3R is our standard format, matching the classic photo size most people grew up with.', 'CLASSIC', '#0ea5e9', '["images/product-custom.png","images/customer-3.png"]', '["Album-ready","Standard format","Gift-perfect"]', 4.8, 541),
+('4r', 'Classic polaroid look and feel — our most loved size.', 'The 4R is the definitive polaroid experience. Its iconic 4 × 6 proportion delivers the perfect balance of detail and portability.', 'BESTSELLER', '#f59e0b', '["images/hero-polaroids.png","images/product-collection.png"]', '["True polaroid feel","Best value","Frame-ready","Custom text support"]', 4.9, 1204),
+('a4', 'Poster-grade quality — built for walls and statement displays.', 'The A4 is our largest and most premium format, engineered for customers who demand wall-art quality.', 'PREMIUM', '#10b981', '["images/product-collection.png","images/product-printing.png"]', '["Wall-art quality","Hi-res output","Display-worthy","Frame-ready"]', 4.8, 187);
 ```
 
 ---
@@ -418,6 +450,34 @@ INSERT INTO print_sizes (id, name, display_name, width, height, price, descripti
 | PATCH | `/api/admin/users/{id}/role` | Update user role | Admin |
 | POST | `/api/admin/affiliates/generate-code` | Generate affiliate code | Admin |
 
+### 5.9 Product Management (Admin)
+
+Two layers — **print sizes** (pricing/dimensions) and **product metadata** (marketing content):
+
+#### Print Sizes
+
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| GET | `/api/admin/sizes` | List all print sizes | Marketing+ |
+| POST | `/api/admin/sizes` | Create new print size | Admin |
+| PUT | `/api/admin/sizes/{id}` | Update price / name | Admin |
+| PATCH | `/api/admin/sizes/{id}/toggle` | Enable / disable size | Admin |
+| DELETE | `/api/admin/sizes/{id}` | Soft delete (deactivate) | Admin |
+
+#### Product Metadata
+
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| GET | `/api/admin/products` | List all products (size + meta merged) | Marketing+ |
+| GET | `/api/admin/products/{id}` | Get single product detail | Marketing+ |
+| PUT | `/api/admin/products/{id}/meta` | Update marketing metadata | Marketing+ |
+| POST | `/api/admin/products/{id}/images` | Upload product image | Marketing+ |
+| DELETE | `/api/admin/products/{id}/images` | Remove product image by URL | Marketing+ |
+| PUT | `/api/admin/products/{id}/images/reorder` | Reorder image carousel | Marketing+ |
+| POST | `/api/admin/products/{id}/tiktok` | Add TikTok video | Marketing+ |
+| DELETE | `/api/admin/products/{id}/tiktok/{videoId}` | Remove TikTok video | Marketing+ |
+| GET | `/api/admin/products/{id}/analytics` | Sales stats per product | Admin |
+
 ---
 
 ## 6. User Roles & Permissions
@@ -465,6 +525,13 @@ public enum Role {
 | **Users** | | | | | |
 | Manage Users | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Change Roles | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Product Management** | | | | | |
+| View products / sizes | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Edit metadata (copy, images, TikTok) | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Create / update print sizes | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Set pricing | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Enable / disable sizes | ❌ | ❌ | ❌ | ❌ | ✅ |
+| View product analytics | ❌ | ❌ | ❌ | ❌ | ✅ |
 | **Settings** | | | | | |
 | Site Settings | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Print Sizes | ❌ | ❌ | ❌ | ❌ | ✅ |
@@ -677,7 +744,205 @@ public class PaymentCostService {
 
 ---
 
-## 10. Project Structure
+## 10. Product Management
+
+### 10.1 Architecture Overview
+
+Product data is split into two tables to separate **business logic** (pricing) from **marketing content**:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   PRODUCT DATA LAYERS                        │
+│                                                              │
+│  print_sizes (Admin → pricing)                               │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │ id | name | width | height | price | isActive       │     │
+│  └─────────────────────────────────────────────────────┘     │
+│                         +                                    │
+│  product_meta (Marketing → content)                          │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │ id | tag | accentColor | images | features          │     │
+│  │    | shortDesc | fullDesc | tiktokVideos | rating   │     │
+│  └─────────────────────────────────────────────────────┘     │
+│                         │                                    │
+│                         ▼                                    │
+│            GET /api/products  (merged response)              │
+│            consumed by ProductCatalog + /products/[id]       │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Who manages what:**
+- **Admin** — creates print sizes, sets prices, enables/disables sizes
+- **Marketing** — edits descriptions, uploads product images, manages TikTok videos, updates tags and feature chips
+
+**Current state (Next.js monolith):**
+Product metadata lives in `src/data/products-meta.json` and is merged with DB data in `/api/products/route.ts`. The Spring Boot admin backend will replace this file with a proper `product_meta` DB table managed via admin UI.
+
+---
+
+### 10.2 Print Size Management
+
+```java
+@RestController
+@RequestMapping("/api/admin/sizes")
+public class PrintSizeController {
+
+    // GET /api/admin/sizes — list all (including inactive)
+    @PreAuthorize("hasAnyRole('ADMIN', 'MARKETING')")
+    @GetMapping
+    public ResponseEntity<List<PrintSizeResponse>> listAll() { ... }
+
+    // POST /api/admin/sizes — create new size (Admin only)
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping
+    public ResponseEntity<PrintSizeResponse> create(@Valid @RequestBody PrintSizeRequest req) { ... }
+
+    // PUT /api/admin/sizes/{id} — update price / display name
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}")
+    public ResponseEntity<PrintSizeResponse> update(
+        @PathVariable String id,
+        @Valid @RequestBody PrintSizeRequest req) { ... }
+
+    // PATCH /api/admin/sizes/{id}/toggle — enable or disable
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/toggle")
+    public ResponseEntity<PrintSizeResponse> toggle(@PathVariable String id) { ... }
+}
+```
+
+**PrintSizeRequest DTO:**
+```json
+{
+  "name": "5R",
+  "displayName": "5R (5 x 7 inches)",
+  "width": 5.0,
+  "height": 7.0,
+  "price": 2.00,
+  "description": "Larger format prints",
+  "isActive": true
+}
+```
+
+---
+
+### 10.3 Product Metadata Management
+
+```java
+@RestController
+@RequestMapping("/api/admin/products")
+public class ProductMetaController {
+
+    // GET /api/admin/products — merged list (size + meta)
+    @PreAuthorize("hasAnyRole('ADMIN', 'MARKETING')")
+    @GetMapping
+    public ResponseEntity<List<ProductAdminResponse>> listAll() { ... }
+
+    // GET /api/admin/products/{id} — single product full detail
+    @PreAuthorize("hasAnyRole('ADMIN', 'MARKETING')")
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductAdminResponse> getOne(@PathVariable String id) { ... }
+
+    // PUT /api/admin/products/{id}/meta — update copy, tag, color, features
+    @PreAuthorize("hasAnyRole('ADMIN', 'MARKETING')")
+    @PutMapping("/{id}/meta")
+    public ResponseEntity<ProductAdminResponse> updateMeta(
+        @PathVariable String id,
+        @Valid @RequestBody ProductMetaRequest req) { ... }
+
+    // POST /api/admin/products/{id}/images — upload image to Supabase, append URL
+    @PreAuthorize("hasAnyRole('ADMIN', 'MARKETING')")
+    @PostMapping("/{id}/images")
+    public ResponseEntity<ImageUploadResponse> uploadImage(
+        @PathVariable String id,
+        @RequestParam("file") MultipartFile file) { ... }
+
+    // DELETE /api/admin/products/{id}/images — remove by URL
+    @PreAuthorize("hasAnyRole('ADMIN', 'MARKETING')")
+    @DeleteMapping("/{id}/images")
+    public ResponseEntity<Void> removeImage(
+        @PathVariable String id,
+        @RequestParam String imageUrl) { ... }
+
+    // PUT /api/admin/products/{id}/images/reorder — reorder carousel
+    @PreAuthorize("hasAnyRole('ADMIN', 'MARKETING')")
+    @PutMapping("/{id}/images/reorder")
+    public ResponseEntity<ProductAdminResponse> reorderImages(
+        @PathVariable String id,
+        @RequestBody List<String> orderedUrls) { ... }
+
+    // POST /api/admin/products/{id}/tiktok — add TikTok video
+    @PreAuthorize("hasAnyRole('ADMIN', 'MARKETING')")
+    @PostMapping("/{id}/tiktok")
+    public ResponseEntity<ProductAdminResponse> addTikTok(
+        @PathVariable String id,
+        @Valid @RequestBody TikTokVideoRequest req) { ... }
+
+    // DELETE /api/admin/products/{id}/tiktok/{videoId}
+    @PreAuthorize("hasAnyRole('ADMIN', 'MARKETING')")
+    @DeleteMapping("/{id}/tiktok/{videoId}")
+    public ResponseEntity<Void> removeTikTok(
+        @PathVariable String id,
+        @PathVariable String videoId) { ... }
+
+    // GET /api/admin/products/{id}/analytics
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/{id}/analytics")
+    public ResponseEntity<ProductAnalyticsResponse> getAnalytics(@PathVariable String id) { ... }
+}
+```
+
+**ProductMetaRequest DTO:**
+```json
+{
+  "shortDescription": "Wallet-size polaroid, perfect for keepsakes.",
+  "fullDescription": "Full long marketing copy here...",
+  "tag": "MINI",
+  "accentColor": "#6366f1",
+  "features": ["Wallet-size", "Keepsake ready", "Pocket-friendly"]
+}
+```
+
+**TikTokVideoRequest DTO:**
+```json
+{
+  "videoId": "7123456789012345678",
+  "url": "https://www.tiktok.com/@polaroidglossymy/video/7123456789012345678",
+  "caption": "Customer unboxing 📦"
+}
+```
+
+**ProductAnalyticsResponse:**
+```json
+{
+  "productId": "4r",
+  "totalOrderItems": 1204,
+  "totalQuantitySold": 8932,
+  "totalRevenue": 8932.00,
+  "averageOrderQuantity": 7.4,
+  "salesByMonth": [
+    { "month": "2026-02", "quantity": 412, "revenue": 412.00 }
+  ],
+  "topCustomerStates": [
+    { "state": "Selangor", "orders": 340 }
+  ]
+}
+```
+
+---
+
+### 10.4 Migration Plan (JSON → Database)
+
+When the Spring Boot backend goes live, the product metadata migration is:
+
+1. Run the `product_meta` SQL table creation
+2. Execute the seed `INSERT` statements (pre-populated from `products-meta.json`)
+3. Update `/api/products/route.ts` in Next.js to call `http://localhost:8080/api/products` instead of merging `products-meta.json` locally
+4. Archive `src/data/products-meta.json` — it becomes the Spring Boot DB's source of truth
+
+---
+
+## 11. Project Structure
 
 ```
 polaroid-backend/
@@ -698,6 +963,8 @@ polaroid-backend/
 │   │   │   │   ├── AuthController.java
 │   │   │   │   ├── OrderController.java
 │   │   │   │   ├── AdminController.java
+│   │   │   │   ├── ProductMetaController.java    ← product metadata + images + TikTok
+│   │   │   │   ├── PrintSizeController.java      ← pricing + enable/disable
 │   │   │   │   ├── FileController.java
 │   │   │   │   ├── SystemController.java
 │   │   │   │   └── WebhookController.java
@@ -706,6 +973,8 @@ polaroid-backend/
 │   │   │   │   ├── AuthService.java
 │   │   │   │   ├── OrderService.java
 │   │   │   │   ├── PaymentService.java
+│   │   │   │   ├── ProductMetaService.java       ← metadata CRUD, image upload, TikTok management
+│   │   │   │   ├── PrintSizeService.java         ← size CRUD, analytics
 │   │   │   │   ├── FileService.java
 │   │   │   │   ├── StatsService.java
 │   │   │   │   └── SystemService.java
@@ -715,7 +984,8 @@ polaroid-backend/
 │   │   │   │   ├── OrderRepository.java
 │   │   │   │   ├── OrderItemRepository.java
 │   │   │   │   ├── OrderStatusHistoryRepository.java
-│   │   │   │   └── PrintSizeRepository.java
+│   │   │   │   ├── PrintSizeRepository.java
+│   │   │   │   └── ProductMetaRepository.java
 │   │   │   │
 │   │   │   ├── model/
 │   │   │   │   ├── User.java
@@ -723,6 +993,7 @@ polaroid-backend/
 │   │   │   │   ├── OrderItem.java
 │   │   │   │   ├── OrderStatusHistory.java
 │   │   │   │   ├── PrintSize.java
+│   │   │   │   ├── ProductMeta.java              ← tag, accentColor, images[], features[], tiktokVideos[]
 │   │   │   │   └── enums/
 │   │   │   │       ├── Role.java
 │   │   │   │       ├── OrderStatus.java
@@ -733,13 +1004,19 @@ polaroid-backend/
 │   │   │   │   │   ├── LoginRequest.java
 │   │   │   │   │   ├── RegisterRequest.java
 │   │   │   │   │   ├── OrderRequest.java
-│   │   │   │   │   └── OrderStatusUpdate.java
+│   │   │   │   │   ├── OrderStatusUpdate.java
+│   │   │   │   │   ├── PrintSizeRequest.java
+│   │   │   │   │   ├── ProductMetaRequest.java
+│   │   │   │   │   └── TikTokVideoRequest.java
 │   │   │   │   │
 │   │   │   │   └── response/
 │   │   │   │       ├── AuthResponse.java
 │   │   │   │       ├── OrderResponse.java
 │   │   │   │       ├── StatsResponse.java
-│   │   │   │       └── SystemInfoResponse.java
+│   │   │   │       ├── SystemInfoResponse.java
+│   │   │   │       ├── ProductAdminResponse.java ← merged size + meta
+│   │   │   │       ├── ProductAnalyticsResponse.java
+│   │   │   │       └── ImageUploadResponse.java
 │   │   │   │
 │   │   │   ├── security/
 │   │   │   │   ├── JwtTokenProvider.java
@@ -767,7 +1044,7 @@ polaroid-backend/
 
 ---
 
-## 11. Configuration
+## 12. Configuration
 
 ### 11.1 application.yml
 
@@ -857,7 +1134,7 @@ CORS_ORIGINS=http://localhost:3000
 
 ---
 
-## 12. Implementation Phases
+## 13. Implementation Phases
 
 ### Phase 1: Project Setup (Week 1)
 - [ ] Create Spring Boot project with Maven
@@ -895,6 +1172,16 @@ CORS_ORIGINS=http://localhost:3000
 - [ ] Build stats/analytics endpoints
 - [ ] Add status update with validation
 - [ ] Add tracking number management
+
+### Phase 5b: Product Management (Week 3)
+- [ ] Create `product_meta` table and run seed SQL
+- [ ] Implement `PrintSizeController` (CRUD, toggle active)
+- [ ] Implement `ProductMetaController` (metadata CRUD)
+- [ ] Image upload endpoint → Supabase Storage → append URL to `images` JSONB
+- [ ] Image reorder + delete endpoints
+- [ ] TikTok video add / remove endpoints
+- [ ] Product analytics endpoint (sales by size, revenue)
+- [ ] Update Next.js `/api/products` to call Spring Boot instead of reading `products-meta.json`
 
 ### Phase 6: File Storage (Week 3-4)
 - [ ] Integrate Supabase Storage
@@ -934,6 +1221,7 @@ This architecture document provides a complete blueprint for building the Polaro
 - ✅ **Admin features** (stats, order management)
 - ✅ **Super Admin features** (storage, database health, payment costs, server metrics)
 - ✅ **Role-based access control** at every level
+- ✅ **Product Management** — two-layer system (print sizes for pricing, product_meta for marketing content, images, TikTok)
 
 ---
 

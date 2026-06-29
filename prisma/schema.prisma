@@ -64,6 +64,27 @@ model Product {
   @@map("products")
 }
 
+// Stores marketing metadata per print size.
+// id = human-readable slug matching fallback IDs: '2r', '3r', '4r', 'a4'.
+// Managed via /admin/products page. Takes precedence over products-meta.json.
+model ProductMeta {
+  id               String   @id              // e.g. '2r', '3r', '4r', 'a4'
+  tag              String   @default("STANDARD")
+  accentColor      String   @default("#6366f1")
+  images           String   @default("[]")  // JSON array of image URLs
+  features         String   @default("[]")  // JSON array of feature strings
+  tiktokVideos     String   @default("[]")  // JSON array of {videoId,url,caption}
+  shortDescription String?
+  fullDescription  String?
+  rating           Float    @default(4.8)
+  reviewCount      Int      @default(0)
+  popular          Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("product_meta")
+}
+
 model Order {
   id            String          @id @default(cuid())
   orderNumber   String          @unique

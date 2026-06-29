@@ -144,7 +144,49 @@ Cancel order.
 
 ---
 
-### 3. Print Sizes
+### 3. Products (Catalog API)
+
+#### GET /api/products
+
+Get full product catalog — merges `PrintSize` DB table with `products-meta.json` metadata.
+
+**Response:**
+```json
+{
+  "success": true,
+  "products": [
+    {
+      "id": "4r",
+      "name": "4R",
+      "displayName": "4R (4 x 6 inches)",
+      "width": 4, "height": 6, "price": 1.00,
+      "tag": "BESTSELLER",
+      "accentColor": "#f59e0b",
+      "shortDescription": "Classic polaroid look and feel.",
+      "fullDescription": "The 4R is the definitive...",
+      "images": ["/images/hero-polaroids.png"],
+      "features": ["True polaroid feel", "Best value"],
+      "specs": { "dimensions": "4 × 6 inches", "paper": "Glossy 260gsm", ... },
+      "rating": 4.9,
+      "reviewCount": 1204,
+      "tiktokVideos": [],
+      "popular": true
+    }
+  ]
+}
+```
+
+#### GET /api/products/:id
+
+Get single product by ID.
+
+**Response:** `{ "success": true, "product": { ...same shape as above... } }`
+
+> **Note:** These endpoints currently merge `products-meta.json` with the DB. Once the Spring Boot admin backend is live, they will instead call `http://localhost:8080/api/products`.
+
+---
+
+### 4. Print Sizes (Legacy)
 
 #### GET /api/print-sizes
 
@@ -470,83 +512,280 @@ Export orders.
 
 ---
 
-### 3. Products Management
+### 3. Product Management
 
-#### GET /products
+Product data is split into two layers. The admin backend manages both:
 
-List products.
-
-| Query | Type | Description |
-|-------|------|-------------|
-| category | string | Filter by category |
-| isActive | boolean | Filter by status |
-| search | string | Search name |
-
-#### GET /products/:id
-
-Get product details.
-
-#### POST /products
-
-Create product.
-
-```json
-{
-  "name": "Premium Glossy Polaroid",
-  "description": "High quality glossy finish",
-  "basePrice": 1.50,
-  "category": "polaroid",
-  "image": "base64-or-url",
-  "features": ["glossy_finish", "premium_paper", "vibrant_colors"],
-  "isActive": true
-}
-```
-
-Categories: `polaroid`, `frame`, `album`, `accessory`
-
-#### PUT /products/:id
-
-Update product.
-
-#### DELETE /products/:id
-
-Soft delete (set isActive: false).
-
-#### GET /products/:id/analytics
-
-Product performance (orders, revenue).
+| Layer | Table | Managed by | Contains |
+|-------|-------|------------|---------|
+| Pricing | `print_sizes` | Admin | id, name, dimensions, price, isActive |
+| Marketing | `product_meta` | Marketing+ | images, descriptions, tag, accentColor, features, TikTok |
 
 ---
 
-### 4. Print Sizes Management
+#### 3a. Print Sizes (Pricing Layer)
 
-#### GET /sizes
+##### GET /sizes
 
-List all print sizes.
+List all print sizes including inactive.
 
-#### POST /sizes
+```json
+{
+  "success": true,
+  "sizes": [
+    {
+      "id": "4r",
+      "name": "4R",
+      "displayName": "4R (4 x 6 inches)",
+      "width": 4.0,
+      "height": 6.0,
+      "price": 1.00,
+      "description": "Most popular - Classic polaroid style",
+      "isActive": true,
+      "createdAt": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
+```
 
-Create print size.
+**Access:** Marketing+
+
+##### POST /sizes
+
+Create a new print size.
 
 ```json
 {
   "name": "5R",
   "displayName": "5R (5 x 7 inches)",
-  "width": 5,
-  "height": 7,
+  "width": 5.0,
+  "height": 7.0,
   "price": 2.00,
   "description": "Larger format prints",
   "isActive": true
 }
 ```
 
-#### PUT /sizes/:id
+**Access:** Admin only
 
-Update print size.
+##### PUT /sizes/:id
 
-#### DELETE /sizes/:id
+Update a print size (price, name, description).
 
-Deactivate print size.
+```json
+{
+  "price": 1.20,
+  "description": "Updated description"
+}
+```
+
+**Access:** Admin only
+
+##### PATCH /sizes/:id/toggle
+
+Toggle a size active/inactive (hides it from the storefront).
+
+**Response:**
+```json
+{ "success": true, "isActive": false }
+```
+
+**Access:** Admin only
+
+##### DELETE /sizes/:id
+
+Soft delete — sets `isActive: false`. Does not destroy historical order data.
+
+**Access:** Admin only
+
+---
+
+#### 3b. Product Metadata (Marketing Content Layer)
+
+One metadata record per print size. Created automatically when a new print size is added.
+
+##### GET /products
+
+List all products — merged `print_sizes` + `product_meta`.
+
+| Query | Type | Description |
+|-------|------|-------------|
+| isActive | boolean | Filter by active status |
+| search | string | Filter by name/tag |
+
+```json
+{
+  "success": true,
+  "products": [
+    {
+      "id": "4r",
+      "name": "4R",
+      "displayName": "4R (4 x 6 inches)",
+      "width": 4.0,
+      "height": 6.0,
+      "price": 1.00,
+      "isActive": true,
+      "tag": "BESTSELLER",
+      "accentColor": "#f59e0b",
+      "shortDescription": "Classic polaroid look and feel.",
+      "fullDescription": "The 4R is the definitive polaroid experience...",
+      "images": [
+        "https://cdn.supabase.co/.../hero-polaroids.png",
+        "https://cdn.supabase.co/.../product-collection.png"
+      ],
+      "features": ["True polaroid feel", "Best value", "Frame-ready"],
+      "tiktokVideos": [
+        {
+          "videoId": "7123456789012345678",
+          "url": "https://www.tiktok.com/@polaroidglossymy/video/7123456789012345678",
+          "caption": "4R unboxing 📸"
+        }
+      ],
+      "rating": 4.9,
+      "reviewCount": 1204
+    }
+  ]
+}
+```
+
+**Access:** Marketing+
+
+##### GET /products/:id
+
+Get single product full detail.
+
+**Access:** Marketing+
+
+##### PUT /products/:id/meta
+
+Update marketing metadata — copy, tag, accent color, features.
+
+```json
+{
+  "shortDescription": "Classic polaroid look and feel — our most loved size.",
+  "fullDescription": "The 4R is the definitive polaroid experience...",
+  "tag": "BESTSELLER",
+  "accentColor": "#f59e0b",
+  "features": ["True polaroid feel", "Best value", "Frame-ready", "Custom text support"]
+}
+```
+
+**Access:** Marketing+
+
+##### POST /products/:id/images
+
+Upload a new product image. File is stored in Supabase Storage under `products/{id}/`, URL is appended to the `images` array.
+
+**Request:** `multipart/form-data` with `file` field (JPG/PNG/WEBP, max 10MB)
+
+```json
+{
+  "success": true,
+  "imageUrl": "https://cdn.supabase.co/storage/.../products/4r/abc123.jpg",
+  "images": [
+    "https://cdn.supabase.co/.../hero-polaroids.png",
+    "https://cdn.supabase.co/.../abc123.jpg"
+  ]
+}
+```
+
+**Access:** Marketing+
+
+##### DELETE /products/:id/images
+
+Remove a product image by URL. Also deletes the file from Supabase Storage.
+
+**Query:** `?imageUrl=https://cdn.supabase.co/.../abc123.jpg`
+
+**Access:** Marketing+
+
+##### PUT /products/:id/images/reorder
+
+Reorder the image carousel. Send the full `images` array in the desired order.
+
+```json
+[
+  "https://cdn.supabase.co/.../product-collection.png",
+  "https://cdn.supabase.co/.../hero-polaroids.png"
+]
+```
+
+**Access:** Marketing+
+
+---
+
+#### 3c. TikTok Video Management
+
+TikTok videos are stored as a JSONB array in `product_meta.tiktok_videos`. No scraping — admin manually adds video URLs after customers tag the brand.
+
+##### POST /products/:id/tiktok
+
+Add a TikTok video to a product.
+
+```json
+{
+  "videoId": "7123456789012345678",
+  "url": "https://www.tiktok.com/@polaroidglossymy/video/7123456789012345678",
+  "caption": "Customer unboxing our 4R prints 📸"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "tiktokVideos": [
+    {
+      "videoId": "7123456789012345678",
+      "url": "https://www.tiktok.com/@polaroidglossymy/video/7123456789012345678",
+      "caption": "Customer unboxing our 4R prints 📸"
+    }
+  ]
+}
+```
+
+**Access:** Marketing+
+
+##### DELETE /products/:id/tiktok/:videoId
+
+Remove a TikTok video from a product.
+
+**Access:** Marketing+
+
+---
+
+#### 3d. Product Analytics
+
+##### GET /products/:id/analytics
+
+Sales performance for a specific print size.
+
+**Query:** `?from=2026-01-01&to=2026-03-31`
+
+```json
+{
+  "success": true,
+  "data": {
+    "productId": "4r",
+    "period": { "from": "2026-01-01", "to": "2026-03-31" },
+    "totalOrderItems": 1204,
+    "totalQuantitySold": 8932,
+    "totalRevenue": 8932.00,
+    "averageOrderQuantity": 7.4,
+    "salesByMonth": [
+      { "month": "2026-01", "quantity": 312, "revenue": 312.00 },
+      { "month": "2026-02", "quantity": 298, "revenue": 298.00 },
+      { "month": "2026-03", "quantity": 594, "revenue": 594.00 }
+    ],
+    "topCustomerStates": [
+      { "state": "Selangor", "orders": 340 },
+      { "state": "Kuala Lumpur", "orders": 218 }
+    ]
+  }
+}
+```
+
+**Access:** Admin only
 
 ---
 
@@ -1007,10 +1246,12 @@ All errors return:
 | P0 | Auth | Admin login/jwt |
 | P0 | Orders CRUD | Full order management |
 | P0 | Analytics | Dashboard data |
-| P1 | Products | Product CRUD |
+| P0 | Print Sizes | Pricing management (enable/disable, price changes) |
+| P0 | Product Metadata | Descriptions, images, TikTok videos per product |
 | P1 | Users | User management |
 | P1 | Settings | Site settings |
 | P2 | Reviews | Moderation |
+| P2 | Product Analytics | Per-product sales performance |
 | P2 | Cart | Admin cart management |
 | P2 | Webhooks | External events |
 | P3 | Notifications | Admin notifications |

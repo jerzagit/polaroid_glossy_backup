@@ -1,0 +1,133 @@
+{
+  "products": [
+    {
+      "id": "2r",
+      "images": [
+        "/images/customer-1.png",
+        "/images/customer-2.png",
+        "/images/product-collection.png"
+      ],
+      "popular": false,
+      "tag": "MINI",
+      "accentColor": "#6366f1",
+      "shortDescription": "Wallet-size polaroid, perfect for keepsakes and gifting.",
+      "fullDescription": "The 2R print is our smallest and most affordable format — designed to fit perfectly in wallets, scrapbooks, and photo albums. Each print is produced on premium photo-grade glossy paper that preserves vivid colour detail. Lightweight and portable, these mini polaroids are the go-to choice for event giveaways, wedding favours, and everyday memories. Their compact size makes them ideal for decorating vision boards, pinboards, and mini photo walls.",
+      "features": ["Wallet-size", "Keepsake ready", "Pocket-friendly"],
+      "specs": {
+        "dimensions": "2.5 × 3.5 inches",
+        "paper": "Glossy photo-grade 230gsm",
+        "finish": "Glossy",
+        "printMethod": "Dye-sublimation",
+        "processingTime": "3–4 working days",
+        "minQty": 1
+      },
+      "rating": 4.7,
+      "reviewCount": 312,
+      "tiktokVideos": [
+        {
+          "videoId": "7000000000000000001",
+          "url": "https://www.tiktok.com/@polaroidglossymy/video/7000000000000000001",
+          "caption": "Mini 2R polaroids for wedding favours 💍"
+        }
+      ]
+    },
+    {
+      "id": "3r",
+      "images": [
+        "/images/product-custom.png",
+        "/images/customer-3.png",
+        "/images/product-printing.png"
+      ],
+      "popular": false,
+      "tag": "CLASSIC",
+      "accentColor": "#0ea5e9",
+      "shortDescription": "Standard photo size, ideal for albums and framing.",
+      "fullDescription": "The 3R is our standard format, matching the classic photo size most people grew up with. It fits standard photo frames and album sleeves effortlessly. Printed with vibrant, true-to-life colours on our premium glossy paper, the 3R is the versatile choice for travel photos, family portraits, and professional headshots. The slightly larger surface area makes text captions more legible compared to the 2R.",
+      "features": ["Album-ready", "Standard format", "Gift-perfect"],
+      "specs": {
+        "dimensions": "3.5 × 5 inches",
+        "paper": "Glossy photo-grade 230gsm",
+        "finish": "Glossy",
+        "printMethod": "Dye-sublimation",
+        "processingTime": "3–4 working days",
+        "minQty": 1
+      },
+      "rating": 4.8,
+      "reviewCount": 541,
+      "tiktokVideos": [
+        {
+          "videoId": "7000000000000000002",
+          "url": "https://www.tiktok.com/@polaroidglossymy/video/7000000000000000002",
+          "caption": "3R prints for travel photobook ✈️"
+        }
+      ]
+    },
+    {
+      "id": "4r",
+      "images": [
+        "/images/hero-polaroids.png",
+        "/images/product-collection.png",
+        "/images/customer-4.png"
+      ],
+      "popular": true,
+      "tag": "BESTSELLER",
+      "accentColor": "#f59e0b",
+      "shortDescription": "Classic polaroid look and feel — our most loved size.",
+      "fullDescription": "The 4R is the definitive polaroid experience. Its iconic 4 × 6 proportion delivers the perfect balance of detail and portability — large enough to appreciate, small enough to carry anywhere. This is our bestselling format, loved by couples, families, and photographers alike. Add custom text at the bottom for that authentic polaroid caption feel. The 4R fits standard 4×6 frames available at any home store, making display effortless.",
+      "features": ["True polaroid feel", "Best value", "Frame-ready", "Custom text support"],
+      "specs": {
+        "dimensions": "4 × 6 inches",
+        "paper": "Glossy photo-grade 260gsm",
+        "finish": "Glossy / Lustre available",
+        "printMethod": "Dye-sublimation",
+        "processingTime": "3–4 working days",
+        "minQty": 1
+      },
+      "rating": 4.9,
+      "reviewCount": 1204,
+      "tiktokVideos": [
+        {
+          "videoId": "7000000000000000003",
+          "url": "https://www.tiktok.com/@polaroidglossymy/video/7000000000000000003",
+          "caption": "4R unboxing — quality check 📸"
+        },
+        {
+          "videoId": "7000000000000000004",
+          "url": "https://www.tiktok.com/@polaroidglossymy/video/7000000000000000004",
+          "caption": "Customer reaction to 4R prints 🥹"
+        }
+      ]
+    },
+    {
+      "id": "a4",
+      "images": [
+        "/images/product-collection.png",
+        "/images/product-printing.png",
+        "/images/product-camera.png"
+      ],
+      "popular": false,
+      "tag": "PREMIUM",
+      "accentColor": "#10b981",
+      "shortDescription": "Poster-grade quality — built for walls and statement displays.",
+      "fullDescription": "The A4 is our largest and most premium format, engineered for customers who demand wall-art quality. Printed at maximum resolution on heavyweight 260gsm glossy stock, A4 prints are stunning when framed or hung directly. Whether it's a wedding portrait, a travel landscape, or a custom gift for someone special, the A4 makes every photo a statement piece. The physical size allows for incredible fine-detail reproduction that smaller formats simply cannot match.",
+      "features": ["Wall-art quality", "Hi-res output", "Display-worthy", "Frame-ready"],
+      "specs": {
+        "dimensions": "8.3 × 11.7 inches (A4)",
+        "paper": "Glossy photo-grade 260gsm",
+        "finish": "Glossy",
+        "printMethod": "Laser / Inkjet HD",
+        "processingTime": "3–4 working days",
+        "minQty": 1
+      },
+      "rating": 4.8,
+      "reviewCount": 187,
+      "tiktokVideos": [
+        {
+          "videoId": "7000000000000000005",
+          "url": "https://www.tiktok.com/@polaroidglossymy/video/7000000000000000005",
+          "caption": "A4 wall art setup at home 🏡"
+        }
+      ]
+    }
+  ]
+}
