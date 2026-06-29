@@ -91,6 +91,8 @@ interface PhotoItem {
   file: File;
   preview: string;
   customText?: string;
+  s3Url?: string;       // set after background upload to S3
+  uploading?: boolean;  // true while upload is in-flight
 }
 
 interface CartItem {
@@ -226,6 +228,7 @@ export default function PolaroidPrintPage() {
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadSessionId = useRef<string>(crypto.randomUUID());
 
   const cartTotal = cart.reduce((sum, item) => sum + item.size.price * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -264,9 +267,23 @@ export default function PolaroidPrintPage() {
     }
   }, []);
 
-  // Save cart to localStorage
+  // Save cart to localStorage — strip base64 previews and File objects (too large)
+  // S3 URLs are used as the restored preview after page reload
   useEffect(() => {
-    localStorage.setItem('polaroid_cart', JSON.stringify(cart));
+    try {
+      const serialisable = cart.map(item => ({
+        ...item,
+        photos: item.photos.map(({ file: _file, preview, ...rest }) => {
+          // Replace base64 blob with s3Url for storage; if no s3Url yet, skip the preview
+          const storedPreview = rest.s3Url ?? (preview.startsWith('data:') ? '' : preview);
+          return { ...rest, preview: storedPreview };
+        }),
+      }));
+      localStorage.setItem('polaroid_cart', JSON.stringify(serialisable));
+    } catch {
+      // Storage quota hit — silently clear rather than crash
+      localStorage.removeItem('polaroid_cart');
+    }
   }, [cart]);
 
   // Load user orders
@@ -314,33 +331,35 @@ export default function PolaroidPrintPage() {
     const fileCount = files.length;
     
     const processFile = async (file: File): Promise<PhotoItem> => {
-      try {
-        const compressedFile = await compressImage(file, WHATSAPP_HD_SETTINGS);
-        
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            resolve({
-              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              file: compressedFile,
-              preview: event.target?.result as string,
-              customText: ''
-            });
-          };
-          reader.onerror = () => {
-            resolve({
-              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              file,
-              preview: '',
-              customText: ''
-            });
-          };
-          reader.readAsDataURL(compressedFile);
-        });
-      } catch (error) {
-        // Re-throw so Promise.allSettled can track this file as failed
-        throw error;
-      }
+      const compressedFile = await compressImage(file, WHATSAPP_HD_SETTINGS);
+
+      // Generate local preview
+      const preview = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(compressedFile);
+      });
+
+      const photoId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const photo: PhotoItem = { id: photoId, file: compressedFile, preview, customText: '', uploading: true };
+
+      // Upload to S3 in the background — update state when done
+      const formData = new FormData();
+      formData.append('file', compressedFile);
+      formData.append('sessionId', uploadSessionId.current);
+      fetch('/api/upload', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then((data: { success: boolean; url?: string }) => {
+          if (data.success && data.url) {
+            setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, s3Url: data.url, uploading: false } : p));
+          } else {
+            setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, uploading: false } : p));
+          }
+        })
+        .catch(() => setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, uploading: false } : p)));
+
+      return photo;
     };
 
     try {
@@ -435,11 +454,19 @@ export default function PolaroidPrintPage() {
 
     console.log('Starting checkout with paymentMethod:', paymentMethod);
 
+    // Block checkout if any photo is still uploading to S3
+    const stillUploading = cart.some(item => item.photos.some(p => p.uploading));
+    if (stillUploading) {
+      toast.error('Photos are still uploading, please wait a moment.');
+      return;
+    }
+
     try {
       const items = cart.map(item => ({
         sizeId: item.sizeId,
         quantity: item.quantity,
-        images: item.photos.map(p => p.preview),
+        // Prefer S3 URL; fall back to local preview if upload failed
+        images: item.photos.map(p => p.s3Url ?? p.preview),
         customTexts: item.photos.map(p => p.customText || ''),
         unitPrice: item.unitPrice
       }));
@@ -921,27 +948,23 @@ export default function PolaroidPrintPage() {
                   key={photo.id}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="relative group"
+                  className="relative"
                 >
                   <div className="aspect-square rounded-lg overflow-hidden border-2 border-border">
                     <img src={photo.preview} alt="Uploaded" className="w-full h-full object-cover" />
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                  <input
-                    type="text"
-                    placeholder={t.caption_placeholder}
-                    value={photo.customText || ''}
-                    onChange={(e) => updatePhotoText(photo.id, e.target.value)}
-                    className="mt-1 w-full text-xs px-2 py-1 border rounded"
-                    onClick={(e) => e.stopPropagation()}
-                  />
+                  {photo.uploading ? (
+                    <div className="absolute inset-0 rounded-lg bg-black/50 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
+                      className="absolute top-1 right-1 w-7 h-7 bg-red-600 rounded-full flex items-center justify-center shadow-xl border-2 border-white"
+                    >
+                      <X className="w-4 h-4 text-white stroke-[3]" />
+                    </button>
+                  )}
                 </motion.div>
               ))}
             </div>

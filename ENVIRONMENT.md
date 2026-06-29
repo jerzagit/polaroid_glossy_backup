@@ -1,149 +1,171 @@
 # Environment Configuration
 
-This guide explains all environment variables and how to switch between development and production environments.
+All environment variables for local development and production.
 
-## Environment Variables
+---
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | SQLite database file path |
-| `NEXTAUTH_SECRET` | Yes | Random string for session encryption |
-| `NEXTAUTH_URL` | Yes | Your domain URL |
-| `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret |
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL (for image storage) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public API key |
-| `TOYYIBPAY_SECRET_KEY` | Yes | ToyyibPay API secret |
-| `TOYYIBPAY_CATEGORY_CODE` | Yes | ToyyibPay category code |
-| `TOYYIBPAY_RETURN_URL` | Yes | Payment return page URL |
-| `TOYYIBPAY_CALLBACK_URL` | Yes | Payment webhook URL |
+## Full Variable Reference
 
-## Development vs Production
+| Variable | Required | Dev Value | Description |
+|----------|----------|-----------|-------------|
+| `DATABASE_URL` | Yes | `file:./dev.db` | SQLite (dev) or PostgreSQL URL (prod) |
+| `NEXTAUTH_SECRET` | Yes | any long string | Session encryption key |
+| `NEXTAUTH_URL` | Yes | ngrok HTTPS URL | Base URL of the app (must be public for OAuth) |
+| `GOOGLE_CLIENT_ID` | Yes | from Google Console | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Yes | from Google Console | Google OAuth client secret |
+| `TOYYIBPAY_SECRET_KEY` | Yes | sandbox key | ToyyibPay merchant secret |
+| `TOYYIBPAY_CATEGORY_CODE` | Yes | sandbox code | ToyyibPay category code |
+| `TOYYIBPAY_BASE_URL` | Yes | `https://dev.toyyibpay.com` | Sandbox or live ToyyibPay base URL |
+| `TOYYIBPAY_RETURN_URL` | Yes | ngrok URL + `/payment-status` | Redirect after payment |
+| `TOYYIBPAY_CALLBACK_URL` | Yes | ngrok URL + `/api/toyyibpay/callback` | ToyyibPay webhook |
+| `AWS_ACCESS_KEY_ID` | Yes | IAM access key | AWS credentials |
+| `AWS_SECRET_ACCESS_KEY` | Yes | IAM secret key | AWS credentials |
+| `AWS_REGION` | Yes | `us-east-1` or `ap-southeast-1` | S3 bucket region |
+| `AWS_S3_BUCKET` | Yes | `polaroid-glossy-dev` | S3 bucket name |
 
-### Development (.env)
+---
+
+## Development `.env`
 
 ```env
+# Database
 DATABASE_URL=file:./dev.db
-NEXTAUTH_URL=http://localhost:3000
-TOYYIBPAY_RETURN_URL=http://localhost:3000/payment-status
-TOYYIBPAY_CALLBACK_URL=http://localhost:3000/api/toyyibpay/callback
+
+# NextAuth
+NEXTAUTH_SECRET=polaroidglossymy-local-dev-secret-key-2024
+NEXTAUTH_URL=https://YOUR-NGROK-ID.ngrok-free.dev
+
+# Google OAuth
+# console.cloud.google.com → Credentials → OAuth 2.0
+# Authorized JavaScript origins: http://localhost:3000 + ngrok URL
+# Authorized redirect URIs: http://localhost:3000/api/auth/callback/google + ngrok URL
+GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxx
+
+# ToyyibPay (sandbox)
+TOYYIBPAY_SECRET_KEY=your-sandbox-secret-key
+TOYYIBPAY_CATEGORY_CODE=your-category-code
+TOYYIBPAY_BASE_URL=https://dev.toyyibpay.com
+TOYYIBPAY_RETURN_URL=https://YOUR-NGROK-ID.ngrok-free.dev/payment-status
+TOYYIBPAY_CALLBACK_URL=https://YOUR-NGROK-ID.ngrok-free.dev/api/toyyibpay/callback
+
+# Amazon S3 (dev bucket)
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=xxxx
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=polaroid-glossy-dev
 ```
 
-### Production (.env)
+## Production `.env`
 
 ```env
-DATABASE_URL=file:./db/production.db
-NEXTAUTH_URL=https://your-domain.com
-TOYYIBPAY_RETURN_URL=https://your-domain.com/payment-status
-TOYYIBPAY_CALLBACK_URL=https://your-domain.com/api/toyyibpay/callback
+# Database (PostgreSQL)
+DATABASE_URL=postgresql://user:password@host:5432/polaroid_glossy?sslmode=require
+
+# NextAuth
+NEXTAUTH_SECRET=long-random-string-min-32-chars
+NEXTAUTH_URL=https://polaroidglossy.my
+
+# Google OAuth
+GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxx
+
+# ToyyibPay (live)
+TOYYIBPAY_SECRET_KEY=your-live-secret-key
+TOYYIBPAY_CATEGORY_CODE=your-live-category-code
+TOYYIBPAY_BASE_URL=https://toyyibpay.com
+TOYYIBPAY_RETURN_URL=https://polaroidglossy.my/payment-status
+TOYYIBPAY_CALLBACK_URL=https://polaroidglossy.my/api/toyyibpay/callback
+
+# Amazon S3 (prod bucket + CloudFront)
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=xxxx
+AWS_REGION=ap-southeast-1
+AWS_S3_BUCKET=polaroid-glossy-prod
 ```
 
-## Switching Environments
+---
 
-### Step 1: Edit .env
+## Google OAuth Setup
 
-```bash
-# For production, update these variables:
-DATABASE_URL=file:./db/production.db
-NEXTAUTH_URL=https://your-domain.com
-TOYYIBPAY_RETURN_URL=https://your-domain.com/payment-status
-TOYYIBPAY_CALLBACK_URL=https://your-domain.com/api/toyyibpay/callback
+### Dev — Google Console settings
+- **Authorized JavaScript origins:**
+  ```
+  http://localhost:3000
+  https://YOUR-NGROK-ID.ngrok-free.dev
+  ```
+- **Authorized redirect URIs:**
+  ```
+  http://localhost:3000/api/auth/callback/google
+  https://YOUR-NGROK-ID.ngrok-free.dev/api/auth/callback/google
+  ```
+
+### Prod — Google Console settings
+- **Authorized JavaScript origins:** `https://polaroidglossy.my`
+- **Authorized redirect URIs:** `https://polaroidglossy.my/api/auth/callback/google`
+
+---
+
+## ToyyibPay Setup
+
+ToyyibPay cannot reach `localhost` — a public URL is required even for local dev.
+
+| Environment | Base URL | How to get public URL |
+|---|---|---|
+| Development | `https://dev.toyyibpay.com` | ngrok |
+| Production | `https://toyyibpay.com` | your domain |
+
+**Sandbox test credentials** are available after registering at [toyyibpay.com](https://toyyibpay.com).
+
+---
+
+## Amazon S3 Setup
+
+### Dev bucket (one-time)
+
+1. AWS Console → S3 → **Create bucket**
+2. Name: `polaroid-glossy-dev`, Region: your nearest region
+3. Uncheck **"Block all public access"** (dev convenience)
+4. Add bucket policy (Permissions tab → Bucket policy):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::polaroid-glossy-dev/*"
+    }
+  ]
+}
 ```
 
-### Step 2: Create Production Database
+### IAM credentials
 
-```bash
-# Create db directory
-mkdir -p db
+1. IAM → Users → Create user → attach **AmazonS3FullAccess**
+2. Security credentials → Create access key → Application outside AWS
+3. Copy **Access key ID** and **Secret access key**
 
-# Update DATABASE_URL in .env, then:
-bun run db:push
-```
+### Region note
 
-### Step 3: Rebuild
+Whatever region your bucket is in, set `AWS_REGION` to that same value.
+Image URLs will be: `https://{bucket}.s3.{region}.amazonaws.com/orders/...`
 
-```bash
-bun run build
-```
-
-### Step 4: Restart Server
-
-```bash
-bun run start
-```
+---
 
 ## Generating NEXTAUTH_SECRET
 
 ```bash
-# Using Bun
-bun run -e "console.log(crypto.randomUUID())"
-
-# Using OpenSSL
 openssl rand -base64 32
-
-# Using Node.js
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-## Google OAuth Setup
-
-### Development
-- Authorized JavaScript origins: `http://localhost:3000`
-- Authorized redirect URIs: `http://localhost:3000/api/auth/callback/google`
-
-### Production
-- Authorized JavaScript origins: `https://your-domain.com`
-- Authorized redirect URIs: `https://your-domain.com/api/auth/callback/google`
-
-## Supabase Setup
-
-Supabase is used for image storage (user-uploaded photos).
-
-1. Go to [supabase.com](https://supabase.com) and create a project
-2. In Project Settings → API, copy:
-   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-   - **anon/public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. Create a storage bucket named `polaroid-glossy`
-4. Set the bucket to **Public** (so images are accessible via URL)
-
-## ToyyibPay Setup
-
-### Important: ToyyibPay Requires Public URLs
-
-ToyyibPay's servers cannot reach `localhost`. For development, you need a public URL.
-
-**Option 1: ngrok (Recommended for local development)**
-
-```bash
-# Install ngrok first if not installed
-# Start your dev server first
-bun run dev
-
-# In another terminal, start ngrok tunnel
-ngrok http 3000
-
-# Update .env with the ngrok URL (example):
-TOYYIBPAY_RETURN_URL=https://your-ngrok-url.ngrok-free.dev/payment-status
-TOYYIBPAY_CALLBACK_URL=https://your-ngrok-url.ngrok-free.dev/api/toyyibpay/callback
-
-# Restart dev server for changes to take effect
-```
-
-**Option 2: Deploy to a public server**
-
-Use your production domain URL.
-
-### ToyyibPay Dashboard Configuration
-
-- Return URL: `https://your-url/payment-status`
-- Callback URL: `https://your-url/api/toyyibpay/callback`
-
-Update these URLs in your ToyyibPay merchant dashboard.
+---
 
 ## Security Notes
 
-- Never commit `.env` to version control
-- Use different secrets for development and production
-- Keep `NEXTAUTH_SECRET` private - it's used for session encryption
-- Keep `NEXT_PUBLIC_SUPABASE_ANON_KEY` restricted via Supabase Row Level Security (RLS)
-- Rotate secrets periodically in production
+- Never commit `.env` to git (it is in `.gitignore`)
+- Use different secrets for dev and prod
+- In production, use a scoped IAM policy — not `AmazonS3FullAccess`
+- Rotate `NEXTAUTH_SECRET` if compromised — it invalidates all active sessions

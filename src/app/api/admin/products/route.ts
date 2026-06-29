@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import productsMeta from '@/data/products-meta.json';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/products — all products (active + inactive) merged with metadata
 export async function GET() {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     let sizes;
     try {
@@ -65,6 +69,9 @@ export async function GET() {
 
 // POST /api/admin/products — create a new print size + optional metadata
 export async function POST(request: NextRequest) {
+  const { error } = await requireAdmin();
+  if (error) return error;
+
   try {
     const body = await request.json();
     const { name, displayName, width, height, price, description, isActive,

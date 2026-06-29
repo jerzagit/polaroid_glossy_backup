@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import productsMeta from '@/data/products-meta.json';
 
+// In-memory cache — avoids repeated DB hits for data that rarely changes
+let cache: { data: unknown; expiresAt: number } | null = null;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 export interface ProductSpecs {
   dimensions: string;
   paper: string;
@@ -40,6 +44,13 @@ const FALLBACK_SIZES = [
 ];
 
 export async function GET() {
+  // Serve from cache if still fresh
+  if (cache && Date.now() < cache.expiresAt) {
+    return NextResponse.json(cache.data, {
+      headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=60' },
+    });
+  }
+
   try {
     let sizes;
     try {
@@ -94,7 +105,12 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ success: true, products });
+    const responseData = { success: true, products };
+    cache = { data: responseData, expiresAt: Date.now() + CACHE_TTL_MS };
+
+    return NextResponse.json(responseData, {
+      headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=60' },
+    });
   } catch (error) {
     console.error('Error fetching products:', error);
     return NextResponse.json({ success: false, error: 'Failed to fetch products' }, { status: 500 });
