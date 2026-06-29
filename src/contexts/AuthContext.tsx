@@ -3,7 +3,8 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
-const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080/api';
+const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
+const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '')}/api`;
 const USE_LOCAL_AUTH_MOCK = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
 
 type AuthUser = {
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const email = 'local-customer@polaroid.test';
     const name = 'Local Test Customer';
 
-    const res = await fetch(`${BACKEND_API_BASE}/auth/google`, {
+    const res = await fetch(`${API_BASE}/auth/google`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, name }),
@@ -96,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!session?.user?.email) return;
 
     try {
-      const res = await fetch(`${BACKEND_API_BASE}/auth/google`, {
+      const res = await fetch(`${API_BASE}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

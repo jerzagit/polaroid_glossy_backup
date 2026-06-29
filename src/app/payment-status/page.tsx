@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, XCircle, Clock, Loader2, Camera, ArrowLeft } from 'lucide-react';
 
-const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080/api';
+const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
+const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '')}/api`;
 type PaymentUiStatus = 'success' | 'pending' | 'failed';
 
 const gatewayStatusToUiStatus = (value: string | null): PaymentUiStatus | null => {
@@ -59,7 +60,7 @@ function PaymentStatusContent() {
     }
 
     try {
-      const backendRes = await fetch(`${BACKEND_API_BASE}/orders/payment-return?${params.toString()}`);
+      const backendRes = await fetch(`${API_BASE}/orders/payment-return?${params.toString()}`);
       if (backendRes.ok) {
         const data = await backendRes.json();
         setOrderNumber(data.orderNumber);
@@ -83,7 +84,7 @@ function PaymentStatusContent() {
 
   const fetchOrderStatus = async (orderNum: string, fallbackStatus: PaymentUiStatus | null = null) => {
     try {
-      const backendRes = await fetch(`${BACKEND_API_BASE}/orders/${encodeURIComponent(orderNum)}`);
+      const backendRes = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderNum)}`);
       if (backendRes.ok) {
         const backendData = await backendRes.json();
         setOrderNumber(backendData.orderNumber || orderNum);
@@ -102,12 +103,13 @@ function PaymentStatusContent() {
     }
 
     try {
-      const res = await fetch(`/api/orders?orderNumber=${orderNum}`);
-      const data = await res.json();
-      if (data.success && data.order) {
-        if (data.order.paymentStatus === 'paid') {
+      const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderNum)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const paymentStatus = data.paymentStatus || data.status;
+        if (paymentStatus === 'PAID') {
           setStatus('success');
-        } else if (data.order.paymentStatus === 'pending') {
+        } else if (paymentStatus === 'PENDING') {
           setStatus('pending');
         } else {
           setStatus('failed');

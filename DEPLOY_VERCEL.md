@@ -33,7 +33,7 @@ Add these for the **Production** (and Preview) environments:
 
 | Key | Value |
 |-----|-------|
-| `NEXT_PUBLIC_BACKEND_API_BASE` | `https://polaroid-glossy-backend.fly.dev/api` |
+| `NEXT_PUBLIC_BACKEND_API_BASE` | `https://polaroid-glossy-backend.fly.dev` (server base URL, `/api` is appended automatically) |
 | `NEXTAUTH_URL` | `https://<your-vercel-domain>.vercel.app` |
 | `NEXTAUTH_SECRET` | generate with `openssl rand -base64 32` |
 | `GOOGLE_CLIENT_ID` | your Google OAuth client ID |
