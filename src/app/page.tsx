@@ -220,6 +220,10 @@ const normalizeMalaysiaPhone = (value: string): string => {
 };
 
 const normalizeMalaysiaPostcode = (value: string): string => value.replace(/\D/g, '').slice(0, 5);
+const isBackendUploadableImage = (file: File): boolean => {
+  const extension = file.name.toLowerCase().match(/\.(jpg|jpeg|png)$/);
+  return (file.type === 'image/jpeg' || file.type === 'image/png') && Boolean(extension);
+};
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080/api';
 const USE_LOCAL_PAYMENT_MOCK = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
@@ -525,6 +529,9 @@ export default function PolaroidPrintPage() {
     const processFile = async (file: File): Promise<PhotoItem> => {
       try {
         const compressedFile = await compressImage(file, WHATSAPP_HD_SETTINGS);
+        if (!isBackendUploadableImage(compressedFile)) {
+          throw new Error(`${file.name} could not be converted to JPG/PNG`);
+        }
         
         return new Promise((resolve) => {
           const reader = new FileReader();
@@ -547,7 +554,11 @@ export default function PolaroidPrintPage() {
           reader.readAsDataURL(compressedFile);
         });
       } catch (error) {
-        console.error('Compression failed, using original:', error);
+        console.error('Image processing failed:', error);
+        if (!isBackendUploadableImage(file)) {
+          throw new Error(`Could not prepare ${file.name} for upload. Please use JPG or PNG, or convert the file before checkout.`);
+        }
+
         return new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = (event) => {
@@ -577,7 +588,7 @@ export default function PolaroidPrintPage() {
       setPhotos(prev => [...prev, ...processedPhotos]);
       toast.success(`Added ${processedPhotos.length} photo${processedPhotos.length > 1 ? 's' : ''}!`);
     } catch (error) {
-      toast.error('Failed to process some photos');
+      toast.error(error instanceof Error ? error.message : 'Failed to process some photos');
     } finally {
       setIsUploading(false);
 
