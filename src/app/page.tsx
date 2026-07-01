@@ -33,6 +33,7 @@ import {
   LogOut,
   Settings,
   PackageOpen,
+  Menu,
   MessageSquare,
   Search,
   Copy,
@@ -59,6 +60,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { compressImage, WHATSAPP_HD_SETTINGS } from '@/lib/imageCompression';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { ProductCatalog } from '@/components/ProductCatalog';
 import {
   Dialog,
@@ -148,9 +156,22 @@ interface Review {
 }
 
 const malaysiaStates = [
-  { id: 'w', name: 'West Malaysia (Semenanjung)', shippingCost: 7 },
-  { id: 'e_sabah', name: 'Sabah', shippingCost: 11 },
-  { id: 'e_sarawak', name: 'Sarawak', shippingCost: 11 },
+  { id: 'johor', name: 'Johor', shippingCost: 7 },
+  { id: 'kedah', name: 'Kedah', shippingCost: 7 },
+  { id: 'kelantan', name: 'Kelantan', shippingCost: 7 },
+  { id: 'melaka', name: 'Melaka', shippingCost: 7 },
+  { id: 'nsembilan', name: 'Negeri Sembilan', shippingCost: 7 },
+  { id: 'pahang', name: 'Pahang', shippingCost: 7 },
+  { id: 'perak', name: 'Perak', shippingCost: 7 },
+  { id: 'perlis', name: 'Perlis', shippingCost: 7 },
+  { id: 'penang', name: 'Pulau Pinang', shippingCost: 7 },
+  { id: 'selangor', name: 'Selangor', shippingCost: 7 },
+  { id: 'terengganu', name: 'Terengganu', shippingCost: 7 },
+  { id: 'kl', name: 'Kuala Lumpur', shippingCost: 7 },
+  { id: 'putrajaya', name: 'Putrajaya', shippingCost: 7 },
+  { id: 'labuan', name: 'Labuan', shippingCost: 11 },
+  { id: 'sabah', name: 'Sabah', shippingCost: 11 },
+  { id: 'sarawak', name: 'Sarawak', shippingCost: 11 },
 ];
 
 const getShippingCost = (stateId: string): number => {
@@ -197,6 +218,7 @@ export default function PolaroidPrintPage() {
   const [showCart, setShowCart] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   
@@ -213,14 +235,19 @@ export default function PolaroidPrintPage() {
   const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
   const [trackingInput, setTrackingInput] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('bank_transfer');
+  const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('toyyibpay');
   
   // Form
   const [orderFormData, setOrderFormData] = useState({
     customerName: '',
     customerEmail: '',
     customerPhone: '',
-    customerState: 'w',
+    customerState: 'selangor',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    postalCode: '',
+    country: 'Malaysia',
     notes: ''
   });
   
@@ -357,7 +384,8 @@ export default function PolaroidPrintPage() {
             setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, uploading: false } : p));
           }
         })
-        .catch(() => setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, uploading: false } : p)));
+        .catch(() => setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, uploading: false } : p)))
+        .finally(() => setUploadProgress(prev => prev ? { ...prev, done: prev.done + 1 } : null));
 
       return photo;
     };
@@ -371,6 +399,7 @@ export default function PolaroidPrintPage() {
 
       if (processedPhotos.length > 0) {
         setPhotos(prev => [...prev, ...processedPhotos]);
+        setUploadProgress({ done: 0, total: processedPhotos.length });
         toast.success(t.toast_photos_added(processedPhotos.length));
       }
       if (failedCount > 0) {
@@ -439,8 +468,38 @@ export default function PolaroidPrintPage() {
   const handleCheckout = useCallback(async () => {
     console.log('handleCheckout clicked, paymentMethod:', paymentMethod);
     
-    if (!orderFormData.customerName || !orderFormData.customerEmail) {
+    if (!orderFormData.customerName || !orderFormData.customerName.trim()) {
       toast.error(t.toast_fill_required);
+      return;
+    }
+
+    if (!orderFormData.customerEmail) {
+      toast.error(t.toast_fill_required);
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(orderFormData.customerEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    if (!orderFormData.customerPhone || orderFormData.customerPhone.length < 11) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
+
+    if (!orderFormData.addressLine1 || !orderFormData.addressLine1.trim()) {
+      toast.error('Please enter your address');
+      return;
+    }
+
+    if (!orderFormData.city || !orderFormData.city.trim()) {
+      toast.error('Please enter your city');
+      return;
+    }
+
+    if (!orderFormData.postalCode || !orderFormData.postalCode.trim()) {
+      toast.error('Please enter your postal code');
       return;
     }
 
@@ -621,77 +680,113 @@ export default function PolaroidPrintPage() {
   const renderHeroSection = () => (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10 rounded-3xl" />
-      <div className="relative grid lg:grid-cols-2 gap-8 lg:gap-12 items-center py-12 lg:py-20 px-6 lg:px-12">
-        <div className="space-y-6 text-center lg:text-left">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <Badge variant="secondary" className="mb-4 px-4 py-1.5">
-              <Sparkles className="w-3.5 h-3.5 mr-2" /> {t.badge_premium}
-            </Badge>
-          </motion.div>
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-            {t.hero_title1}{' '}<span className="text-primary">{t.hero_title2}</span>
-          </motion.h1>
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0">
-            {t.hero_desc}
-          </motion.p>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            <Button size="lg" className="text-lg px-8" onClick={() => setCurrentStep(0)}>
-              {t.btn_start} <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8" onClick={() => document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' })}>
-              {t.btn_pricing}
-            </Button>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="flex items-center justify-center lg:justify-start gap-8 pt-4">
-            <div className="flex items-center gap-2">
-              <div className="flex -space-x-2">{[1, 2, 3, 4].map((i) => (<div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-primary border-2 border-background" />))}</div>
-              <span className="text-sm text-muted-foreground">{t.hero_customers}</span>
+      <div className="relative">
+        {/* Mobile: stacked layout */}
+        <div className="lg:hidden relative">
+          <img src="/images/hero-polaroids.png" alt="Beautiful polaroid prints" className="w-full h-[40vh] object-cover" />
+          <div className="absolute top-3 right-3 rotate-6 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-lg border border-primary/20 z-10">
+            <span className="text-[11px] font-bold text-foreground">
+              Polaroid Style Image
+            </span>
+          </div>
+          <div className="px-6 pb-8 -mt-16 relative z-10">
+            <div className="bg-gradient-to-t from-background via-background/95 to-transparent absolute inset-0 -top-16" />
+            <div className="relative z-10 space-y-5 text-center">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                <Badge variant="secondary" className="px-4 py-1.5">
+                  <Sparkles className="w-3.5 h-3.5 mr-2" /> {t.badge_premium}
+                </Badge>
+              </motion.div>
+              <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-3xl font-bold tracking-tight leading-snug">
+                {t.hero_title1}{' '}<span className="text-primary">{t.hero_title2}</span>
+              </motion.h1>
+              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-sm text-muted-foreground">
+                {t.hero_desc}
+              </motion.p>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex flex-col gap-3">
+                <Button size="lg" className="w-full" onClick={() => setCurrentStep(0)}>
+                  {t.btn_start} <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="lg" className="w-full" onClick={() => document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' })}>
+                  {t.btn_pricing}
+                </Button>
+              </motion.div>
             </div>
-            <div className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (<Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />))}
-              <span className="text-sm text-muted-foreground ml-1">4.9/5</span>
-            </div>
-          </motion.div>
+          </div>
         </div>
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} className="relative flex justify-center">
-          <div className="relative">
-            <img src="/images/hero-polaroids.png" alt="Beautiful polaroid prints" className="w-full max-w-lg rounded-2xl shadow-2xl" />
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 }} className="absolute -left-4 top-1/4 bg-card shadow-lg rounded-lg p-3 border">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <Truck className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{t.hero_delivery_title}</p>
-                  <p className="text-xs text-muted-foreground">{t.hero_delivery_sub}</p>
-                </div>
-              </div>
+        {/* Desktop: side-by-side (unchanged) */}
+        <div className="hidden lg:grid lg:grid-cols-2 gap-8 lg:gap-12 items-center py-12 lg:py-20 px-6 lg:px-12">
+          <div className="space-y-6 text-center lg:text-left">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+              <Badge variant="secondary" className="mb-4 px-4 py-1.5">
+                <Sparkles className="w-3.5 h-3.5 mr-2" /> {t.badge_premium}
+              </Badge>
             </motion.div>
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.8 }} className="absolute -right-4 bottom-1/4 bg-card shadow-lg rounded-lg p-3 border">
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+              {t.hero_title1}{' '}<span className="text-primary">{t.hero_title2}</span>
+            </motion.h1>
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0">
+              {t.hero_desc}
+            </motion.p>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <Button size="lg" className="text-lg px-8" onClick={() => setCurrentStep(0)}>
+                {t.btn_start} <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+              <Button variant="outline" size="lg" className="text-lg px-8" onClick={() => document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' })}>
+                {t.btn_pricing}
+              </Button>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="flex items-center justify-center lg:justify-start gap-8 pt-4">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{t.hero_quality_title}</p>
-                  <p className="text-xs text-muted-foreground">{t.hero_quality_sub}</p>
-                </div>
+                <div className="flex -space-x-2">{[1, 2, 3, 4].map((i) => (<div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-primary border-2 border-background" />))}</div>
+                <span className="text-sm text-muted-foreground">{t.hero_customers}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (<Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />))}
+                <span className="text-sm text-muted-foreground ml-1">4.9/5</span>
               </div>
             </motion.div>
           </div>
-        </motion.div>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} className="relative flex justify-center">
+            <div className="relative">
+              <img src="/images/hero-polaroids.png" alt="Beautiful polaroid prints" className="w-full max-w-xl lg:max-w-2xl rounded-2xl shadow-2xl" />
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 }} className="absolute -left-4 top-1/4 bg-card shadow-lg rounded-lg p-3 border">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <Truck className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{t.hero_delivery_title}</p>
+                    <p className="text-xs text-muted-foreground">{t.hero_delivery_sub}</p>
+                  </div>
+                </div>
+              </motion.div>
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.8 }} className="absolute -right-4 bottom-1/4 bg-card shadow-lg rounded-lg p-3 border">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{t.hero_quality_title}</p>
+                    <p className="text-xs text-muted-foreground">{t.hero_quality_sub}</p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </motion.div>
   );
 
   const renderFeaturesSection = () => (
-    <section className="py-16 px-6">
+    <section className="py-8 md:py-16 px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">{t.features_title}</h2>
+        <div className="text-center mb-6 md:mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">{t.features_title}</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">{t.features_desc}</p>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
           {[
             { icon: Zap, title: t.feat1_title, description: t.feat1_desc },
             { icon: Shield, title: t.feat2_title, description: t.feat2_desc },
@@ -702,12 +797,12 @@ export default function PolaroidPrintPage() {
           ].map((feature, index) => (
             <motion.div key={feature.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }}>
               <Card className="h-full hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                    <feature.icon className="w-6 h-6 text-primary" />
+                <CardContent className="p-3 md:pt-6">
+                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2 md:mb-4">
+                    <feature.icon className="w-4 h-4 md:w-6 md:h-6 text-primary" />
                   </div>
-                  <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
-                  <p className="text-muted-foreground">{feature.description}</p>
+                  <h3 className="font-semibold text-xs md:text-lg mb-1 md:mb-2">{feature.title}</h3>
+                  <p className="text-[11px] md:text-sm text-muted-foreground leading-tight md:leading-normal">{feature.description}</p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -718,14 +813,14 @@ export default function PolaroidPrintPage() {
   );
 
   const renderCustomerGallery = () => (
-    <section className="py-16 px-6 bg-gradient-to-b from-background to-muted/20">
+    <section className="py-8 md:py-16 px-6 bg-gradient-to-b from-background to-muted/20">
       <div className="max-w-6xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-6 md:mb-12">
           <Badge variant="secondary" className="mb-4"><Users className="w-3.5 h-3.5 mr-2" />{t.badge_happy}</Badge>
-          <h2 className="text-3xl font-bold mb-4">{t.gallery_title}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">{t.gallery_title}</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">{t.gallery_desc}</p>
         </motion.div>
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
+        <div className="grid md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-12">
           {customerTestimonials.map((testimonial, index) => (
             <motion.div key={testimonial.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }}>
               <Card className="h-full hover:shadow-lg transition-all">
@@ -767,7 +862,7 @@ export default function PolaroidPrintPage() {
             ))}
           </div>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mt-6 md:mt-12">
           {[{ value: '10,000+', label: t.stat1 }, { value: '500,000+', label: t.stat2 }, { value: '4.9/5', label: t.stat3 }, { value: '30+', label: t.stat4 }].map((stat, index) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="text-center">
               <p className="text-3xl md:text-4xl font-bold text-primary">{stat.value}</p>
@@ -780,14 +875,14 @@ export default function PolaroidPrintPage() {
   );
 
   const renderProductVideos = () => (
-    <section className="py-16 px-6">
+    <section className="py-8 md:py-16 px-6">
       <div className="max-w-6xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-6 md:mb-12">
           <Badge variant="secondary" className="mb-4"><Play className="w-3.5 h-3.5 mr-2" />{t.badge_showcase}</Badge>
-          <h2 className="text-3xl font-bold mb-4">{t.videos_title}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">{t.videos_title}</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">{t.videos_desc}</p>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-8">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-4 md:mb-8">
           <Card className="overflow-hidden group cursor-pointer">
             <div className="relative aspect-video">
               <img src={productVideos[0].thumbnail} alt={productVideos[0].title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
@@ -804,7 +899,7 @@ export default function PolaroidPrintPage() {
             </div>
           </Card>
         </motion.div>
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-4 md:gap-6">
           {productVideos.slice(1).map((video, index) => (
             <motion.div key={video.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }}>
               <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow">
@@ -825,9 +920,38 @@ export default function PolaroidPrintPage() {
             </motion.div>
           ))}
         </div>
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-16">
-          <h3 className="text-2xl font-bold text-center mb-8">{t.process_title}</h3>
-          <div className="grid md:grid-cols-4 gap-4">
+      </div>
+    </section>
+  );
+
+  const renderProcessSteps = () => (
+    <div className="px-6 py-6 md:py-0">
+      <div className="max-w-6xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+          <h3 className="text-lg md:text-2xl font-bold text-center mb-4 md:mb-8">{t.process_title}</h3>
+          {/* Mobile: single unified card */}
+          <div className="md:hidden">
+            <Card className="p-4">
+              <div className="flex flex-col gap-3">
+                {[{ step: 1, title: t.proc1_title, icon: Upload }, { step: 2, title: t.proc2_title, icon: Sparkles }, { step: 3, title: t.proc3_title, icon: Camera }, { step: 4, title: t.proc4_title, icon: Truck }].map((item, index) => (
+                  <div key={item.step} className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center">
+                        <item.icon className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-[10px]">{item.step}</div>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold">{item.title}</p>
+                    </div>
+                    {index < 3 && <ChevronRight className="ml-auto w-4 h-4 text-muted-foreground shrink-0" />}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+          {/* Desktop: 4-column grid */}
+          <div className="hidden md:grid md:grid-cols-4 gap-4">
             {[{ step: 1, title: t.proc1_title, description: t.proc1_desc, icon: Upload }, { step: 2, title: t.proc2_title, description: t.proc2_desc, icon: Sparkles }, { step: 3, title: t.proc3_title, description: t.proc3_desc, icon: Camera }, { step: 4, title: t.proc4_title, description: t.proc4_desc, icon: Truck }].map((item, index) => (
               <motion.div key={item.step} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="relative">
                 <Card className="text-center p-6 h-full">
@@ -844,14 +968,14 @@ export default function PolaroidPrintPage() {
           </div>
         </motion.div>
       </div>
-    </section>
+    </div>
   );
 
   const renderPricingSection = () => (
-    <section id="pricing-section" className="py-16 px-6 bg-muted/30">
+    <section id="pricing-section" className="py-8 md:py-16 px-6 bg-muted/30">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">{t.pricing_title}</h2>
+        <div className="text-center mb-6 md:mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">{t.pricing_title}</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">{t.pricing_desc}</p>
         </div>
         <ProductCatalog
@@ -860,13 +984,13 @@ export default function PolaroidPrintPage() {
             setCurrentStep(0);
           }}
         />
-        <p className="text-center text-muted-foreground mt-8">{t.shipping_note}</p>
+        <p className="text-center text-muted-foreground mt-4 md:mt-8">{t.shipping_note}</p>
         
         {/* Customer Reviews */}
         {reviews.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-16">
-            <h3 className="text-2xl font-bold text-center mb-8">{t.reviews_title}</h3>
-            <div className="grid md:grid-cols-3 gap-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-8 md:mt-16">
+            <h3 className="text-xl md:text-2xl font-bold text-center mb-6 md:mb-8">{t.reviews_title}</h3>
+            <div className="grid md:grid-cols-3 gap-4 md:gap-6">
               {reviews.slice(0, 6).map((review) => (
                 <Card key={review.id}>
                   <CardContent className="p-4">
@@ -887,10 +1011,10 @@ export default function PolaroidPrintPage() {
   );
 
   const renderUploadStep = () => (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-foreground mb-2">{t.upload_title}</h2>
-        <p className="text-muted-foreground">{t.upload_desc}</p>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-4 md:space-y-6">
+      <div className="text-center">
+        <h2 className="text-xl md:text-2xl font-bold mb-2">{t.upload_title}</h2>
+        <p className="text-sm md:text-base text-muted-foreground">{t.upload_desc}</p>
       </div>
 
       <div className="max-w-4xl mx-auto">
@@ -913,7 +1037,7 @@ export default function PolaroidPrintPage() {
           />
           <div className="space-y-4">
             <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-              {isUploading ? (
+              {isUploading || uploadProgress ? (
                 <Loader2 className="w-8 h-8 text-primary animate-spin" />
               ) : (
                 <Upload className="w-8 h-8 text-primary" />
@@ -922,6 +1046,8 @@ export default function PolaroidPrintPage() {
             <div>
               {isUploading ? (
                 <p className="text-lg font-medium">{t.upload_compressing}</p>
+              ) : uploadProgress ? (
+                <p className="text-lg font-medium">Uploading {uploadProgress.done} / {uploadProgress.total}</p>
               ) : (
                 <>
                   <p className="text-lg font-medium">{t.upload_drop}</p>
@@ -935,9 +1061,9 @@ export default function PolaroidPrintPage() {
 
         {/* Photo Grid */}
         {photos.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">{t.upload_count(photos.length)}</h3>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-3 md:mt-6">
+            <div className="flex items-center justify-between mb-3 md:mb-4">
+              <h3 className="text-base md:text-lg font-semibold">{t.upload_count(photos.length)}</h3>
               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                 <Plus className="w-4 h-4 mr-2" /> {t.btn_addmore}
               </Button>
@@ -973,10 +1099,10 @@ export default function PolaroidPrintPage() {
 
         {/* Size Selection & Quantity */}
         {photos.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 space-y-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-4 md:mt-8 space-y-4 md:space-y-6">
             <div>
-              <h3 className="text-lg font-semibold mb-4">{t.select_size_title}</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">{t.select_size_title}</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                 {printSizes.map((size) => (
                   <Card
                     key={size.id}
@@ -1030,14 +1156,14 @@ export default function PolaroidPrintPage() {
   );
 
   const renderCartStep = () => (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-foreground mb-2">{t.cart_title}</h2>
-        <p className="text-muted-foreground">{t.cart_desc}</p>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-4 md:space-y-6">
+      <div className="text-center mb-4 md:mb-8">
+        <h2 className="text-xl md:text-3xl font-bold text-foreground mb-2">{t.cart_title}</h2>
+        <p className="text-sm md:text-base text-muted-foreground">{t.cart_desc}</p>
       </div>
 
       {cart.length === 0 ? (
-        <div className="text-center py-16">
+        <div className="text-center py-8 md:py-16">
           <div className="w-24 h-24 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
             <ShoppingCart className="w-12 h-12 text-muted-foreground" />
           </div>
@@ -1095,8 +1221,8 @@ export default function PolaroidPrintPage() {
             ))}
           </div>
 
-          <Card className="mt-6">
-            <CardContent className="p-6">
+          <Card className="mt-3 md:mt-6">
+            <CardContent className="p-4 md:p-6">
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.cart_total_label(totalPhotos)}</span>
@@ -1115,7 +1241,7 @@ export default function PolaroidPrintPage() {
             </CardContent>
           </Card>
 
-          <div className="flex gap-4 mt-6">
+          <div className="flex gap-3 md:gap-4 mt-3 md:mt-6">
             <Button variant="outline" className="flex-1" onClick={() => setCurrentStep(0)}>
               <Plus className="w-4 h-4 mr-2" /> {t.btn_addmore_photos}
             </Button>
@@ -1129,10 +1255,10 @@ export default function PolaroidPrintPage() {
   );
 
   const renderCheckoutStep = () => (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-foreground mb-2">{t.checkout_title}</h2>
-        <p className="text-muted-foreground">{t.checkout_desc}</p>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-4 md:space-y-6">
+      <div className="text-center mb-4 md:mb-8">
+        <h2 className="text-xl md:text-3xl font-bold text-foreground mb-2">{t.checkout_title}</h2>
+        <p className="text-sm md:text-base text-muted-foreground">{t.checkout_desc}</p>
       </div>
 
       <div className="max-w-2xl mx-auto">
@@ -1146,78 +1272,94 @@ export default function PolaroidPrintPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">{t.label_fullname}</Label>
-              <Input id="name" placeholder={t.placeholder_name} value={orderFormData.customerName} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerName: e.target.value }))} />
+              <Input id="name" placeholder={t.placeholder_name} maxLength={100} value={orderFormData.customerName} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerName: e.target.value }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">{t.label_email}</Label>
-              <Input id="email" type="email" placeholder={t.placeholder_email} value={orderFormData.customerEmail} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerEmail: e.target.value }))} />
+              <Input id="email" type="email" placeholder={t.placeholder_email} value={orderFormData.customerEmail} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerEmail: e.target.value }))} className={orderFormData.customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(orderFormData.customerEmail) ? 'border-red-500' : ''} />
+              {orderFormData.customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(orderFormData.customerEmail) && (
+                <p className="text-xs text-red-500">Please enter a valid email address</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">{t.label_phone}</Label>
-              <Input id="phone" type="tel" placeholder="+60 123 456789" value={orderFormData.customerPhone} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerPhone: e.target.value }))} />
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground font-medium pointer-events-none select-none text-sm">+60</span>
+                <Input id="phone" type="tel" inputMode="numeric" className="pl-10" placeholder="123 456789" maxLength={10} value={orderFormData.customerPhone.replace('+60', '')} onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, '');
+                  setOrderFormData(prev => ({ ...prev, customerPhone: digits ? `+60${digits}` : '' }));
+                }} />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="state">{t.label_state}</Label>
-              <Select value={orderFormData.customerState} onValueChange={(value) => setOrderFormData(prev => ({ ...prev, customerState: value }))}>
-                <SelectTrigger id="state">
-                  <SelectValue placeholder={t.placeholder_state} />
-                </SelectTrigger>
-                <SelectContent>
-                  {malaysiaStates.map((state) => (
-                    <SelectItem key={state.id} value={state.id}>
-                      {state.name} {t.state_shipping(state.shippingCost)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="address1">Address Line 1</Label>
+              <Input id="address1" placeholder="Street address, P.O. box" maxLength={200} value={orderFormData.addressLine1} onChange={(e) => setOrderFormData(prev => ({ ...prev, addressLine1: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address2">Address Line 2 <span className="text-muted-foreground">(optional)</span></Label>
+              <Input id="address2" placeholder="Apartment, suite, unit, etc." maxLength={200} value={orderFormData.addressLine2} onChange={(e) => setOrderFormData(prev => ({ ...prev, addressLine2: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Input id="city" placeholder="City" maxLength={100} value={orderFormData.city} onChange={(e) => setOrderFormData(prev => ({ ...prev, city: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="postal">Postal / Zip Code</Label>
+                <Input id="postal" type="tel" inputMode="numeric" placeholder="Postal code" maxLength={10} value={orderFormData.postalCode} onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, '');
+                  setOrderFormData(prev => ({ ...prev, postalCode: digits }));
+                }} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="state">{t.label_state}</Label>
+                <Select value={orderFormData.customerState} onValueChange={(value) => setOrderFormData(prev => ({ ...prev, customerState: value }))}>
+                  <SelectTrigger id="state">
+                    <SelectValue placeholder={t.placeholder_state} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {malaysiaStates.map((state) => (
+                      <SelectItem key={state.id} value={state.id}>
+                        {state.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Input id="country" maxLength={100} value={orderFormData.country} disabled />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="notes">{t.label_notes}</Label>
-              <Textarea id="notes" placeholder={t.placeholder_notes} value={orderFormData.notes} onChange={(e) => setOrderFormData(prev => ({ ...prev, notes: e.target.value }))} />
+              <Textarea id="notes" placeholder={t.placeholder_notes} maxLength={500} value={orderFormData.notes} onChange={(e) => setOrderFormData(prev => ({ ...prev, notes: e.target.value }))} />
+              <p className="text-xs text-muted-foreground text-right">{orderFormData.notes.length}/500</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>{t.label_payment}</CardTitle>
-          </CardHeader>
+        <Card className="mt-3 md:mt-6">
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div
-                className={cn(
-                  "border-2 rounded-lg p-4 cursor-pointer transition-all",
-                  paymentMethod === 'bank_transfer' ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                )}
-                onClick={() => setPaymentMethod('bank_transfer')}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", paymentMethod === 'bank_transfer' ? "border-primary bg-primary" : "border-muted-foreground")}>
-                    {paymentMethod === 'bank_transfer' && <div className="w-2 h-2 rounded-full bg-white" />}
-                  </div>
-                  <div>
-                    <p className="font-semibold">{t.pay_bank}</p>
-                    <p className="text-xs text-muted-foreground">Maybank</p>
-                  </div>
-                </div>
-              </div>
-              <div
-                className={cn(
-                  "border-2 rounded-lg p-4 cursor-pointer transition-all",
-                  paymentMethod === 'toyyibpay' ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                )}
-                onClick={() => setPaymentMethod('toyyibpay')}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", paymentMethod === 'toyyibpay' ? "border-primary bg-primary" : "border-muted-foreground")}>
-                    {paymentMethod === 'toyyibpay' && <div className="w-2 h-2 rounded-full bg-white" />}
-                  </div>
-                  <div>
-                    <p className="font-semibold">ToyyibPay</p>
-                    <p className="text-xs text-muted-foreground">{t.pay_online}</p>
-                  </div>
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label>{t.label_payment}</Label>
+              <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="toyyibpay">
+                    <span className="font-medium">ToyyibPay</span>
+                    <span className="text-xs text-muted-foreground ml-2">{t.pay_online}</span>
+                  </SelectItem>
+                  <SelectItem value="bank_transfer">
+                    <span className="font-medium">{t.pay_bank}</span>
+                    <span className="text-xs text-muted-foreground ml-2">Maybank</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {paymentMethod === 'bank_transfer' && (
@@ -1239,7 +1381,7 @@ export default function PolaroidPrintPage() {
           </CardContent>
         </Card>
 
-        <Card className="mt-6">
+        <Card className="mt-3 md:mt-6">
           <CardHeader>
             <CardTitle>{t.order_summary_title}</CardTitle>
           </CardHeader>
@@ -1269,7 +1411,7 @@ export default function PolaroidPrintPage() {
           </CardContent>
         </Card>
 
-        <div className="flex gap-4 mt-6">
+        <div className="flex gap-3 md:gap-4 mt-3 md:mt-6">
           <Button variant="outline" className="flex-1" onClick={() => setCurrentStep(2)}>{t.btn_back_cart}</Button>
           <Button className="flex-1" onClick={handleCheckout} disabled={isProcessing}>
             {isProcessing ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />{t.btn_processing}</>) : (<><CreditCard className="w-4 h-4 mr-2" />{paymentMethod === 'toyyibpay' ? t.btn_pay_toyyibpay : t.btn_place_order}</>)}
@@ -1280,7 +1422,7 @@ export default function PolaroidPrintPage() {
   );
 
   const renderConfirmationStep = () => (
-    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12">
+    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-6 md:py-12">
       {paymentMethod === 'bank_transfer' ? (
         <>
           <div className="w-24 h-24 mx-auto bg-yellow-100 rounded-full flex items-center justify-center mb-6">
@@ -1346,8 +1488,8 @@ export default function PolaroidPrintPage() {
       )}
 
       {/* Order Status Progress Bar */}
-      <div className="mt-8">
-        <p className="text-sm text-muted-foreground mb-4">
+      <div className="mt-4 md:mt-8">
+        <p className="text-sm text-muted-foreground mb-3 md:mb-4">
           {paymentMethod === 'bank_transfer' ? t.label_order_status : t.label_track_order}
         </p>
         <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
@@ -1379,11 +1521,11 @@ export default function PolaroidPrintPage() {
         </div>
       </div>
 
-      <div className="flex gap-4 mt-8 justify-center">
+      <div className="flex gap-3 md:gap-4 mt-4 md:mt-8 justify-center">
         <Button variant="outline" onClick={() => { setShowTrackingModal(true); setTrackingInput(orderNumber); }}>
           <Search className="w-4 h-4 mr-2" /> {t.btn_track}
         </Button>
-        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerState: 'w', notes: '' }); }}>
+        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerState: 'selangor', addressLine1: '', addressLine2: '', city: '', postalCode: '', country: 'Malaysia', notes: '' }); }}>
           <Plus className="w-4 h-4 mr-2" /> {t.btn_new_order}
         </Button>
       </div>
@@ -1400,115 +1542,179 @@ export default function PolaroidPrintPage() {
     }
   };
 
-  // User Menu Component
-  const renderUserMenu = () => (
-    <div className="relative">
-      {authLoading ? (
-        <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
-      ) : user ? (
-        <>
-          <Button
-            variant="ghost"
-            className="relative h-10 w-10 rounded-full"
-            onClick={() => setShowUserMenu(!showUserMenu)}
-          >
-            {profile?.avatar ? (
-              <img src={profile.avatar} alt="Avatar" className="h-10 w-10 rounded-full object-cover" />
-            ) : (
-              <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center">
-                <User className="h-5 w-5 text-primary-foreground" />
-              </div>
-            )}
-          </Button>
-          <AnimatePresence>
-            {showUserMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute right-0 mt-2 w-56 rounded-lg bg-card border shadow-lg z-50"
-                >
-                  <div className="p-3 border-b">
-                    <p className="font-medium">{profile?.name || 'User'}</p>
-                    <p className="text-sm text-muted-foreground">{profile?.email || user.email}</p>
-                  </div>
-                  <div className="p-2">
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => { setShowUserMenu(false); setShowOrdersModal(true); }}>
-                      <PackageOpen className="w-4 h-4 mr-2" /> {t.menu_orders}
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => { setShowUserMenu(false); setShowTrackingModal(true); }}>
-                      <Search className="w-4 h-4 mr-2" /> {t.menu_track}
-                    </Button>
-                    <Separator className="my-2" />
-                    <Button variant="ghost" className="w-full justify-start text-destructive" onClick={() => { setShowUserMenu(false); signOut(); }}>
-                      <LogOut className="w-4 h-4 mr-2" /> {t.btn_signout}
-                    </Button>
-                  </div>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-        </>
-      ) : (
-        <Button onClick={signInWithGoogle}>
-          <LogIn className="w-4 h-4 mr-2" /> {t.btn_signin}
+  // User Menu - logged-in avatar dropdown only
+  const renderUserMenu = () => {
+    if (authLoading) {
+      return <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />;
+    }
+    if (!user) return null;
+    return (
+      <div className="relative">
+        <Button
+          variant="ghost"
+          className="relative h-10 w-10 rounded-full"
+          onClick={() => setShowUserMenu(!showUserMenu)}
+        >
+          {profile?.avatar ? (
+            <img src={profile.avatar} alt="Avatar" className="h-10 w-10 rounded-full object-cover" />
+          ) : (
+            <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center">
+              <User className="h-5 w-5 text-primary-foreground" />
+            </div>
+          )}
         </Button>
-      )}
-    </div>
-  );
+        <AnimatePresence>
+          {showUserMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute right-0 mt-2 w-56 rounded-lg bg-card border shadow-lg z-50"
+              >
+                <div className="p-3 border-b">
+                  <p className="font-medium">{profile?.name || 'User'}</p>
+                  <p className="text-sm text-muted-foreground">{profile?.email || user.email}</p>
+                </div>
+                <div className="p-2">
+                  <Button variant="ghost" className="w-full justify-start" onClick={() => { setShowUserMenu(false); setShowOrdersModal(true); }}>
+                    <PackageOpen className="w-4 h-4 mr-2" /> {t.menu_orders}
+                  </Button>
+                  <Button variant="ghost" className="w-full justify-start" onClick={() => { setShowUserMenu(false); setShowTrackingModal(true); }}>
+                    <Search className="w-4 h-4 mr-2" /> {t.menu_track}
+                  </Button>
+                  <Separator className="my-2" />
+                  <Button variant="ghost" className="w-full justify-start text-destructive" onClick={() => { setShowUserMenu(false); signOut(); }}>
+                    <LogOut className="w-4 h-4 mr-2" /> {t.btn_signout}
+                  </Button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-3 md:px-4 py-2 md:py-4">
           <div className="flex items-center justify-between">
-            <button className="flex items-center gap-2" onClick={() => setCurrentStep(-1)}>
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
-                <Camera className="w-6 h-6 text-white" />
+            <button className="flex items-center gap-1.5 md:gap-2" onClick={() => setCurrentStep(-1)}>
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
+                <Camera className="w-4 h-4 md:w-6 md:h-6 text-white" />
               </div>
               <div className="text-left">
-                <h1 className="text-xl font-bold">Polaroid Glossy MY</h1>
-                <p className="text-xs text-muted-foreground">{t.tagline}</p>
+                <h1 className="text-sm md:text-xl font-bold leading-tight">Polaroid Glossy MY</h1>
+                <p className="hidden md:block text-xs text-muted-foreground">{t.tagline}</p>
               </div>
             </button>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center border rounded-lg overflow-hidden">
-                <button
-                  className={cn("px-2 py-1 text-xs font-semibold transition-colors", lang === 'en' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
-                  onClick={() => setLang('en')}
-                >
-                  ENG
-                </button>
-                <button
-                  className={cn("px-2 py-1 text-xs font-semibold transition-colors", lang === 'my' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
-                  onClick={() => setLang('my')}
-                >
-                  MY
-                </button>
+            <div className="flex items-center gap-1 md:gap-2">
+              {/* Desktop nav items */}
+              <div className="hidden md:flex items-center gap-4">
+                <div className="flex items-center border rounded-lg overflow-hidden">
+                  <button
+                    className={cn("px-2 py-1 text-xs font-semibold transition-colors", lang === 'en' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+                    onClick={() => setLang('en')}
+                  >
+                    ENG
+                  </button>
+                  <button
+                    className={cn("px-2 py-1 text-xs font-semibold transition-colors", lang === 'my' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+                    onClick={() => setLang('my')}
+                  >
+                    MY
+                  </button>
+                </div>
+                <ThemeSwitcher />
+                <Button variant="ghost" asChild>
+                  <Link href="/faq">
+                    <MessageSquare className="w-4 h-4 mr-2" /> {t.nav_faq}
+                  </Link>
+                </Button>
+                <Button variant="ghost" onClick={() => setShowTrackingModal(true)}>
+                  <Search className="w-4 h-4 mr-2" /> {t.nav_track}
+                </Button>
+                {currentStep >= 0 && !orderComplete && (
+                  <Button variant="ghost" onClick={() => setCurrentStep(-1)}>{t.nav_home}</Button>
+                )}
+                {renderUserMenu()}
               </div>
-              <ThemeSwitcher />
-              <Button variant="ghost" asChild>
-                <Link href="/faq">
-                  <MessageSquare className="w-4 h-4 mr-2" /> {t.nav_faq}
-                </Link>
-              </Button>
-              <Button variant="ghost" onClick={() => setShowTrackingModal(true)}>
-                <Search className="w-4 h-4 mr-2" /> {t.nav_track}
-              </Button>
-              {currentStep >= 0 && !orderComplete && (
-                <Button variant="ghost" onClick={() => setCurrentStep(-1)}>{t.nav_home}</Button>
+
+              {/* Login button - always visible on all screens */}
+              {!authLoading && !user && (
+                <Button onClick={signInWithGoogle} size="sm" className="h-8 md:h-9 text-xs md:text-sm px-2 md:px-3">
+                  <LogIn className="w-3.5 h-3.5 md:w-4 md:h-4 md:mr-2" /> <span className="hidden sm:inline">{t.btn_signin}</span>
+                </Button>
               )}
-              {renderUserMenu()}
-              <Button variant="outline" className="relative" onClick={() => setShowCart(!showCart)}>
-                <ShoppingCart className="w-5 h-5" />
+
+              <Button variant="outline" className="relative h-8 w-8 md:h-10 md:w-10" onClick={() => setShowCart(!showCart)}>
+                <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
                 {cartCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0">{cartCount}</Badge>
+                  <Badge className="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 flex items-center justify-center p-0 text-[10px] md:text-xs">{cartCount}</Badge>
                 )}
               </Button>
+
+              {/* Mobile hamburger */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
+                    <Menu className="w-4 h-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-72 sm:w-80">
+                  <SheetHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
+                        <Camera className="w-4 h-4 text-white" />
+                      </div>
+                      <SheetTitle className="text-base">Polaroid Glossy MY</SheetTitle>
+                    </div>
+                  </SheetHeader>
+                  <div className="flex flex-col gap-3 px-4 mt-4">
+                    <div className="flex items-center justify-center border rounded-lg overflow-hidden">
+                      <button
+                        className={cn("flex-1 px-3 py-2 text-sm font-semibold transition-colors", lang === 'en' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+                        onClick={() => setLang('en')}
+                      >
+                        ENG
+                      </button>
+                      <button
+                        className={cn("flex-1 px-3 py-2 text-sm font-semibold transition-colors", lang === 'my' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+                        onClick={() => setLang('my')}
+                      >
+                        MY
+                      </button>
+                    </div>
+                    <ThemeSwitcher />
+                    <Button variant="ghost" className="justify-start" asChild>
+                      <Link href="/products">
+                        <Package className="w-4 h-4 mr-3" /> Products
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" className="justify-start" asChild>
+                      <Link href="/faq">
+                        <MessageSquare className="w-4 h-4 mr-3" /> {t.nav_faq}
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" className="justify-start" onClick={() => setShowTrackingModal(true)}>
+                      <Search className="w-4 h-4 mr-3" /> {t.nav_track}
+                    </Button>
+                    {currentStep >= 0 && !orderComplete && (
+                      <Button variant="ghost" className="justify-start" onClick={() => setCurrentStep(-1)}>
+                        <Camera className="w-4 h-4 mr-3" /> {t.nav_home}
+                      </Button>
+                    )}
+                    <div className="border-t pt-3">
+                      {renderUserMenu()}
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>
@@ -1538,14 +1744,15 @@ export default function PolaroidPrintPage() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-3 md:px-4 py-4 md:py-8">
         <AnimatePresence mode="wait">
           {currentStep === -1 ? (
             <motion.div key="hero" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {renderHeroSection()}
               {renderFeaturesSection()}
               {renderCustomerGallery()}
-              {renderProductVideos()}
+              <div className="hidden md:block">{renderProductVideos()}</div>
+              {renderProcessSteps()}
               {renderPricingSection()}
             </motion.div>
           ) : (
@@ -1826,8 +2033,47 @@ export default function PolaroidPrintPage() {
 
       {/* Footer */}
       <footer className="bg-muted/50 border-t mt-auto">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+          {/* Mobile: compact stacked layout */}
+          <div className="md:hidden space-y-3">
+            {/* Brand + Rating row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Camera className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold">Polaroid Glossy MY</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (<Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />))}
+                <span className="text-[10px] text-muted-foreground ml-0.5">4.9/5</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-tight">{t.footer_desc}</p>
+            <p className="text-[10px] text-muted-foreground">{t.footer_trust}</p>
+            {/* Sizes + Features in 2 columns */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <h4 className="text-[11px] font-semibold mb-1.5">{t.footer_sizes}</h4>
+                <ul className="space-y-1">
+                  {printSizes.map(size => (
+                    <li key={size.id} className="text-[10px] text-muted-foreground">{size.displayName} - RM{size.price.toFixed(2)}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-[11px] font-semibold mb-1.5">{t.footer_features}</h4>
+                <ul className="space-y-1">
+                  <li className="flex items-center gap-1 text-[10px] text-muted-foreground"><Sparkles className="w-3 h-3 text-primary shrink-0" /> {t.feat_premium}</li>
+                  <li className="flex items-center gap-1 text-[10px] text-muted-foreground"><Truck className="w-3 h-3 text-primary shrink-0" /> {t.feat_shipping}</li>
+                  <li className="flex items-center gap-1 text-[10px] text-muted-foreground"><Heart className="w-3 h-3 text-primary shrink-0" /> {t.feat_text}</li>
+                  <li className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock className="w-3 h-3 text-primary shrink-0" /> {t.feat_days}</li>
+                  <li className="text-[10px]"><Link href="/faq" className="hover:underline text-muted-foreground">{t.footer_faq}</Link></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: 4-column grid */}
+          <div className="hidden md:grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Camera className="w-6 h-6 text-primary" />
@@ -1860,8 +2106,8 @@ export default function PolaroidPrintPage() {
               <p className="text-sm text-muted-foreground">{t.footer_trust}</p>
             </div>
           </div>
-          <Separator className="my-8" />
-          <div className="text-center text-sm text-muted-foreground">{t.footer_copy}</div>
+          <Separator className="my-3 md:my-8" />
+          <div className="text-center text-[10px] md:text-sm text-muted-foreground">{t.footer_copy}</div>
         </div>
       </footer>
     </div>
