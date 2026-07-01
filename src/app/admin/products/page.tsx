@@ -398,15 +398,15 @@ export default function AdminProductsPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
-          <nav className="flex items-center gap-1 text-sm text-muted-foreground flex-1">
-            <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
-            <ChevronRight className="w-3 h-3" />
+        <div className="container mx-auto px-3 md:px-4 py-2 md:py-3 flex items-center gap-3">
+          <nav className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground flex-1 min-w-0">
+            <Link href="/" className="hover:text-foreground transition-colors shrink-0">Home</Link>
+            <ChevronRight className="w-3 h-3 shrink-0" />
             <span className="text-foreground font-semibold">Admin</span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-foreground font-semibold">Products</span>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+            <span className="text-foreground font-semibold truncate">Products</span>
           </nav>
-          <span className="text-[10px] font-black tracking-widest bg-amber-500/20 text-amber-600 px-2 py-0.5 rounded-full uppercase">
+          <span className="text-[10px] font-black tracking-widest bg-amber-500/20 text-amber-600 px-2 py-0.5 rounded-full uppercase shrink-0">
             Admin Panel
           </span>
         </div>

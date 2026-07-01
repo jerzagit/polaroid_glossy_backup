@@ -101,8 +101,29 @@ pending/processing → cancelled → refunded
 
 ## Payment Methods
 
+- **ToyyibPay** (default) - Online payment (FPX, card, e-wallet)
 - **Bank Transfer** - Manual, admin confirms
-- **ToyyibPay** - Online payment (FPX, card, e-wallet)
+
+## Checkout Form Fields
+
+| Field | Type | Required | Validation | Max |
+|---|---|---|---|---|
+| Full Name | text | Yes | Non-empty trimmed | 100 |
+| Email | email | Yes | Regex `^[^\s@]+@[^\s@]+\.[^\s@]+$`, red border on invalid | 254 |
+| Phone | tel | Yes | Numeric only, `+60` prefix (non-editable, shown in input) | 10 digits |
+| Address Line 1 | text | Yes | Non-empty trimmed | 200 |
+| Address Line 2 | text | No | — | 200 |
+| City | text | Yes | Non-empty trimmed | 100 |
+| Postal / Zip Code | tel | Yes | Numeric only | 10 |
+| State | select | Yes | 13 states + 3 federal territories | — |
+| Country | text | Disabled | Pre-filled "Malaysia" | — |
+| Notes | textarea | No | Character counter shown | 500 |
+
+## Upload Progress
+
+- `uploadProgress` state tracks `{ done, total }` during S3 upload
+- UI shows "Uploading 2 / 5" in real-time after compression completes
+- Spinner icon persists during both compression and S3 upload phases
 
 ## Caddyfile
 

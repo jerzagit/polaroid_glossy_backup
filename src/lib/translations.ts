@@ -53,6 +53,11 @@ export interface Trans {
   label_fullname: string; placeholder_name: string; label_email: string; placeholder_email: string;
   label_phone: string; label_state: string; placeholder_state: string;
   state_shipping: (cost: number) => string;
+  label_address1: string; placeholder_address1: string;
+  label_address2: string; placeholder_address2: string;
+  label_city: string; placeholder_city: string;
+  label_postal: string; placeholder_postal: string;
+  label_country: string;
   label_notes: string; placeholder_notes: string; label_payment: string;
   pay_bank: string; pay_online: string; bank_details_title: string;
   bank_name: string; bank_account_name: string; bank_account_no: string; bank_note: string;
@@ -192,11 +197,16 @@ const en: Trans = {
   label_shipping: 'Shipping', label_total: 'Total',
   btn_addmore_photos: 'Add More Photos', btn_checkout: 'Proceed to Checkout',
   checkout_title: 'Checkout', checkout_desc: 'Complete your order',
-  label_contact: 'Contact Information', logged_as: (e) => `Logged in as ${e}`,
+  label_contact: 'Customer Details', logged_as: (e) => `Logged in as ${e}`,
   label_fullname: 'Full Name *', placeholder_name: 'Ahmad bin Ali',
   label_email: 'Email Address *', placeholder_email: 'ahmad@example.com',
   label_phone: 'Phone Number', label_state: 'State *', placeholder_state: 'Select your state',
   state_shipping: (c) => `(RM${c} shipping)`,
+  label_address1: 'Address Line 1 *', placeholder_address1: 'Street address, P.O. box',
+  label_address2: 'Address Line 2', placeholder_address2: 'Apartment, suite, unit, etc.',
+  label_city: 'City *', placeholder_city: 'City',
+  label_postal: 'Postal / Zip Code *', placeholder_postal: 'Postal code',
+  label_country: 'Country',
   label_notes: 'Special Instructions', placeholder_notes: 'Any special requests for your order...',
   label_payment: 'Payment Method', pay_bank: 'Bank Transfer', pay_online: 'Online Payment',
   bank_details_title: 'Bank Transfer Details:', bank_name: 'Bank:',
@@ -393,11 +403,16 @@ const my: Trans = {
   label_shipping: 'Penghantaran', label_total: 'Jumlah',
   btn_addmore_photos: 'Tambah Lagi Foto', btn_checkout: 'Teruskan ke Pembayaran',
   checkout_title: 'Pembayaran', checkout_desc: 'Lengkapkan pesanan anda',
-  label_contact: 'Maklumat Hubungan', logged_as: (e) => `Log masuk sebagai ${e}`,
+  label_contact: 'Customer Details', logged_as: (e) => `Log masuk sebagai ${e}`,
   label_fullname: 'Nama Penuh *', placeholder_name: 'Ahmad bin Ali',
   label_email: 'Alamat E-mel *', placeholder_email: 'ahmad@contoh.com',
   label_phone: 'Nombor Telefon', label_state: 'Negeri *', placeholder_state: 'Pilih negeri anda',
   state_shipping: (c) => `(RM${c} penghantaran)`,
+  label_address1: 'Alamat Baris 1 *', placeholder_address1: 'Alamat jalan, Peti Surat',
+  label_address2: 'Alamat Baris 2', placeholder_address2: 'Apartmen, suite, unit, dll.',
+  label_city: 'Bandar *', placeholder_city: 'Bandar',
+  label_postal: 'Poskod *', placeholder_postal: 'Poskod',
+  label_country: 'Negara',
   label_notes: 'Arahan Khas', placeholder_notes: 'Sebarang permintaan khas untuk pesanan anda...',
   label_payment: 'Kaedah Pembayaran', pay_bank: 'Pindahan Bank', pay_online: 'Pembayaran Dalam Talian',
   bank_details_title: 'Butiran Pindahan Bank:', bank_name: 'Bank:',
