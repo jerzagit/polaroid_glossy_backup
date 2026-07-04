@@ -12,15 +12,27 @@ function makeModel(name: string) {
   });
 }
 
+type ModelStub = {
+  findMany: (args?: unknown) => Promise<unknown[]>;
+  findUnique: (args: { where: Record<string, unknown> }) => Promise<unknown | null>;
+  findFirst: (args?: unknown) => Promise<unknown | null>;
+  create: (args: { data: unknown }) => Promise<unknown>;
+  update: (args: { where: Record<string, unknown>; data: unknown }) => Promise<unknown>;
+  upsert: (args: unknown) => Promise<unknown>;
+  delete: (args: { where: Record<string, unknown> }) => Promise<unknown>;
+};
+
+function m(name: string) {
+  return makeModel(name) as ModelStub;
+}
+
 export const db = {
-  printSize: makeModel('printSize') as {
-    findMany: (args?: unknown) => Promise<unknown[]>;
-    findUnique: (args: { where: { id: string } }) => Promise<unknown | null>;
-    create: (args: { data: unknown }) => Promise<unknown>;
-  },
-  productMeta: makeModel('productMeta') as {
-    findMany: (args?: unknown) => Promise<unknown[]>;
-    create: (args: { data: unknown }) => Promise<unknown>;
-    upsert: (args: unknown) => Promise<unknown>;
-  },
+  printSize: m('printSize'),
+  productMeta: m('productMeta'),
+  review: m('review'),
+  user: m('user'),
+  order: m('order'),
+  orderItem: m('orderItem'),
+  orderStatusHistory: m('orderStatusHistory'),
+  testimonial: m('testimonial'),
 };
