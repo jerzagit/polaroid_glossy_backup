@@ -8,6 +8,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file');
     const orderId = formData.get('orderId');
+    const customerEmail = formData.get('customerEmail');
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json({ success: false, error: 'File is required' }, { status: 400 });
@@ -15,11 +16,15 @@ export async function POST(request: NextRequest) {
     if (!orderId || typeof orderId !== 'string') {
       return NextResponse.json({ success: false, error: 'orderId is required' }, { status: 400 });
     }
+    if (!customerEmail || typeof customerEmail !== 'string') {
+      return NextResponse.json({ success: false, error: 'customerEmail is required' }, { status: 400 });
+    }
 
     const backendForm = new FormData();
     backendForm.append('file', file);
 
-    const res = await fetch(`${API_BASE}/files/upload?orderId=${encodeURIComponent(orderId)}`, {
+    const params = new URLSearchParams({ orderId, customerEmail });
+    const res = await fetch(`${API_BASE}/files/upload?${params}`, {
       method: 'POST',
       body: backendForm,
       signal: AbortSignal.timeout(30000),

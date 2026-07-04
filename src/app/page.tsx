@@ -570,6 +570,7 @@ export default function PolaroidPrintPage() {
             const formData = new FormData();
             formData.append('file', photo.file);
             formData.append('orderId', orderNumber);
+            formData.append('customerEmail', orderFormData.customerEmail);
             const promise = fetch('/api/upload', { method: 'POST', body: formData })
               .then(r => r.json())
               .then((uploadData: { success: boolean; url?: string }) => {
