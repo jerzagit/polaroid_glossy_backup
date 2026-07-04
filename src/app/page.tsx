@@ -527,7 +527,7 @@ export default function PolaroidPrintPage() {
 
     try {
       const items = cart.map(item => ({
-        sizeId: item.sizeId,
+        sizeId: item.sizeId.toUpperCase(),
         quantity: item.quantity,
         // Uploads happen after order creation; send empty for now
         images: [],
