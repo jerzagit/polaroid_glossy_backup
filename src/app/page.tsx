@@ -251,7 +251,6 @@ export default function PolaroidPrintPage() {
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadSessionId = useRef<string>(crypto.randomUUID());
 
   const cartTotal = cart.reduce((sum, item) => sum + item.size.price * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -391,27 +390,7 @@ export default function PolaroidPrintPage() {
       });
 
       const photoId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const photo: PhotoItem = { id: photoId, file: compressedFile, preview, customText: '', uploading: true };
-
-      // Upload to S3 in the background — update state when done
-      const formData = new FormData();
-      formData.append('file', compressedFile);
-      formData.append('sessionId', uploadSessionId.current);
-      fetch('/api/upload', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then((data: { success: boolean; url?: string }) => {
-          if (data.success && data.url) {
-            setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, s3Url: data.url, uploading: false } : p));
-          } else {
-            setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, uploading: false } : p));
-          }
-        })
-        .catch(() => setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, uploading: false } : p)))
-        .finally(() => setUploadProgress(prev => {
-          if (!prev) return null;
-          const done = prev.done + 1;
-          return done >= prev.total ? null : { ...prev, done };
-        }));
+      const photo: PhotoItem = { id: photoId, file: compressedFile, preview, customText: '', uploading: false };
 
       return photo;
     };
@@ -550,8 +529,8 @@ export default function PolaroidPrintPage() {
       const items = cart.map(item => ({
         sizeId: item.sizeId,
         quantity: item.quantity,
-        // Prefer S3 URL; fall back to local preview if upload failed
-        images: item.photos.map(p => p.s3Url ?? p.preview),
+        // Uploads happen after order creation; send empty for now
+        images: [],
         customTexts: item.photos.map(p => p.customText || ''),
         unitPrice: item.unitPrice
       }));
@@ -574,6 +553,29 @@ export default function PolaroidPrintPage() {
       console.log('Order API response:', data);
 
       if (data.success) {
+        const orderNumber = data.order.orderNumber;
+
+        // Upload all photos to this order
+        const uploadPromises: Promise<void>[] = [];
+        for (const item of cart) {
+          for (const photo of item.photos) {
+            if (photo.s3Url) continue;
+            const formData = new FormData();
+            formData.append('file', photo.file);
+            formData.append('orderId', orderNumber);
+            const promise = fetch('/api/upload', { method: 'POST', body: formData })
+              .then(r => r.json())
+              .then((uploadData: { success: boolean; url?: string }) => {
+                if (uploadData.success && uploadData.url) {
+                  setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, s3Url: uploadData.url! } : p));
+                }
+              })
+              .catch(err => console.error('Upload failed for', photo.id, err));
+            uploadPromises.push(promise);
+          }
+        }
+        await Promise.allSettled(uploadPromises);
+
         if (paymentMethod === 'toyyibpay') {
           console.log('Creating ToyyibPay bill...');
           const billResponse = await fetch('/api/toyyibpay/create-bill', {
@@ -581,7 +583,7 @@ export default function PolaroidPrintPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               orderId: data.order.id,
-              orderNumber: data.order.orderNumber,
+              orderNumber,
               amount: cartTotal + shippingCost,
               customerEmail: orderFormData.customerEmail,
               customerName: orderFormData.customerName,
@@ -593,7 +595,7 @@ export default function PolaroidPrintPage() {
           console.log('ToyyibPay bill response:', billData);
 
           if (billData.success && billData.paymentUrl) {
-            setOrderNumber(data.order.orderNumber);
+            setOrderNumber(orderNumber);
             setCart([]);
             localStorage.removeItem('polaroid_cart');
             window.location.href = billData.paymentUrl;
@@ -604,7 +606,7 @@ export default function PolaroidPrintPage() {
           }
         }
 
-        setOrderNumber(data.order.orderNumber);
+        setOrderNumber(orderNumber);
         setOrderComplete(true);
         setCurrentStep(4);
         setCart([]);
