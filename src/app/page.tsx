@@ -1407,10 +1407,10 @@ export default function PolaroidPrintPage() {
             {paymentMethod === 'bank_transfer' && (
               <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
                 <p className="font-semibold">{t.bank_details_title}</p>
-                <p><span className="text-muted-foreground">{t.bank_name}</span> Maybank</p>
+                <p><span className="text-muted-foreground">{t.bank_name}</span> <span className="inline-flex items-center gap-1">🐯 Maybank</span></p>
                 <p><span className="text-muted-foreground">{t.bank_account_name}</span> Acachiaa Empire</p>
                 <p><span className="text-muted-foreground">{t.bank_account_no}</span> 5186 2614 2087</p>
-                <p><span className="text-muted-foreground">Contact:</span> 012-6624063</p>
+                <p><span className="text-muted-foreground">{t.bank_contact}</span> 012-6624063</p>
                 <p className="text-xs text-muted-foreground mt-2">{t.bank_note}</p>
               </div>
             )}
@@ -1495,7 +1495,7 @@ export default function PolaroidPrintPage() {
           </Card>
           <div className="bg-muted rounded-lg p-4 text-sm max-w-md mx-auto mt-6">
             <p className="font-semibold mb-2">{t.bank_details_title}</p>
-            <p><span className="text-muted-foreground">{t.bank_name}</span> Maybank</p>
+            <p><span className="text-muted-foreground">{t.bank_name}</span> <span className="inline-flex items-center gap-1">🐯 Maybank</span></p>
             <p><span className="text-muted-foreground">{t.bank_account_name}</span> Acachiaa Empire</p>
             <p><span className="text-muted-foreground">{t.bank_account_no}</span> 5186 2614 2087</p>
             <p><span className="text-muted-foreground">{t.bank_contact}</span> 012-6624063</p>
