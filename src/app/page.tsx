@@ -1409,7 +1409,8 @@ export default function PolaroidPrintPage() {
                 <p className="font-semibold">{t.bank_details_title}</p>
                 <p><span className="text-muted-foreground">{t.bank_name}</span> Maybank</p>
                 <p><span className="text-muted-foreground">{t.bank_account_name}</span> Acachiaa Empire</p>
-                <p><span className="text-muted-foreground">{t.bank_account_no}</span> 123456789012</p>
+                <p><span className="text-muted-foreground">{t.bank_account_no}</span> 5186 2614 2087</p>
+                <p><span className="text-muted-foreground">Contact:</span> 012-6624063</p>
                 <p className="text-xs text-muted-foreground mt-2">{t.bank_note}</p>
               </div>
             )}
@@ -1496,7 +1497,8 @@ export default function PolaroidPrintPage() {
             <p className="font-semibold mb-2">{t.bank_details_title}</p>
             <p><span className="text-muted-foreground">{t.bank_name}</span> Maybank</p>
             <p><span className="text-muted-foreground">{t.bank_account_name}</span> Acachiaa Empire</p>
-            <p><span className="text-muted-foreground">{t.bank_account_no}</span> 123456789012</p>
+            <p><span className="text-muted-foreground">{t.bank_account_no}</span> 5186 2614 2087</p>
+            <p><span className="text-muted-foreground">{t.bank_contact}</span> 012-6624063</p>
             <p className="font-semibold mt-2">{t.confirm_total((cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2))}</p>
           </div>
         </>
