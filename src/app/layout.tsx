@@ -42,6 +42,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${dmSans.variable} antialiased bg-background text-foreground`}
+        suppressHydrationWarning
       >
         <ThemeProvider>
           <LanguageProvider>
