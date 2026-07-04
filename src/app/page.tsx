@@ -169,11 +169,7 @@ export default function PolaroidPrintPage() {
     { id: '4r', name: '4R', displayName: t.size_4r_display, width: 4, height: 6, price: 1.00, description: t.size_4r_desc },
     { id: 'a4', name: 'A4', displayName: t.size_a4_display, width: 8.3, height: 11.7, price: 3.50, description: t.size_a4_desc },
   ];
-  const customerTestimonials = t.testimonials.map((item, i) => ({
-    ...item,
-    image: `/images/customer-${i + 1}.png`,
-    rating: 5,
-  }));
+  const [customerTestimonials, setCustomerTestimonials] = useState<Array<{ id: number; name: string; location: string; text: string; printType: string; imageUrl: string; rating: number }>>([]);
   const productVideos = t.videos.map((item, i) => ({
     ...item,
     thumbnail: ['/images/product-collection.png', '/images/product-printing.png', '/images/product-custom.png'][i],
@@ -292,6 +288,32 @@ export default function PolaroidPrintPage() {
       fetchUserOrders();
     }
   }, [user, showOrdersModal]);
+
+  // Load testimonials from API (fall back to translations)
+  useEffect(() => {
+    fetch('/api/testimonials')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.testimonials?.length > 0) {
+          setCustomerTestimonials(data.testimonials.map((t: { textMy?: string; printTypeMy?: string; imageUrl?: string; image?: string }) => ({
+            ...t,
+            text: lang === 'my' && t.textMy ? t.textMy : t.text,
+            printType: lang === 'my' && t.printTypeMy ? t.printTypeMy : t.printType,
+            imageUrl: t.imageUrl || `/images/customer-${t.id}.png`,
+            rating: t.rating ?? 5,
+          })));
+        } else {
+          setCustomerTestimonials(t.testimonials.map((item, i) => ({
+            ...item, imageUrl: `/images/customer-${i + 1}.png`, rating: 5,
+          })));
+        }
+      })
+      .catch(() => {
+        setCustomerTestimonials(t.testimonials.map((item, i) => ({
+          ...item, imageUrl: `/images/customer-${i + 1}.png`, rating: 5,
+        })));
+      });
+  }, [lang]);
 
   // Load reviews
   useEffect(() => {
@@ -733,7 +755,7 @@ export default function PolaroidPrintPage() {
                   <div className="flex gap-4">
                     <div className="flex-shrink-0">
                       <div className="relative">
-                        <img src={testimonial.image} alt={testimonial.name} className="w-20 h-20 rounded-full object-cover border-2 border-primary/20" />
+                        <img src={testimonial.imageUrl} alt={testimonial.name} className="w-20 h-20 rounded-full object-cover border-2 border-primary/20" />
                         <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">{testimonial.printType}</div>
                       </div>
                     </div>
@@ -756,7 +778,7 @@ export default function PolaroidPrintPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {customerTestimonials.map((customer, index) => (
               <motion.div key={customer.id} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="relative group cursor-pointer">
-                <img src={customer.image} alt={`Customer ${customer.id}`} className="w-full h-48 md:h-64 object-cover rounded-lg transition-transform group-hover:scale-105" />
+                <img src={customer.imageUrl} alt={`Customer ${customer.id}`} className="w-full h-48 md:h-64 object-cover rounded-lg transition-transform group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-end p-4">
                   <div className="text-white">
                     <p className="font-semibold">{customer.name}</p>
