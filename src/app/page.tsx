@@ -543,19 +543,15 @@ export default function PolaroidPrintPage() {
           customerName: orderFormData.customerName,
           customerEmail: orderFormData.customerEmail,
           customerPhone: orderFormData.customerPhone,
-          customerHouseUnitNo: orderFormData.addressLine2 || '',
+          customerHouseUnitNo: orderFormData.addressLine2 || '-',
           customerAddressLine1: orderFormData.addressLine1,
-          customerAddressLine2: orderFormData.addressLine2 || '',
+          customerAddressLine2: orderFormData.addressLine2 || '-',
           customerPostcode: orderFormData.postalCode,
           customerCity: orderFormData.city,
           customerState: orderFormData.customerState,
           customerCountry: orderFormData.country,
           customerNotes: orderFormData.notes,
-          items,
-          subtotal: cartTotal,
-          shipping: shippingCost,
-          total: cartTotal + shippingCost,
-          paymentMethod
+          items
         })
       });
 
