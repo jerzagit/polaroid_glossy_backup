@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import productsMeta from '@/data/products-meta.json';
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
-const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '')}/api`;
+const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
 
 let cache: { data: unknown; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;

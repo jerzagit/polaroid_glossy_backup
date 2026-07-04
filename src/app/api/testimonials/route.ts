@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
-const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '')}/api`;
+const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
 
 const FALLBACK_TESTIMONIALS = [
   { id: 1, name: 'Sarah Mitchell', location: 'New York, USA', text: 'Absolutely love my polaroid prints! The quality is amazing and they arrived so quickly. Perfect for my scrapbook!', printType: '4R Classic', imageUrl: '/images/customer-1.png', rating: 5 },
