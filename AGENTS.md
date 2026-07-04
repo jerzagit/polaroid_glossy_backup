@@ -147,6 +147,18 @@ curl -s http://localhost:3000/api/reviews | jq .
 npx prisma studio
 ```
 
+## Workflow: New Feature / Changes
+
+1. **Branch**: `git checkout -b feat/<description>` from `local-dev`
+2. **Code**: Make changes, test locally (`npm run dev`)
+3. **Commit & Push**: `git add . && git commit -m "<type>: <description>" && git push origin <branch>`
+4. **PR**: Create PR to `main` via GitHub (link printed after push)
+5. **Merge**: Merge PR on GitHub → **Vercel auto-deploys production**
+6. **Sync local-dev**: `git checkout local-dev && git merge main`
+7. **If backend changes needed**, tell the backend team what endpoints/mock data to update
+
+All API routes that touch a database should **proxy to Spring Boot** (`${BACKEND_API_BASE}/api/...`) with a **hardcoded JSON fallback** for development.
+
 ## Next.js 16 Gotcha: Async Params
 
 Route handler `params` must be awaited in Next.js 15+:
