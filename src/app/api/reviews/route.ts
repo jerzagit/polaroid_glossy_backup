@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const url = buildBackendUrl(searchParams);
-    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.reviews)) {

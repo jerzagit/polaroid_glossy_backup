@@ -12,7 +12,7 @@ const FALLBACK_TESTIMONIALS = [
 
 export async function GET() {
   try {
-    const res = await fetch(`${API_BASE}/testimonials`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${API_BASE}/testimonials`, { signal: AbortSignal.timeout(15000) });
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.testimonials)) {
