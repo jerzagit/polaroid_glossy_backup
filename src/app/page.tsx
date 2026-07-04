@@ -94,6 +94,8 @@ interface PrintSize {
   description?: string;
 }
 
+type UploadMode = 'now' | 'later';
+
 interface PhotoItem {
   id: string;
   file: File;
@@ -232,6 +234,7 @@ export default function PolaroidPrintPage() {
   const [trackingInput, setTrackingInput] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('toyyibpay');
+  const [uploadMode, setUploadMode] = useState<UploadMode>('now');
   
   // Form
   const [orderFormData, setOrderFormData] = useState({
@@ -519,19 +522,22 @@ export default function PolaroidPrintPage() {
 
     console.log('Starting checkout with paymentMethod:', paymentMethod);
 
-    // Block checkout if any photo is still uploading to S3
+    // Block checkout if any photo is still being prepared for upload.
     const stillUploading = cart.some(item => item.photos.some(p => p.uploading));
     if (stillUploading) {
       toast.error('Photos are still uploading, please wait a moment.');
+      setIsProcessing(false);
       return;
     }
 
     try {
+      const expectedImageCount = cart.reduce((total, item) => total + item.photos.length, 0);
       const items = cart.map(item => ({
         sizeId: item.sizeId.toUpperCase(),
         quantity: item.quantity,
         // Uploads happen after order creation; send empty for now
         images: [],
+        expectedImageCount: item.photos.length,
         customTexts: item.photos.map(p => p.customText || ''),
         unitPrice: item.unitPrice
       }));
@@ -540,7 +546,10 @@ export default function PolaroidPrintPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          uploadMode,
+          expectedImageCount,
           userId: profile?.id,
+          paymentMethod,
           customerName: orderFormData.customerName,
           customerEmail: orderFormData.customerEmail,
           customerPhone: orderFormData.customerPhone,
@@ -561,27 +570,45 @@ export default function PolaroidPrintPage() {
 
       if (data.success) {
         const orderNumber = data.order.orderNumber;
+        const uploadToken = data.uploadToken || data.order?.uploadToken;
+        const createdItems = Array.isArray(data.order?.items) ? data.order.items : [];
 
-        // Upload all photos to this order
-        const uploadPromises: Promise<void>[] = [];
-        for (const item of cart) {
-          for (const photo of item.photos) {
-            if (photo.s3Url) continue;
-            const formData = new FormData();
-            formData.append('file', photo.file);
-            formData.append('orderId', orderNumber);
-            const promise = fetch('/api/upload', { method: 'POST', body: formData })
-              .then(r => r.json())
-              .then((uploadData: { success: boolean; url?: string }) => {
-                if (uploadData.success && uploadData.url) {
-                  setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, s3Url: uploadData.url! } : p));
-                }
-              })
-              .catch(err => console.error('Upload failed for', photo.id, err));
-            uploadPromises.push(promise);
+        if (uploadMode === 'now') {
+          // Upload all photos to this order before redirecting to payment.
+          const uploadPromises: Promise<boolean>[] = [];
+          for (const [itemIndex, item] of cart.entries()) {
+            const orderItemId = createdItems[itemIndex]?.id;
+            for (const photo of item.photos) {
+              if (photo.s3Url) continue;
+              const formData = new FormData();
+              formData.append('file', photo.file);
+              formData.append('orderId', orderNumber);
+              formData.append('customerEmail', orderFormData.customerEmail);
+              if (uploadToken) formData.append('uploadToken', uploadToken);
+              if (orderItemId) formData.append('orderItemId', orderItemId);
+
+              const promise = fetch('/api/upload', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then((uploadData: { success: boolean; url?: string }) => {
+                  if (uploadData.success && uploadData.url) {
+                    setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, s3Url: uploadData.url! } : p));
+                    return true;
+                  }
+                  return false;
+                })
+                .catch(err => {
+                  console.error('Upload failed for', photo.id, err);
+                  return false;
+                });
+              uploadPromises.push(promise);
+            }
+          }
+
+          const uploadResults = await Promise.all(uploadPromises);
+          if (uploadResults.some(success => !success)) {
+            throw new Error('One or more photos failed to upload');
           }
         }
-        await Promise.allSettled(uploadPromises);
 
         if (paymentMethod === 'toyyibpay') {
           console.log('Creating ToyyibPay bill...');
@@ -591,6 +618,8 @@ export default function PolaroidPrintPage() {
             body: JSON.stringify({
               orderId: data.order.id,
               orderNumber,
+              uploadMode,
+              expectedImageCount,
               amount: cartTotal + shippingCost,
               customerEmail: orderFormData.customerEmail,
               customerName: orderFormData.customerName,
@@ -629,7 +658,7 @@ export default function PolaroidPrintPage() {
     } finally {
       setIsProcessing(false);
     }
-  }, [orderFormData, cart, cartTotal, profile?.id, paymentMethod]);
+  }, [orderFormData, cart, cartTotal, profile?.id, paymentMethod, uploadMode]);
 
   const handleCancelOrder = useCallback(async (orderId: string) => {
     try {
@@ -1385,8 +1414,27 @@ export default function PolaroidPrintPage() {
         <Card className="mt-3 md:mt-6">
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <Label>Photo upload</Label>
+              <Select value={uploadMode} onValueChange={(value) => setUploadMode(value as UploadMode)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select upload timing" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="now">
+                    <span className="font-medium">Upload before payment</span>
+                    <span className="text-xs text-muted-foreground ml-2">recommended</span>
+                  </SelectItem>
+                  <SelectItem value="later">
+                    <span className="font-medium">Upload later</span>
+                    <span className="text-xs text-muted-foreground ml-2">after order is secured</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label>{t.label_payment}</Label>
-              <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value)}>
+              <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as 'bank_transfer' | 'toyyibpay')}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
@@ -1406,9 +1454,10 @@ export default function PolaroidPrintPage() {
             {paymentMethod === 'bank_transfer' && (
               <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
                 <p className="font-semibold">{t.bank_details_title}</p>
-                <p><span className="text-muted-foreground">{t.bank_name}</span> Maybank</p>
+                <p><span className="text-muted-foreground">{t.bank_name}</span> <span className="inline-flex items-center gap-1">🐯 Maybank</span></p>
                 <p><span className="text-muted-foreground">{t.bank_account_name}</span> Acachiaa Empire</p>
-                <p><span className="text-muted-foreground">{t.bank_account_no}</span> 123456789012</p>
+                <p><span className="text-muted-foreground">{t.bank_account_no}</span> 5186 2614 2087</p>
+                <p><span className="text-muted-foreground">{t.bank_contact}</span> 012-6624063</p>
                 <p className="text-xs text-muted-foreground mt-2">{t.bank_note}</p>
               </div>
             )}
@@ -1493,9 +1542,10 @@ export default function PolaroidPrintPage() {
           </Card>
           <div className="bg-muted rounded-lg p-4 text-sm max-w-md mx-auto mt-6">
             <p className="font-semibold mb-2">{t.bank_details_title}</p>
-            <p><span className="text-muted-foreground">{t.bank_name}</span> Maybank</p>
+            <p><span className="text-muted-foreground">{t.bank_name}</span> <span className="inline-flex items-center gap-1">🐯 Maybank</span></p>
             <p><span className="text-muted-foreground">{t.bank_account_name}</span> Acachiaa Empire</p>
-            <p><span className="text-muted-foreground">{t.bank_account_no}</span> 123456789012</p>
+            <p><span className="text-muted-foreground">{t.bank_account_no}</span> 5186 2614 2087</p>
+            <p><span className="text-muted-foreground">{t.bank_contact}</span> 012-6624063</p>
             <p className="font-semibold mt-2">{t.confirm_total((cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2))}</p>
           </div>
         </>

@@ -60,7 +60,7 @@ export interface Trans {
   label_country: string;
   label_notes: string; placeholder_notes: string; label_payment: string;
   pay_bank: string; pay_online: string; bank_details_title: string;
-  bank_name: string; bank_account_name: string; bank_account_no: string; bank_note: string;
+  bank_name: string; bank_account_name: string; bank_account_no: string; bank_contact: string; bank_note: string;
   toyyibpay_title: string; toyyibpay_desc: string; order_summary_title: string;
   label_subtotal: string; btn_back_cart: string; btn_processing: string;
   btn_pay_toyyibpay: string; btn_place_order: string;
@@ -210,7 +210,7 @@ const en: Trans = {
   label_notes: 'Special Instructions', placeholder_notes: 'Any special requests for your order...',
   label_payment: 'Payment Method', pay_bank: 'Bank Transfer', pay_online: 'Online Payment',
   bank_details_title: 'Bank Transfer Details:', bank_name: 'Bank:',
-  bank_account_name: 'Account Name:', bank_account_no: 'Account Number:',
+  bank_account_name: 'Account Name:', bank_account_no: 'Account Number:', bank_contact: 'Contact:',
   bank_note: 'Please transfer the exact amount and upload your receipt after placing order.',
   toyyibpay_title: 'Pay with ToyyibPay:',
   toyyibpay_desc: 'You will be redirected to ToyyibPay to complete your payment securely.',
@@ -416,7 +416,7 @@ const my: Trans = {
   label_notes: 'Arahan Khas', placeholder_notes: 'Sebarang permintaan khas untuk pesanan anda...',
   label_payment: 'Kaedah Pembayaran', pay_bank: 'Pindahan Bank', pay_online: 'Pembayaran Dalam Talian',
   bank_details_title: 'Butiran Pindahan Bank:', bank_name: 'Bank:',
-  bank_account_name: 'Nama Akaun:', bank_account_no: 'Nombor Akaun:',
+  bank_account_name: 'Nama Akaun:', bank_account_no: 'Nombor Akaun:', bank_contact: 'Hubungi:',
   bank_note: 'Sila pindahkan jumlah yang tepat dan muat naik resit anda selepas membuat pesanan.',
   toyyibpay_title: 'Bayar dengan ToyyibPay:',
   toyyibpay_desc: 'Anda akan diarahkan ke ToyyibPay untuk melengkapkan pembayaran anda dengan selamat.',
