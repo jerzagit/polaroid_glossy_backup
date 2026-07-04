@@ -220,33 +220,33 @@ export default function ProductPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.back()} className="gap-2">
-            <ArrowLeft className="w-4 h-4" /> {t.btn_back}
+        <div className="container mx-auto px-3 md:px-4 py-2 md:py-3 flex items-center gap-2 sm:gap-4">
+          <Button variant="ghost" size="sm" onClick={() => router.back()} className="gap-1 sm:gap-2 shrink-0 h-8 md:h-9 px-2">
+            <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline text-xs md:text-sm">{t.btn_back}</span>
           </Button>
-          <Separator orientation="vertical" className="h-5" />
-          <nav className="flex items-center gap-1 text-sm text-muted-foreground flex-1">
-            <Link href="/" className="hover:text-foreground transition-colors">{t.nav_home}</Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-foreground font-medium">{product.name} {t.label_print}</span>
+          <Separator orientation="vertical" className="h-4 md:h-5 hidden sm:block" />
+          <nav className="hidden sm:flex items-center gap-1 text-xs md:text-sm text-muted-foreground flex-1 min-w-0">
+            <Link href="/" className="hover:text-foreground transition-colors shrink-0">{t.nav_home}</Link>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+            <span className="text-foreground font-medium truncate">{product.name} {t.label_print}</span>
           </nav>
           {/* ENG / MY toggle */}
-          <div className="flex items-center border rounded-lg overflow-hidden text-xs font-semibold">
+          <div className="flex items-center border rounded-lg overflow-hidden text-xs font-semibold ml-auto shrink-0">
             <button
-              className={cn('px-2.5 py-1 transition-colors', lang === 'en' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+              className={cn('px-2 py-1 transition-colors', lang === 'en' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
               onClick={() => setLang('en')}
             >ENG</button>
             <button
-              className={cn('px-2.5 py-1 transition-colors', lang === 'my' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+              className={cn('px-2 py-1 transition-colors', lang === 'my' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
               onClick={() => setLang('my')}
             >MY</button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 max-w-6xl">
         {/* ── Hero ── */}
-        <div className="grid lg:grid-cols-2 gap-10 mb-16">
+        <div className="grid lg:grid-cols-2 gap-6 md:gap-10 mb-8 md:mb-16">
           {/* Gallery */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
             <ImageGallery images={product.images} name={product.name} accentColor={product.accentColor} />
@@ -271,23 +271,23 @@ export default function ProductPage() {
 
             {/* Name */}
             <div>
-              <h1 className="text-4xl font-black tracking-tight">
-                {product.name} <span className="text-muted-foreground font-normal text-2xl">Print</span>
+              <h1 className="text-2xl md:text-4xl font-black tracking-tight">
+                {product.name} <span className="text-muted-foreground font-normal text-lg md:text-2xl">Print</span>
               </h1>
-              <p className="text-muted-foreground mt-1">{product.displayName}</p>
+              <p className="text-muted-foreground mt-1 text-xs md:text-base">{product.displayName}</p>
             </div>
 
             {/* Rating */}
             <StarRating rating={product.rating} count={product.reviewCount} />
 
             {/* Price */}
-            <div className="text-5xl font-black" style={{ color: product.accentColor }}>
+            <div className="text-3xl md:text-5xl font-black" style={{ color: product.accentColor }}>
               RM{product.price.toFixed(2)}
-              <span className="text-lg font-normal text-muted-foreground ml-2">{t.per_print}</span>
+              <span className="text-sm md:text-lg font-normal text-muted-foreground ml-2">{t.per_print}</span>
             </div>
 
             {/* Short desc */}
-            <p className="text-muted-foreground leading-relaxed">{sizeDescMap[product.id] ?? product.shortDescription}</p>
+            <p className="text-muted-foreground leading-relaxed text-sm md:text-base">{sizeDescMap[product.id] ?? product.shortDescription}</p>
 
             {/* Features */}
             <div className="flex flex-wrap gap-2">
@@ -319,7 +319,7 @@ export default function ProductPage() {
 
             {/* CTA */}
             <div className="space-y-3 pt-2">
-              <Button size="lg" className="w-full text-base font-bold gap-2 h-12"
+              <Button size="lg" className="w-full text-sm md:text-base font-bold gap-2 h-10 md:h-12"
                 style={{ background: `linear-gradient(135deg,${product.accentColor},${product.accentColor}bb)`, boxShadow: `0 4px 20px ${product.accentColor}40`, border: 'none' }}
                 onClick={() => router.push(`/?product=${product.id}`)}>
                 <ShoppingCart className="w-5 h-5" /> {t.btn_start} — {product.name}
@@ -333,10 +333,10 @@ export default function ProductPage() {
 
         {/* ── Tabs ── */}
         <div>
-          <div className="flex gap-1 border-b mb-8 overflow-x-auto">
+          <div className="flex gap-1 border-b mb-6 md:mb-8 overflow-x-auto">
             {tabs.map(({ id: tabId, label, Icon }) => (
               <button key={tabId} onClick={() => setActiveTab(tabId)}
-                className={cn('flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors',
+                className={cn('flex items-center gap-1.5 px-3 md:px-4 py-2.5 md:py-3 text-xs md:text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors',
                   activeTab === tabId ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}
                 style={activeTab === tabId ? { borderColor: product.accentColor, color: product.accentColor } : {}}>
                 <Icon className="w-4 h-4" />
@@ -353,7 +353,7 @@ export default function ProductPage() {
               {/* Description */}
               {activeTab === 'description' && (
                 <div className="max-w-3xl space-y-6">
-                  <p className="text-foreground leading-relaxed text-base">{product.fullDescription}</p>
+                  <p className="text-foreground leading-relaxed text-sm md:text-base">{product.fullDescription}</p>
                   <div className="rounded-xl p-5 border space-y-3"
                     style={{ background: `${product.accentColor}08`, borderColor: `${product.accentColor}30` }}>
                     <h3 className="font-bold flex items-center gap-2" style={{ color: product.accentColor }}>
@@ -397,13 +397,13 @@ export default function ProductPage() {
 
               {/* Reviews */}
               {activeTab === 'reviews' && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-8 p-6 rounded-xl border bg-card flex-wrap">
+                <div className="space-y-4 md:space-y-6">
+                  <div className="flex items-center gap-4 md:gap-8 p-4 md:p-6 rounded-xl border bg-card flex-wrap">
                     <div className="text-center">
-                      <p className="text-6xl font-black" style={{ color: product.accentColor }}>{product.rating.toFixed(1)}</p>
+                      <p className="text-4xl md:text-6xl font-black" style={{ color: product.accentColor }}>{product.rating.toFixed(1)}</p>
                       <StarRating rating={product.rating} count={product.reviewCount} />
                     </div>
-                    <div className="flex-1 min-w-48 space-y-1.5">
+                    <div className="flex-1 min-w-32 md:min-w-48 space-y-1.5">
                       {[5, 4, 3, 2, 1].map(star => {
                         const pct = star === 5 ? 72 : star === 4 ? 18 : star === 3 ? 6 : star === 2 ? 3 : 1;
                         return (
@@ -422,7 +422,7 @@ export default function ProductPage() {
                   {reviews.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                      <p>{t.prod_no_reviews}</p>
+                      <p className="text-sm">{t.prod_no_reviews}</p>
                     </div>
                   ) : (
                     <div className="grid md:grid-cols-2 gap-4">

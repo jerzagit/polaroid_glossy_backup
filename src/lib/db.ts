@@ -34,4 +34,5 @@ export const db = {
   order: m('order'),
   orderItem: m('orderItem'),
   orderStatusHistory: m('orderStatusHistory'),
+  testimonial: m('testimonial'),
 };
