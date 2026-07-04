@@ -47,7 +47,7 @@ const FALLBACK_SIZES = [
 
 async function fetchFromBackend(): Promise<ProductListing[] | null> {
   try {
-    const res = await fetch(`${API_BASE}/print-sizes`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${API_BASE}/print-sizes`, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.success || !Array.isArray(data.products)) return null;

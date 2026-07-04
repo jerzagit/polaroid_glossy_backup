@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15000),
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });

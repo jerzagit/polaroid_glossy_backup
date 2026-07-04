@@ -18,7 +18,7 @@ async function proxyToBackend(request: NextRequest, method: string): Promise<Nex
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15000),
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
