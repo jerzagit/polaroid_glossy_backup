@@ -407,7 +407,11 @@ export default function PolaroidPrintPage() {
           }
         })
         .catch(() => setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, uploading: false } : p)))
-        .finally(() => setUploadProgress(prev => prev ? { ...prev, done: prev.done + 1 } : null));
+        .finally(() => setUploadProgress(prev => {
+          if (!prev) return null;
+          const done = prev.done + 1;
+          return done >= prev.total ? null : { ...prev, done };
+        }));
 
       return photo;
     };
