@@ -241,6 +241,7 @@ export default function PolaroidPrintPage() {
     customerState: 'selangor',
     addressLine1: '',
     addressLine2: '',
+    customerHouseUnitNo: '',
     city: '',
     postalCode: '',
     country: 'Malaysia',
@@ -527,7 +528,7 @@ export default function PolaroidPrintPage() {
 
     try {
       const items = cart.map(item => ({
-        sizeId: item.sizeId,
+        sizeId: item.sizeId.toUpperCase(),
         quantity: item.quantity,
         // Uploads happen after order creation; send empty for now
         images: [],
@@ -543,7 +544,7 @@ export default function PolaroidPrintPage() {
           customerName: orderFormData.customerName,
           customerEmail: orderFormData.customerEmail,
           customerPhone: orderFormData.customerPhone,
-          customerHouseUnitNo: orderFormData.addressLine2 || '-',
+          customerHouseUnitNo: orderFormData.customerHouseUnitNo || '-',
           customerAddressLine1: orderFormData.addressLine1,
           customerAddressLine2: orderFormData.addressLine2 || '-',
           customerPostcode: orderFormData.postalCode,
@@ -1325,9 +1326,15 @@ export default function PolaroidPrintPage() {
                 }} />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="address1">Address Line 1</Label>
-              <Input id="address1" placeholder="Street address, P.O. box" maxLength={200} value={orderFormData.addressLine1} onChange={(e) => setOrderFormData(prev => ({ ...prev, addressLine1: e.target.value }))} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="houseUnit">House / Unit No</Label>
+                <Input id="houseUnit" placeholder="12A" maxLength={50} value={orderFormData.customerHouseUnitNo} onChange={(e) => setOrderFormData(prev => ({ ...prev, customerHouseUnitNo: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address1">Address Line 1</Label>
+                <Input id="address1" placeholder="Street address, P.O. box" maxLength={200} value={orderFormData.addressLine1} onChange={(e) => setOrderFormData(prev => ({ ...prev, addressLine1: e.target.value }))} />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="address2">Address Line 2 <span className="text-muted-foreground">(optional)</span></Label>
@@ -1559,7 +1566,7 @@ export default function PolaroidPrintPage() {
         <Button variant="outline" onClick={() => { setShowTrackingModal(true); setTrackingInput(orderNumber); }}>
           <Search className="w-4 h-4 mr-2" /> {t.btn_track}
         </Button>
-        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerState: 'selangor', addressLine1: '', addressLine2: '', city: '', postalCode: '', country: 'Malaysia', notes: '' }); }}>
+        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerState: 'selangor', addressLine1: '', addressLine2: '', customerHouseUnitNo: '', city: '', postalCode: '', country: 'Malaysia', notes: '' }); }}>
           <Plus className="w-4 h-4 mr-2" /> {t.btn_new_order}
         </Button>
       </div>
