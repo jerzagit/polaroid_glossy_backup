@@ -1330,6 +1330,7 @@ export default function PolaroidPrintPage() {
             </CardContent>
           </Card>
         ) : (
+        <>
         <Card>
           <CardHeader>
             <CardTitle>{t.label_contact}</CardTitle>
@@ -1492,8 +1493,9 @@ export default function PolaroidPrintPage() {
             {isProcessing ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />{t.btn_processing}</>) : (<><CreditCard className="w-4 h-4 mr-2" />{paymentMethod === 'toyyibpay' ? t.btn_pay_toyyibpay : t.btn_place_order}</>)}
           </Button>
         </div>
-      </div>
+        </>
         )}
+      </div>
     </motion.div>
   );
 
