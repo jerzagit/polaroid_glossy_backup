@@ -28,8 +28,11 @@ export async function GET(
     });
     const data = await res.json();
 
-    // Backend returns raw order object; wrap for frontend consistency
-    return NextResponse.json({ success: res.ok, order: data }, { status: res.status });
+    // Backend returns raw order object or error; wrap for frontend consistency
+    return NextResponse.json(
+      res.ok ? { success: true, order: data } : data,
+      { status: res.status }
+    );
   } catch {
     return NextResponse.json(
       { success: false, error: 'Backend unavailable' },
