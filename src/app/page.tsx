@@ -542,6 +542,7 @@ export default function PolaroidPrintPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          uploadMode: user ? 'now' : 'later',
           expectedImageCount,
           userId: profile?.id,
           paymentMethod,
