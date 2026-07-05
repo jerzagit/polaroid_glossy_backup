@@ -92,6 +92,8 @@ export interface Trans {
   review_title: string; review_desc: string; label_rating: string;
   label_review_title: string; placeholder_review_title: string;
   label_review_comment: string; placeholder_review_comment: string; btn_submit_review: string;
+  // Auth gate
+  login_required: string; login_checkout_desc: string; login_google: string;
   // OAuth modal
   oauth_title: string; oauth_desc: string;
   oauth_step1: string; oauth_step2: string; oauth_step2_desc: string;
@@ -244,6 +246,9 @@ const en: Trans = {
   placeholder_review_title: 'Great quality prints!',
   label_review_comment: 'Your Review', placeholder_review_comment: 'Tell us about your experience...',
   btn_submit_review: 'Submit Review',
+  login_required: 'Sign in required',
+  login_checkout_desc: 'Please sign in with Google to continue with checkout. Your photos will be uploaded securely during checkout.',
+  login_google: 'Sign in with Google',
   oauth_title: 'Google Sign-In Setup Required',
   oauth_desc: 'The Google OAuth is not configured for this domain. Please follow the steps below to fix this.',
   oauth_step1: 'Step 1: Go to Google Cloud Console',
@@ -450,6 +455,9 @@ const my: Trans = {
   placeholder_review_title: 'Cetakan berkualiti tinggi!',
   label_review_comment: 'Ulasan Anda', placeholder_review_comment: 'Ceritakan pengalaman anda...',
   btn_submit_review: 'Hantar Ulasan',
+  login_required: 'Log masuk diperlukan',
+  login_checkout_desc: 'Sila log masuk dengan Google untuk meneruskan pembayaran. Gambar anda akan dimuat naik dengan selamat semasa pembayaran.',
+  login_google: 'Log masuk dengan Google',
   oauth_title: 'Persediaan Log Masuk Google Diperlukan',
   oauth_desc: 'Google OAuth tidak dikonfigurasi untuk domain ini. Sila ikut langkah-langkah di bawah untuk membetulkannya.',
   oauth_step1: 'Langkah 1: Pergi ke Google Cloud Console',

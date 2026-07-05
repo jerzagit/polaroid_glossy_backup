@@ -542,7 +542,7 @@ export default function PolaroidPrintPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          uploadMode: 'later',
+          uploadMode: 'now',
           expectedImageCount,
           userId: profile?.id,
           paymentMethod,
@@ -566,6 +566,43 @@ export default function PolaroidPrintPage() {
 
       if (data.success) {
         const orderNumber = data.order.orderNumber;
+        const uploadToken = data.uploadToken || data.order?.uploadToken;
+        const createdItems = Array.isArray(data.order?.items) ? data.order.items : [];
+
+        // Upload photos to the server. Backend allows authenticated users;
+        // guests will get 403 (expected) and upload after payment instead.
+        const uploadPromises: Promise<boolean>[] = [];
+        for (const [itemIndex, item] of cart.entries()) {
+          const orderItemId = createdItems[itemIndex]?.id;
+          for (const photo of item.photos) {
+            if (photo.s3Url) continue;
+            const formData = new FormData();
+            formData.append('file', photo.file);
+            formData.append('orderId', orderNumber);
+            formData.append('customerEmail', orderFormData.customerEmail);
+            if (uploadToken) formData.append('uploadToken', uploadToken);
+            if (orderItemId) formData.append('orderItemId', orderItemId);
+            uploadPromises.push(
+              fetch('/api/upload', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then((uploadData: { success: boolean; url?: string }) => {
+                  if (uploadData.success && uploadData.url) {
+                    return true;
+                  }
+                  return false;
+                })
+                .catch(() => false)
+            );
+          }
+        }
+
+        if (uploadPromises.length > 0) {
+          const uploadResults = await Promise.all(uploadPromises);
+          const failedCount = uploadResults.filter(r => !r).length;
+          if (failedCount > 0) {
+            console.warn(`${failedCount} photo(s) could not be uploaded during checkout`);
+          }
+        }
 
         if (paymentMethod === 'toyyibpay') {
           console.log('Creating ToyyibPay bill...');
@@ -1282,6 +1319,17 @@ export default function PolaroidPrintPage() {
       </div>
 
       <div className="max-w-2xl mx-auto">
+        {!user ? (
+          <Card>
+            <CardContent className="p-8 text-center space-y-4">
+              <h3 className="text-lg font-semibold">{t.login_required}</h3>
+              <p className="text-sm text-muted-foreground">{t.login_checkout_desc}</p>
+              <Button size="lg" onClick={signInWithGoogle} className="mt-2">
+                {t.login_google}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
         <Card>
           <CardHeader>
             <CardTitle>{t.label_contact}</CardTitle>
@@ -1445,6 +1493,7 @@ export default function PolaroidPrintPage() {
           </Button>
         </div>
       </div>
+        )}
     </motion.div>
   );
 
