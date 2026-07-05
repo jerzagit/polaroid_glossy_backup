@@ -50,9 +50,53 @@ async function fetchFromBackend(): Promise<ProductListing[] | null> {
     const res = await fetch(`${API_BASE}/print-sizes`, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     const data = await res.json();
-    if (Array.isArray(data)) return data;
-    if (data.success && Array.isArray(data.products)) return data.products;
-    return null;
+
+    const raw: Array<Record<string, unknown>> = Array.isArray(data) ? data
+      : (data?.success && Array.isArray(data.products)) ? data.products
+      : [];
+    if (raw.length === 0) return null;
+
+    const jsonMetaMap = new Map(productsMeta.products.map(m => [m.id, m]));
+    const fallbackMap = new Map(FALLBACK_SIZES.map(s => [s.id.toLowerCase(), s]));
+
+    return raw.map(item => {
+      const rawId = String(item.id ?? '').toLowerCase();
+      const meta = jsonMetaMap.get(rawId) ?? jsonMetaMap.get(String(item.id ?? ''));
+      const fallback = fallbackMap.get(rawId);
+      const id = meta?.id ?? fallback?.id ?? rawId;
+      const width = Number(item.width ?? fallback?.width ?? 0);
+      const height = Number(item.height ?? fallback?.height ?? 0);
+      const price = Number(item.price ?? fallback?.price ?? 0);
+      const description = String(item.description ?? fallback?.description ?? '');
+
+      return {
+        id,
+        name: String(item.name ?? id.toUpperCase()),
+        displayName: String(item.displayName ?? meta?.specs?.dimensions ?? `${id.toUpperCase()} (${width} × ${height} inches)`),
+        width,
+        height,
+        price,
+        description,
+        shortDescription: meta?.shortDescription ?? description,
+        fullDescription: meta?.fullDescription ?? description,
+        images: meta?.images ?? ['/images/product-collection.png'],
+        image: meta?.images?.[0] ?? '/images/product-collection.png',
+        popular: meta?.popular ?? false,
+        tag: meta?.tag ?? String(item.tag ?? 'STANDARD'),
+        features: meta?.features ?? [],
+        accentColor: meta?.accentColor ?? '#6366f1',
+        specs: meta?.specs ?? {
+          dimensions: `${width} × ${height} inches`,
+          paper: 'Glossy photo-grade 230gsm',
+          finish: 'Glossy',
+          printMethod: 'Dye-sublimation',
+          processingTime: '3–4 working days',
+          minQty: 1,
+        },
+        rating: meta?.rating ?? 4.8,
+        reviewCount: meta?.reviewCount ?? 100,
+      } satisfies ProductListing;
+    });
   } catch {
     return null;
   }

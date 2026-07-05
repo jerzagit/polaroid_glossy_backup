@@ -631,6 +631,7 @@ export default function PolaroidPrintPage() {
 
         if (paymentMethod === 'toyyibpay') {
           console.log('Creating ToyyibPay bill...');
+          const expectedImageCount = cart.reduce((sum, item) => sum + item.photos.length * item.quantity, 0);
           const billResponse = await fetch('/api/toyyibpay/create-bill', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
