@@ -4,7 +4,9 @@ const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://loc
 const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
 
 export async function GET(request: NextRequest) {
-  const backendUrl = `${API_BASE}/orders/my`;
+  const url = new URL(request.url);
+  const query = url.search;
+  const backendUrl = `${API_BASE}/orders/my${query}`;
 
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };

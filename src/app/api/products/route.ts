@@ -50,8 +50,9 @@ async function fetchFromBackend(): Promise<ProductListing[] | null> {
     const res = await fetch(`${API_BASE}/print-sizes`, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     const data = await res.json();
-    if (!data.success || !Array.isArray(data.products)) return null;
-    return data.products;
+    if (Array.isArray(data)) return data;
+    if (data.success && Array.isArray(data.products)) return data.products;
+    return null;
   } catch {
     return null;
   }

@@ -203,13 +203,15 @@ export default function PolaroidPrintPage() {
     thumbnail: ['/images/product-collection.png', '/images/product-printing.png', '/images/product-custom.png'][i],
   }));
   const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-    pending: { label: t.status_pending, color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-    processing: { label: t.status_processing, color: 'bg-blue-100 text-blue-800', icon: Loader2 },
-    posted: { label: t.status_posted, color: 'bg-purple-100 text-purple-800', icon: Package },
-    on_delivery: { label: t.status_on_delivery, color: 'bg-indigo-100 text-indigo-800', icon: Truck },
-    delivered: { label: t.status_delivered, color: 'bg-green-100 text-green-800', icon: CheckCircle },
-    cancelled: { label: t.status_cancelled, color: 'bg-red-100 text-red-800', icon: XCircle },
-    refunded: { label: t.status_refunded, color: 'bg-gray-100 text-gray-800', icon: RefreshCwIcon },
+    DRAFT: { label: 'Draft', color: 'bg-gray-100 text-gray-800', icon: Package },
+    PENDING: { label: t.status_pending, color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+    PROCESSING: { label: t.status_processing, color: 'bg-blue-100 text-blue-800', icon: Loader2 },
+    POSTED: { label: t.status_posted, color: 'bg-purple-100 text-purple-800', icon: Package },
+    ON_DELIVERY: { label: t.status_on_delivery, color: 'bg-indigo-100 text-indigo-800', icon: Truck },
+    DELIVERED: { label: t.status_delivered, color: 'bg-green-100 text-green-800', icon: CheckCircle },
+    CANCELLED: { label: t.status_cancelled, color: 'bg-red-100 text-red-800', icon: XCircle },
+    REFUNDED: { label: t.status_refunded, color: 'bg-gray-100 text-gray-800', icon: RefreshCwIcon },
+    EXPIRED: { label: 'Expired', color: 'bg-red-100 text-red-800', icon: XCircle },
   };
   
   // State
@@ -558,25 +560,17 @@ export default function PolaroidPrintPage() {
     }
 
     try {
-      const expectedImageCount = cart.reduce((total, item) => total + item.photos.length, 0);
       const items = cart.map(item => ({
         sizeId: item.sizeId.toUpperCase(),
         quantity: item.quantity,
-        // Uploads happen after order creation; send empty for now
-        images: [],
-        expectedImageCount: item.photos.length,
+        imageUrls: [],
         customTexts: item.photos.map(p => p.customText || ''),
-        unitPrice: item.unitPrice
       }));
 
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
-          uploadMode: 'now',
-          expectedImageCount,
-          userId: profile?.id,
-          paymentMethod,
           customerName: orderFormData.customerName,
           customerEmail: orderFormData.customerEmail,
           customerPhone: orderFormData.customerPhone,
@@ -587,7 +581,7 @@ export default function PolaroidPrintPage() {
           customerCity: orderFormData.city,
           customerState: orderFormData.customerState,
           customerCountry: orderFormData.country,
-          customerNotes: orderFormData.notes,
+          notes: orderFormData.notes,
           items
         })
       });
