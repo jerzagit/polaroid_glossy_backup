@@ -154,6 +154,13 @@ interface Review {
   };
 }
 
+interface ConfirmationDetails {
+  orderNumber: string;
+  customerEmail: string;
+  totalAmount: number;
+  paymentMethod: 'bank_transfer' | 'toyyibpay';
+}
+
 const malaysiaStates = [
   { id: 'johor', name: 'Johor', shippingCost: 7 },
   { id: 'kedah', name: 'Kedah', shippingCost: 7 },
@@ -226,6 +233,7 @@ export default function PolaroidPrintPage() {
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  const [confirmationDetails, setConfirmationDetails] = useState<ConfirmationDetails | null>(null);
   
   // Modals
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -639,6 +647,7 @@ export default function PolaroidPrintPage() {
         const orderNumber = data.order.orderNumber;
         const uploadToken = data.uploadToken || data.order?.uploadToken;
         const createdItems = Array.isArray(data.order?.items) ? data.order.items : [];
+        const orderTotal = cartTotal + shippingCost;
 
         // Upload photos to Spring Boot → R2
         const uploadPromises: Promise<boolean>[] = [];
@@ -695,6 +704,12 @@ export default function PolaroidPrintPage() {
 
           if (billData.success && billData.paymentUrl) {
             setOrderNumber(orderNumber);
+            setConfirmationDetails({
+              orderNumber,
+              customerEmail: orderFormData.customerEmail,
+              totalAmount: orderTotal,
+              paymentMethod,
+            });
             setCart([]);
             localStorage.removeItem('polaroid_cart');
             window.location.href = billData.paymentUrl;
@@ -706,6 +721,12 @@ export default function PolaroidPrintPage() {
         }
 
         setOrderNumber(orderNumber);
+        setConfirmationDetails({
+          orderNumber,
+          customerEmail: orderFormData.customerEmail,
+          totalAmount: orderTotal,
+          paymentMethod,
+        });
         setOrderComplete(true);
         setCurrentStep(4);
         setCart([]);
@@ -1590,9 +1611,17 @@ export default function PolaroidPrintPage() {
     </motion.div>
   );
 
-  const renderConfirmationStep = () => (
+  const renderConfirmationStep = () => {
+    const details = confirmationDetails ?? {
+      orderNumber,
+      customerEmail: orderFormData.customerEmail,
+      totalAmount: cartTotal + getShippingCost(orderFormData.customerState),
+      paymentMethod,
+    };
+
+    return (
     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-6 md:py-12">
-      {paymentMethod === 'bank_transfer' ? (
+      {details.paymentMethod === 'bank_transfer' ? (
         <>
           <div className="w-24 h-24 mx-auto bg-yellow-100 rounded-full flex items-center justify-center mb-6">
             <Clock className="w-12 h-12 text-yellow-600" />
@@ -1606,15 +1635,15 @@ export default function PolaroidPrintPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.label_order_no}</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold">{orderNumber}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyTrackingNumber(orderNumber)}>
+                    <span className="font-mono font-bold">{details.orderNumber}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyTrackingNumber(details.orderNumber)}>
                       <Copy className="w-3 h-3" />
                     </Button>
                   </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.label_email_short}</span>
-                  <span>{orderFormData.customerEmail}</span>
+                  <span>{details.customerEmail}</span>
                 </div>
               </div>
             </CardContent>
@@ -1625,7 +1654,7 @@ export default function PolaroidPrintPage() {
             <p><span className="text-muted-foreground">{t.bank_account_name}</span> Acachiaa Empire</p>
             <p><span className="text-muted-foreground">{t.bank_account_no}</span> 5186 2614 2087</p>
             <p><span className="text-muted-foreground">{t.bank_contact}</span> 012-6624063</p>
-            <p className="font-semibold mt-2">{t.confirm_total((cartTotal + getShippingCost(orderFormData.customerState)).toFixed(2))}</p>
+            <p className="font-semibold mt-2">{t.confirm_total(details.totalAmount.toFixed(2))}</p>
           </div>
         </>
       ) : (
@@ -1641,15 +1670,15 @@ export default function PolaroidPrintPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.label_order_no}</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold">{orderNumber}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyTrackingNumber(orderNumber)}>
+                    <span className="font-mono font-bold">{details.orderNumber}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyTrackingNumber(details.orderNumber)}>
                       <Copy className="w-3 h-3" />
                     </Button>
                   </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.label_email_short}</span>
-                  <span>{orderFormData.customerEmail}</span>
+                  <span>{details.customerEmail}</span>
                 </div>
               </div>
             </CardContent>
@@ -1660,7 +1689,7 @@ export default function PolaroidPrintPage() {
       {/* Order Status Progress Bar */}
       <div className="mt-4 md:mt-8">
         <p className="text-sm text-muted-foreground mb-3 md:mb-4">
-          {paymentMethod === 'bank_transfer' ? t.label_order_status : t.label_track_order}
+          {details.paymentMethod === 'bank_transfer' ? t.label_order_status : t.label_track_order}
         </p>
         <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
           {[
@@ -1669,7 +1698,7 @@ export default function PolaroidPrintPage() {
             { key: 'processing', label: t.step_processing_conf, icon: Sparkles },
             { key: 'delivery', label: t.step_delivery, icon: Truck },
           ].map((step, index) => {
-            const isActive = paymentMethod === 'bank_transfer' 
+            const isActive = details.paymentMethod === 'bank_transfer'
               ? index <= 1  // Show pending as current for bank transfer
               : index <= (index === 0 ? 0 : 1); // For toyyibpay, show processing
             
@@ -1683,7 +1712,7 @@ export default function PolaroidPrintPage() {
                   <span className="text-xs mt-1 hidden sm:block">{step.label}</span>
                 </div>
                 {index < 3 && (
-                  <div className={`w-8 h-0.5 mx-1 ${index < (paymentMethod === 'bank_transfer' ? 1 : 1) ? 'bg-primary' : 'bg-muted'}`} />
+                  <div className={`w-8 h-0.5 mx-1 ${index < (details.paymentMethod === 'bank_transfer' ? 1 : 1) ? 'bg-primary' : 'bg-muted'}`} />
                 )}
               </div>
             );
@@ -1692,15 +1721,16 @@ export default function PolaroidPrintPage() {
       </div>
 
       <div className="flex gap-3 md:gap-4 mt-4 md:mt-8 justify-center">
-        <Button variant="outline" onClick={() => { setShowTrackingModal(true); setTrackingInput(orderNumber); }}>
+        <Button variant="outline" onClick={() => { setShowTrackingModal(true); setTrackingInput(details.orderNumber); }}>
           <Search className="w-4 h-4 mr-2" /> {t.btn_track}
         </Button>
-        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerState: 'selangor', addressLine1: '', addressLine2: '', customerHouseUnitNo: '', city: '', postalCode: '', country: 'Malaysia', notes: '' }); }}>
+        <Button onClick={() => { setCurrentStep(-1); setOrderComplete(false); setPhotos([]); setConfirmationDetails(null); setOrderNumber(''); setOrderFormData({ customerName: '', customerEmail: '', customerPhone: '', customerState: 'selangor', addressLine1: '', addressLine2: '', customerHouseUnitNo: '', city: '', postalCode: '', country: 'Malaysia', notes: '' }); }}>
           <Plus className="w-4 h-4 mr-2" /> {t.btn_new_order}
         </Button>
       </div>
     </motion.div>
-  );
+    );
+  };
 
   const renderStepContent = () => {
     switch (currentStep) {
