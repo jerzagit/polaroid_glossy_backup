@@ -542,7 +542,7 @@ export default function PolaroidPrintPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          uploadMode: user ? 'now' : 'later',
+          uploadMode: 'later',
           expectedImageCount,
           userId: profile?.id,
           paymentMethod,
@@ -566,46 +566,6 @@ export default function PolaroidPrintPage() {
 
       if (data.success) {
         const orderNumber = data.order.orderNumber;
-        const uploadToken = data.uploadToken || data.order?.uploadToken;
-        const createdItems = Array.isArray(data.order?.items) ? data.order.items : [];
-
-        // Authenticated users upload before payment; guests upload after payment
-        if (user) {
-          // Upload all photos to this order before redirecting to payment.
-          const uploadPromises: Promise<boolean>[] = [];
-          for (const [itemIndex, item] of cart.entries()) {
-            const orderItemId = createdItems[itemIndex]?.id;
-            for (const photo of item.photos) {
-              if (photo.s3Url) continue;
-              const formData = new FormData();
-              formData.append('file', photo.file);
-              formData.append('orderId', orderNumber);
-              formData.append('customerEmail', orderFormData.customerEmail);
-              if (uploadToken) formData.append('uploadToken', uploadToken);
-              if (orderItemId) formData.append('orderItemId', orderItemId);
-
-              const promise = fetch('/api/upload', { method: 'POST', body: formData })
-                .then(r => r.json())
-                .then((uploadData: { success: boolean; url?: string }) => {
-                  if (uploadData.success && uploadData.url) {
-                    setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, s3Url: uploadData.url! } : p));
-                    return true;
-                  }
-                  return false;
-                })
-                .catch(err => {
-                  console.error('Upload failed for', photo.id, err);
-                  return false;
-                });
-              uploadPromises.push(promise);
-            }
-          }
-
-          const uploadResults = await Promise.all(uploadPromises);
-          if (uploadResults.some(success => !success)) {
-            throw new Error('One or more photos failed to upload');
-          }
-        }
 
         if (paymentMethod === 'toyyibpay') {
           console.log('Creating ToyyibPay bill...');
