@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    await signIn('google', { callbackUrl: '/' });
+    await signIn('google', { redirect: false });
   };
 
   const handleSignOut = async () => {
