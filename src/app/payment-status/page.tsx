@@ -34,7 +34,7 @@ function PaymentStatusContent() {
 
   const fetchOrderStatus = async (orderNumber: string) => {
     try {
-      const res = await fetch(`/api/orders?orderNumber=${orderNumber}`);
+      const res = await fetch(`/api/orders/${orderNumber}`);
       const data = await res.json();
       if (data.success && data.order) {
         if (data.order.paymentStatus === 'paid') setStatus('success');

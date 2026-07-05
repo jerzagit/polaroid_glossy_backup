@@ -59,7 +59,7 @@ export default function OrdersPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(`/api/orders?userId=${profile?.id}`);
+      const response = await fetch('/api/orders/my', { headers: { 'Authorization': `Bearer ${localStorage.getItem('backend_jwt')}`, 'Content-Type': 'application/json' } });
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders);

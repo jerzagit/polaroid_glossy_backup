@@ -132,7 +132,7 @@ export default function OrderDetailPage() {
 
   const fetchOrder = async () => {
     try {
-      const response = await fetch(`/api/orders?orderNumber=${orderNumber}`);
+      const response = await fetch(`/api/orders/${orderNumber}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('backend_jwt')}`, 'Content-Type': 'application/json' } });
       const data = await response.json();
       if (data.success && data.order) {
         setOrder(data.order);

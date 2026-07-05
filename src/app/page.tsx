@@ -380,7 +380,7 @@ export default function PolaroidPrintPage() {
   const fetchUserOrders = async () => {
     if (!user) return;
     try {
-      const response = await fetch(`/api/orders?userId=${profile?.id}`);
+      const response = await fetch('/api/orders/my', { headers: authHeaders() });
       const data = await response.json();
       if (data.success) {
         setUserOrders(data.orders);
@@ -687,7 +687,8 @@ export default function PolaroidPrintPage() {
   const handleCancelOrder = useCallback(async (orderId: string) => {
     try {
       const response = await fetch(`/api/orders?orderId=${orderId}&reason=Customer requested cancellation`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: authHeaders()
       });
       const data = await response.json();
       
@@ -709,7 +710,7 @@ export default function PolaroidPrintPage() {
     }
 
     try {
-      const response = await fetch(`/api/orders?orderNumber=${trackingInput}`);
+      const response = await fetch(`/api/orders/${trackingInput}`);
       const data = await response.json();
       
       if (data.success && data.order) {
