@@ -181,7 +181,14 @@ const getShippingCost = (stateId: string): number => {
 
 export default function PolaroidPrintPage() {
   const { lang, setLang, t } = useLanguage();
-  const { user, profile, loading: authLoading, signInWithGoogle, signOut } = useAuth();
+  const { user, profile, loading: authLoading, signInWithGoogle, signOut, backendJwt } = useAuth();
+
+  const authHeaders = (): Record<string, string> => {
+    const token = backendJwt || (typeof window !== 'undefined' ? localStorage.getItem('backend_jwt') : null);
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+  };
 
   // Derived from translations
   const printSizes: PrintSize[] = [
@@ -314,6 +321,30 @@ export default function PolaroidPrintPage() {
       fetchUserOrders();
     }
   }, [user, showOrdersModal]);
+
+  // Load default address on checkout
+  useEffect(() => {
+    if (!user || currentStep !== 3) return;
+    fetch('/api/addresses', { headers: authHeaders() })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success || !data.addresses?.length) return;
+        const defaultAddr = data.addresses.find((a: { isDefault: boolean }) => a.isDefault) || data.addresses[0];
+        setOrderFormData(prev => ({
+          ...prev,
+          customerName: defaultAddr.name || prev.customerName,
+          customerPhone: defaultAddr.phone || prev.customerPhone,
+          customerHouseUnitNo: defaultAddr.houseUnitNo || prev.customerHouseUnitNo,
+          addressLine1: defaultAddr.addressLine1 || prev.addressLine1,
+          addressLine2: defaultAddr.addressLine2 || prev.addressLine2,
+          city: defaultAddr.city || prev.city,
+          postalCode: defaultAddr.postalCode || prev.postalCode,
+          customerState: defaultAddr.state || prev.customerState,
+          country: defaultAddr.country || prev.country,
+        }));
+      })
+      .catch(() => {});
+  }, [user, currentStep]);
 
   // Load testimonials from API (fall back to translations)
   useEffect(() => {
@@ -540,7 +571,7 @@ export default function PolaroidPrintPage() {
 
       const response = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
           uploadMode: 'now',
           expectedImageCount,
