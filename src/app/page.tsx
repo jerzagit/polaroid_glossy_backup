@@ -1657,8 +1657,15 @@ export default function PolaroidPrintPage() {
                   <p className="text-sm text-muted-foreground">{profile?.email || user.email}</p>
                 </div>
                 <div className="p-2">
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => { setShowUserMenu(false); setShowOrdersModal(true); }}>
-                    <PackageOpen className="w-4 h-4 mr-2" /> {t.menu_orders}
+                  <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setShowUserMenu(false)}>
+                    <Link href="/profile">
+                      <User className="w-4 h-4 mr-2" /> Profile
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" className="w-full justify-start" asChild onClick={() => setShowUserMenu(false)}>
+                    <Link href="/profile/orders">
+                      <PackageOpen className="w-4 h-4 mr-2" /> {t.menu_orders}
+                    </Link>
                   </Button>
                   <Button variant="ghost" className="w-full justify-start" onClick={() => { setShowUserMenu(false); setShowTrackingModal(true); }}>
                     <Search className="w-4 h-4 mr-2" /> {t.menu_track}
