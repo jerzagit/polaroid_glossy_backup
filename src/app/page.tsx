@@ -58,6 +58,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { compressImage, WHATSAPP_HD_SETTINGS } from '@/lib/imageCompression';
+import { uploadOrderPhoto, isSupabaseConfigured } from '@/lib/supabase/client';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
@@ -224,6 +225,7 @@ export default function PolaroidPrintPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   
@@ -233,6 +235,7 @@ export default function PolaroidPrintPage() {
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showOAuthErrorModal, setShowOAuthErrorModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedOrderForReview, setSelectedOrderForReview] = useState<Order | null>(null);
   
   // Data
@@ -277,6 +280,56 @@ export default function PolaroidPrintPage() {
       }
     }
   }, []);
+
+  // Process pending photos after login (uploaded while user was unauthenticated)
+  useEffect(() => {
+    if (!user || pendingPhotos.length === 0) return;
+
+    const uploadPending = async () => {
+      setIsUploading(true);
+      const ts = Date.now();
+
+      const processFile = async (file: File): Promise<PhotoItem> => {
+        const ext = file.name.split('.').pop() || 'jpg';
+        const filename = `${ts}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const tempOrderNum = `temp_${user.email?.replace(/[^a-zA-Z0-9]/g, '_') || 'user'}_${ts}`;
+
+        let s3Url = '';
+        if (isSupabaseConfigured()) {
+          const uploaded = await uploadOrderPhoto(file, tempOrderNum, filename);
+          if (uploaded) s3Url = uploaded;
+        }
+
+        const preview = s3Url || await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => resolve(ev.target?.result as string);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsDataURL(file);
+        });
+
+        const photoId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        return { id: photoId, file, preview, customText: '', s3Url, uploading: false };
+      };
+
+      try {
+        const results = await Promise.allSettled(pendingPhotos.map(processFile));
+        const processed = results
+          .filter((r): r is PromiseFulfilledResult<PhotoItem> => r.status === 'fulfilled')
+          .map(r => r.value);
+
+        if (processed.length > 0) {
+          setPhotos(prev => [...prev, ...processed]);
+          setUploadProgress({ done: processed.length, total: processed.length });
+          toast.success(t.toast_photos_added(processed.length));
+        }
+      } finally {
+        setPendingPhotos([]);
+        setIsUploading(false);
+      }
+    };
+
+    uploadPending();
+  }, [user, pendingPhotos]);
 
   // Check for OAuth error or product deep-link in URL
   useEffect(() => {
@@ -409,24 +462,50 @@ export default function PolaroidPrintPage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    // Gate: require login before uploading
+    if (!user) {
+      const compressed: File[] = [];
+      for (const file of Array.from(files)) {
+        try {
+          compressed.push(await compressImage(file, WHATSAPP_HD_SETTINGS));
+        } catch { /* skip bad files */ }
+      }
+      if (compressed.length > 0) {
+        setPendingPhotos(compressed);
+        setShowLoginModal(true);
+        toast.info('Please sign in to upload your photos.');
+      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setIsUploading(true);
-    const fileCount = files.length;
-    
+
     const processFile = async (file: File): Promise<PhotoItem> => {
       const compressedFile = await compressImage(file, WHATSAPP_HD_SETTINGS);
 
-      // Generate local preview
-      const preview = await new Promise<string>((resolve, reject) => {
+      // Upload to Supabase immediately
+      const ts = Date.now();
+      const ext = compressedFile.name.split('.').pop() || 'jpg';
+      const filename = `${ts}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const tempOrderNum = `temp_${user.email?.replace(/[^a-zA-Z0-9]/g, '_') || 'user'}_${ts}`;
+
+      let s3Url = '';
+      if (isSupabaseConfigured()) {
+        const uploaded = await uploadOrderPhoto(compressedFile, tempOrderNum, filename);
+        if (uploaded) s3Url = uploaded;
+      }
+
+      // Fallback: local base64 preview if Supabase not configured
+      const preview = s3Url || await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onload = (ev) => resolve(ev.target?.result as string);
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(compressedFile);
       });
 
-      const photoId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const photo: PhotoItem = { id: photoId, file: compressedFile, preview, customText: '', uploading: false };
-
-      return photo;
+      const photoId = `${ts}-${Math.random().toString(36).substr(2, 9)}`;
+      return { id: photoId, file: compressedFile, preview, customText: '', s3Url, uploading: false };
     };
 
     try {
@@ -438,22 +517,19 @@ export default function PolaroidPrintPage() {
 
       if (processedPhotos.length > 0) {
         setPhotos(prev => [...prev, ...processedPhotos]);
-        setUploadProgress({ done: 0, total: processedPhotos.length });
+        setUploadProgress({ done: processedPhotos.length, total: processedPhotos.length });
         toast.success(t.toast_photos_added(processedPhotos.length));
       }
       if (failedCount > 0) {
-        toast.error(`${failedCount} file(s) could not be processed. HEIC/HEIF may not be supported on this browser.`);
+        toast.error(`${failedCount} file(s) could not be processed.`);
       }
-    } catch (error) {
+    } catch {
       toast.error(t.toast_compress_fail);
     } finally {
       setIsUploading(false);
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, []);
+  }, [user]);
 
   const removePhoto = useCallback((photoId: string) => {
     setPhotos(prev => prev.filter(p => p.id !== photoId));
@@ -564,7 +640,7 @@ export default function PolaroidPrintPage() {
       const items = cart.map(item => ({
         sizeId: item.sizeId.toUpperCase(),
         quantity: item.quantity,
-        imageUrls: [],
+        imageUrls: item.photos.map(p => p.s3Url || ''),
         customTexts: item.photos.map(p => p.customText || ''),
       }));
 
@@ -592,43 +668,9 @@ export default function PolaroidPrintPage() {
 
       if (data.success) {
         const orderNumber = data.order.orderNumber;
-        const uploadToken = data.uploadToken || data.order?.uploadToken;
-        const createdItems = Array.isArray(data.order?.items) ? data.order.items : [];
 
-        // Upload photos to the server. Backend allows authenticated users;
-        // guests will get 403 (expected) and upload after payment instead.
-        const uploadPromises: Promise<boolean>[] = [];
-        for (const [itemIndex, item] of cart.entries()) {
-          const orderItemId = createdItems[itemIndex]?.id;
-          for (const photo of item.photos) {
-            if (photo.s3Url) continue;
-            const formData = new FormData();
-            formData.append('file', photo.file);
-            formData.append('orderId', orderNumber);
-            formData.append('customerEmail', orderFormData.customerEmail);
-            if (uploadToken) formData.append('uploadToken', uploadToken);
-            if (orderItemId) formData.append('orderItemId', orderItemId);
-            uploadPromises.push(
-              fetch('/api/upload', { method: 'POST', body: formData })
-                .then(r => r.json())
-                .then((uploadData: { success: boolean; url?: string }) => {
-                  if (uploadData.success && uploadData.url) {
-                    return true;
-                  }
-                  return false;
-                })
-                .catch(() => false)
-            );
-          }
-        }
-
-        if (uploadPromises.length > 0) {
-          const uploadResults = await Promise.all(uploadPromises);
-          const failedCount = uploadResults.filter(r => !r).length;
-          if (failedCount > 0) {
-            console.warn(`${failedCount} photo(s) could not be uploaded during checkout`);
-          }
-        }
+        // Photos are already uploaded to Supabase during the upload step.
+        // No need to upload again at checkout time.
 
         if (paymentMethod === 'toyyibpay') {
           console.log('Creating ToyyibPay bill...');
@@ -1105,6 +1147,24 @@ export default function PolaroidPrintPage() {
 
       <div className="max-w-4xl mx-auto">
         {/* Upload Area */}
+        {!user && !authLoading ? (
+          <Card className="border-dashed">
+            <CardContent className="py-12 text-center space-y-4">
+              <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                <LogIn className="w-8 h-8 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Sign in to upload your photos</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You need an account to upload and manage your photos securely.
+                </p>
+              </div>
+              <Button onClick={signInWithGoogle} size="lg">
+                <LogIn className="w-4 h-4 mr-2" /> Sign in with Google
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
         <div
           className={cn(
             "border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer",
@@ -1144,6 +1204,7 @@ export default function PolaroidPrintPage() {
             <p className="text-xs text-muted-foreground">{t.upload_formats}</p>
           </div>
         </div>
+        )}
 
         {/* Photo Grid */}
         {photos.length > 0 && (
@@ -1163,7 +1224,7 @@ export default function PolaroidPrintPage() {
                   className="relative"
                 >
                   <div className="aspect-square rounded-lg overflow-hidden border-2 border-border">
-                    <img src={photo.preview} alt="Uploaded" className="w-full h-full object-cover" />
+                    <img src={photo.s3Url || photo.preview} alt="Uploaded" className="w-full h-full object-cover" />
                   </div>
                   {photo.uploading ? (
                     <div className="absolute inset-0 rounded-lg bg-black/50 flex items-center justify-center">
@@ -1269,7 +1330,7 @@ export default function PolaroidPrintPage() {
                     <div className="flex gap-4">
                       <div className="flex -space-x-2">
                         {item.photos.slice(0, 4).map((photo, i) => (
-                          <img key={photo.id} src={photo.preview} alt="Cart item" className="w-12 h-12 rounded-lg object-cover border-2 border-background" style={{ zIndex: 4 - i }} />
+                          <img key={photo.id} src={photo.s3Url || photo.preview} alt="Cart item" className="w-12 h-12 rounded-lg object-cover border-2 border-background" style={{ zIndex: 4 - i }} />
                         ))}
                         {item.photos.length > 4 && (
                           <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center border-2 border-background text-sm font-medium">
@@ -1902,7 +1963,7 @@ export default function PolaroidPrintPage() {
                           <div className="flex gap-3">
                             <div className="flex -space-x-2">
                               {item.photos.slice(0, 2).map((photo, i) => (
-                                <img key={photo.id} src={photo.preview} alt="" className="w-10 h-10 rounded object-cover border border-background" style={{ zIndex: 2 - i }} />
+                                <img key={photo.id} src={photo.s3Url || photo.preview} alt="" className="w-10 h-10 rounded object-cover border border-background" style={{ zIndex: 2 - i }} />
                               ))}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -2146,6 +2207,34 @@ export default function PolaroidPrintPage() {
               signInWithGoogle();
             }}>
               {t.btn_try_again}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Login Required Modal (for photo upload gate) */}
+      <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LogIn className="w-5 h-5" />
+              Sign in to upload photos
+            </DialogTitle>
+            <DialogDescription>
+              Please sign in with your Google account to upload and manage your photos securely.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <p className="text-sm text-muted-foreground">
+              Your photos will be stored safely in your account and persist across sessions.
+            </p>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" onClick={() => { setShowLoginModal(false); setPendingPhotos([]); }}>
+              Cancel
+            </Button>
+            <Button onClick={() => { setShowLoginModal(false); signInWithGoogle(); }}>
+              <LogIn className="w-4 h-4 mr-2" /> Sign in with Google
             </Button>
           </div>
         </DialogContent>

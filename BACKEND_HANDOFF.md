@@ -49,6 +49,8 @@ spring.jpa.hibernate.ddl-auto=validate
 8. [CORS Configuration](#8-cors-configuration)
 9. [Field Type Summary](#9-field-type-summary)
 10. [JPA Entity Notes](#10-jpa-entity-notes)
+11. [API Contract — Cart (NEW)](#11-api-contract--cart)
+12. [Image Upload Flow Changes (NEW)](#12-image-upload-flow-changes)
 
 ---
 
@@ -810,3 +812,193 @@ public void downloadOrderImages(@PathVariable String id, HttpServletResponse res
     }
 }
 ```
+
+---
+
+## 11. API Contract — Cart (NEW)
+
+The frontend now requires a server-side cart API. Images are uploaded to Supabase Storage directly from the browser **before** checkout, so the cart only stores URLs (not files).
+
+### `GET /api/cart`
+
+Get the current user's cart with all items.
+
+**Headers:** `Authorization: Bearer <jwt>`
+
+**Response `200`**
+```json
+{
+  "success": true,
+  "cart": {
+    "id": "cart-uuid",
+    "userId": "user-uuid",
+    "items": [
+      {
+        "id": "item-uuid",
+        "sizeId": "4r",
+        "quantity": 2,
+        "images": [
+          "https://xxx.supabase.co/storage/v1/object/public/order-photos/orders/temp_user_123/1700000000_abc123.jpg"
+        ],
+        "customTexts": ["Our Anniversary"],
+        "unitPrice": 5.00
+      }
+    ]
+  }
+}
+```
+
+### `POST /api/cart`
+
+Add an item to the user's cart (creates cart if none exists).
+
+**Request body:**
+```json
+{
+  "sizeId": "4r",
+  "quantity": 2,
+  "images": ["https://supabase-url/photo1.jpg"],
+  "customTexts": ["Our Anniversary"]
+}
+```
+
+**Response `201`**
+```json
+{
+  "success": true,
+  "cartItem": {
+    "id": "item-uuid",
+    "sizeId": "4r",
+    "quantity": 2,
+    "images": ["https://supabase-url/photo1.jpg"],
+    "customTexts": ["Our Anniversary"],
+    "unitPrice": 5.00
+  }
+}
+```
+
+### `PUT /api/cart/items/{itemId}`
+
+Update a cart item (quantity, images, customTexts).
+
+**Request body:**
+```json
+{
+  "quantity": 3,
+  "images": ["https://supabase-url/photo1.jpg", "https://supabase-url/photo2.jpg"],
+  "customTexts": ["Our Anniversary", ""]
+}
+```
+
+**Response `200`**
+```json
+{
+  "success": true,
+  "cartItem": { ... }
+}
+```
+
+### `DELETE /api/cart/items/{itemId}`
+
+Remove an item from the cart.
+
+**Response `200`**
+```json
+{
+  "success": true
+}
+```
+
+### `DELETE /api/cart`
+
+Clear the entire cart.
+
+**Response `200`**
+```json
+{
+  "success": true
+}
+```
+
+---
+
+## 12. Image Upload Flow Changes
+
+### Old Flow (BEFORE)
+```
+1. User selects photos → compressed in browser → stored as base64 in React state
+2. User fills checkout form → clicks "Place Order"
+3. Order created via POST /api/orders (imageUrls: [])
+4. Photos uploaded one-by-one via POST /api/upload → Spring Boot → S3
+5. Problem: localStorage overflow, data loss on login, no temp storage
+```
+
+### New Flow (AFTER)
+```
+1. User must LOGIN before uploading (login gate)
+2. User selects photos → compressed in browser → uploaded to Supabase Storage DIRECTLY
+3. Supabase URLs stored in React state + localStorage (lightweight, ~100 bytes each)
+4. User fills checkout form → clicks "Place Order"
+5. Order created via POST /api/orders with imageUrls already populated
+6. NO upload step at checkout — photos already in Supabase
+```
+
+### Supabase Storage Bucket
+
+Create a bucket named `order-photos` in Supabase:
+
+```
+Bucket name: order-photos
+Public: true (for read access)
+File size limit: 25MB
+Allowed MIME types: image/jpeg, image/png, image/webp
+```
+
+**RLS Policy (recommended for production):**
+```sql
+-- Allow authenticated users to upload
+CREATE POLICY "Authenticated users can upload"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'order-photos');
+
+-- Allow public read access
+CREATE POLICY "Public read access"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'order-photos');
+```
+
+**S3 key format (updated):**
+```
+orders/{orderNumberOrTempId}/{timestamp}_{random}.{ext}
+```
+
+Examples:
+```
+orders/temp_user_gmail_com_1700000000/1700000000_abc123.jpg     ← before order
+orders/PP-M0ABCD-XY12/1700000001_def456.jpg                   ← after order
+```
+
+### Environment Variables (Next.js)
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### Why Supabase Instead of S3 Direct?
+
+| Concern | S3 Direct | Supabase Storage |
+|---------|-----------|------------------|
+| Browser upload | Requires pre-signed URLs (complex) | Simple JS SDK |
+| Auth | IAM credentials (can't expose to browser) | Anon key (safe for browser) |
+| Cost | S3 + CloudFront | Supabase (bundled) |
+| Existing infra | Already using Spring Boot for S3 | Already configured in `.env` |
+
+### Backend Impact
+
+1. **No changes to `/api/upload` endpoint** — it's still used for edge cases
+2. **New cart API endpoints** required (see Section 11)
+3. **Order creation** now receives `imageUrls` array with pre-uploaded Supabase URLs
+4. **Image download** — backend must fetch from Supabase Storage URLs instead of S3
+5. **Cleanup job** — delete orphaned images from `orders/temp_*` prefix (abandoned carts)
