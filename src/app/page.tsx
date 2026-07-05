@@ -239,6 +239,7 @@ export default function PolaroidPrintPage() {
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
   const [trackingInput, setTrackingInput] = useState('');
+  const [trackingEmail, setTrackingEmail] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('toyyibpay');
   // Form
@@ -705,18 +706,19 @@ export default function PolaroidPrintPage() {
     }
 
     try {
-      const response = await fetch(`/api/orders/${trackingInput}`);
+      const emailParam = trackingEmail.trim() ? `?email=${encodeURIComponent(trackingEmail.trim())}` : '';
+      const response = await fetch(`/api/orders/${trackingInput}${emailParam}`);
       const data = await response.json();
       
       if (data.success && data.order) {
         setTrackingOrder(data.order);
       } else {
-        toast.error(t.toast_not_found);
+        toast.error(data.message || t.toast_not_found);
       }
     } catch {
       toast.error(t.toast_track_fail);
     }
-  }, [trackingInput]);
+  }, [trackingInput, trackingEmail]);
 
   const handleSubmitReview = useCallback(async () => {
     if (!selectedOrderForReview || !profile) return;
@@ -1992,10 +1994,15 @@ export default function PolaroidPrintPage() {
             <DialogDescription>{t.track_desc}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
-            <div className="flex gap-2">
+            <div className="space-y-2">
+              <Label>{t.label_order_no}</Label>
               <Input placeholder="PP-XXXXXXXXXX" value={trackingInput} onChange={(e) => setTrackingInput(e.target.value.toUpperCase())} />
-              <Button onClick={handleTrackOrder}><Search className="w-4 h-4" /></Button>
             </div>
+            <div className="space-y-2">
+              <Label>{t.label_email}</Label>
+              <Input type="email" placeholder={t.placeholder_email} value={trackingEmail} onChange={(e) => setTrackingEmail(e.target.value)} />
+            </div>
+            <Button onClick={handleTrackOrder} className="w-full"><Search className="w-4 h-4 mr-2" /> {t.btn_track}</Button>
             {trackingOrder && (
               <Card className="mt-4">
                 <CardContent className="p-4">
