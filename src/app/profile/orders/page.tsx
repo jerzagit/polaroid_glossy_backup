@@ -12,10 +12,12 @@ import { useRouter } from 'next/navigation';
 
 interface OrderItem {
   id: string;
-  size: { id: string; name: string; price: number };
+  sizeId: string;
+  sizeName: string;
   quantity: number;
-  images: string;
+  unitPrice: number;
   totalPrice: number;
+  images: string;
 }
 
 interface Order {

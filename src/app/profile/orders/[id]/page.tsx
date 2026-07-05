@@ -17,10 +17,13 @@ import { toast } from 'sonner';
 
 interface OrderItemType {
   id: string;
-  size: { id: string; name: string; displayName?: string; price: number };
+  sizeId: string;
+  sizeName: string;
   quantity: number;
-  images: string;
+  unitPrice: number;
   totalPrice: number;
+  images: string;
+  customTexts: string;
 }
 
 interface StatusHistory {
@@ -227,7 +230,7 @@ export default function OrderDetailPage() {
                 {order.items?.map((item) => (
                   <div key={item.id} className="flex items-center justify-between py-2">
                     <div>
-                      <p className="font-medium">{item.size.displayName || item.size.name}</p>
+                      <p className="font-medium">{item.sizeName || item.sizeId}</p>
                       <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                     </div>
                     <p className="font-medium">RM {item.totalPrice?.toFixed(2)}</p>
