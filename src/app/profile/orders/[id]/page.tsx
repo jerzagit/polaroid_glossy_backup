@@ -162,6 +162,7 @@ export default function OrderDetailPage() {
   }
 
   const status = order ? statusConfig[order.status] || statusConfig.PENDING : null;
+  const StatusIcon = status?.icon || Clock;
 
   return (
     <div className="min-h-screen bg-background">
