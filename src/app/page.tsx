@@ -58,7 +58,6 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { compressImage, WHATSAPP_HD_SETTINGS } from '@/lib/imageCompression';
-import { uploadOrderPhoto, isSupabaseConfigured } from '@/lib/supabase/client';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
@@ -100,8 +99,7 @@ interface PhotoItem {
   file: File;
   preview: string;
   customText?: string;
-  s3Url?: string;       // set after background upload to S3
-  uploading?: boolean;  // true while upload is in-flight
+  uploading?: boolean;
 }
 
 interface CartItem {
@@ -281,26 +279,15 @@ export default function PolaroidPrintPage() {
     }
   }, []);
 
-  // Process pending photos after login (uploaded while user was unauthenticated)
+  // Process pending photos after login (compressed while user was unauthenticated)
   useEffect(() => {
     if (!user || pendingPhotos.length === 0) return;
 
-    const uploadPending = async () => {
+    const processPending = async () => {
       setIsUploading(true);
-      const ts = Date.now();
 
       const processFile = async (file: File): Promise<PhotoItem> => {
-        const ext = file.name.split('.').pop() || 'jpg';
-        const filename = `${ts}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const tempOrderNum = `temp_${user.email?.replace(/[^a-zA-Z0-9]/g, '_') || 'user'}_${ts}`;
-
-        let s3Url = '';
-        if (isSupabaseConfigured()) {
-          const uploaded = await uploadOrderPhoto(file, tempOrderNum, filename);
-          if (uploaded) s3Url = uploaded;
-        }
-
-        const preview = s3Url || await new Promise<string>((resolve, reject) => {
+        const preview = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = (ev) => resolve(ev.target?.result as string);
           reader.onerror = () => reject(new Error('Failed to read file'));
@@ -308,7 +295,7 @@ export default function PolaroidPrintPage() {
         });
 
         const photoId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        return { id: photoId, file, preview, customText: '', s3Url, uploading: false };
+        return { id: photoId, file, preview, customText: '', uploading: false };
       };
 
       try {
@@ -328,7 +315,7 @@ export default function PolaroidPrintPage() {
       }
     };
 
-    uploadPending();
+    processPending();
   }, [user, pendingPhotos]);
 
   // Check for OAuth error or product deep-link in URL
@@ -352,21 +339,16 @@ export default function PolaroidPrintPage() {
     }
   }, []);
 
-  // Save cart to localStorage — strip base64 previews and File objects (too large)
-  // S3 URLs are used as the restored preview after page reload
+  // Save cart to localStorage — strip File objects and base64 previews (too large)
+  // Photos only exist in browser memory for the current session
   useEffect(() => {
     try {
       const serialisable = cart.map(item => ({
         ...item,
-        photos: item.photos.map(({ file: _file, preview, ...rest }) => {
-          // Replace base64 blob with s3Url for storage; if no s3Url yet, skip the preview
-          const storedPreview = rest.s3Url ?? (preview.startsWith('data:') ? '' : preview);
-          return { ...rest, preview: storedPreview };
-        }),
+        photos: item.photos.map(({ file: _file, preview: _preview, ...rest }) => rest),
       }));
       localStorage.setItem('polaroid_cart', JSON.stringify(serialisable));
     } catch {
-      // Storage quota hit — silently clear rather than crash
       localStorage.removeItem('polaroid_cart');
     }
   }, [cart]);
@@ -484,28 +466,15 @@ export default function PolaroidPrintPage() {
     const processFile = async (file: File): Promise<PhotoItem> => {
       const compressedFile = await compressImage(file, WHATSAPP_HD_SETTINGS);
 
-      // Upload to Supabase immediately
-      const ts = Date.now();
-      const ext = compressedFile.name.split('.').pop() || 'jpg';
-      const filename = `${ts}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const tempOrderNum = `temp_${user.email?.replace(/[^a-zA-Z0-9]/g, '_') || 'user'}_${ts}`;
-
-      let s3Url = '';
-      if (isSupabaseConfigured()) {
-        const uploaded = await uploadOrderPhoto(compressedFile, tempOrderNum, filename);
-        if (uploaded) s3Url = uploaded;
-      }
-
-      // Fallback: local base64 preview if Supabase not configured
-      const preview = s3Url || await new Promise<string>((resolve, reject) => {
+      const preview = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (ev) => resolve(ev.target?.result as string);
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(compressedFile);
       });
 
-      const photoId = `${ts}-${Math.random().toString(36).substr(2, 9)}`;
-      return { id: photoId, file: compressedFile, preview, customText: '', s3Url, uploading: false };
+      const photoId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      return { id: photoId, file: compressedFile, preview, customText: '', uploading: false };
     };
 
     try {
@@ -640,7 +609,7 @@ export default function PolaroidPrintPage() {
       const items = cart.map(item => ({
         sizeId: item.sizeId.toUpperCase(),
         quantity: item.quantity,
-        imageUrls: item.photos.map(p => p.s3Url || ''),
+        imageUrls: [],
         customTexts: item.photos.map(p => p.customText || ''),
       }));
 
@@ -668,9 +637,41 @@ export default function PolaroidPrintPage() {
 
       if (data.success) {
         const orderNumber = data.order.orderNumber;
+        const uploadToken = data.uploadToken || data.order?.uploadToken;
+        const createdItems = Array.isArray(data.order?.items) ? data.order.items : [];
 
-        // Photos are already uploaded to Supabase during the upload step.
-        // No need to upload again at checkout time.
+        // Upload photos to Spring Boot → R2
+        const uploadPromises: Promise<boolean>[] = [];
+        for (const [itemIndex, item] of cart.entries()) {
+          const orderItemId = createdItems[itemIndex]?.id;
+          for (const photo of item.photos) {
+            if (!photo.file) continue;
+            const formData = new FormData();
+            formData.append('file', photo.file);
+            formData.append('orderId', orderNumber);
+            formData.append('customerEmail', orderFormData.customerEmail);
+            if (uploadToken) formData.append('uploadToken', uploadToken);
+            if (orderItemId) formData.append('orderItemId', orderItemId);
+            uploadPromises.push(
+              fetch('/api/upload', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then((uploadData: { success: boolean; url?: string }) => {
+                  return !!(uploadData.success && uploadData.url);
+                })
+                .catch(() => false)
+            );
+          }
+        }
+
+        if (uploadPromises.length > 0) {
+          setUploadProgress({ done: 0, total: uploadPromises.length });
+          const uploadResults = await Promise.all(uploadPromises);
+          const failedCount = uploadResults.filter(r => !r).length;
+          if (failedCount > 0) {
+            console.warn(`${failedCount} photo(s) could not be uploaded`);
+            toast.error(`${failedCount} photo(s) failed to upload. Contact support if needed.`);
+          }
+        }
 
         if (paymentMethod === 'toyyibpay') {
           console.log('Creating ToyyibPay bill...');
@@ -1224,7 +1225,7 @@ export default function PolaroidPrintPage() {
                   className="relative"
                 >
                   <div className="aspect-square rounded-lg overflow-hidden border-2 border-border">
-                    <img src={photo.s3Url || photo.preview} alt="Uploaded" className="w-full h-full object-cover" />
+                    <img src={photo.preview} alt="Uploaded" className="w-full h-full object-cover" />
                   </div>
                   {photo.uploading ? (
                     <div className="absolute inset-0 rounded-lg bg-black/50 flex items-center justify-center">
@@ -1330,7 +1331,7 @@ export default function PolaroidPrintPage() {
                     <div className="flex gap-4">
                       <div className="flex -space-x-2">
                         {item.photos.slice(0, 4).map((photo, i) => (
-                          <img key={photo.id} src={photo.s3Url || photo.preview} alt="Cart item" className="w-12 h-12 rounded-lg object-cover border-2 border-background" style={{ zIndex: 4 - i }} />
+                          <img key={photo.id} src={photo.preview} alt="Cart item" className="w-12 h-12 rounded-lg object-cover border-2 border-background" style={{ zIndex: 4 - i }} />
                         ))}
                         {item.photos.length > 4 && (
                           <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center border-2 border-background text-sm font-medium">
@@ -1963,7 +1964,7 @@ export default function PolaroidPrintPage() {
                           <div className="flex gap-3">
                             <div className="flex -space-x-2">
                               {item.photos.slice(0, 2).map((photo, i) => (
-                                <img key={photo.id} src={photo.s3Url || photo.preview} alt="" className="w-10 h-10 rounded object-cover border border-background" style={{ zIndex: 2 - i }} />
+                                <img key={photo.id} src={photo.preview} alt="" className="w-10 h-10 rounded object-cover border border-background" style={{ zIndex: 2 - i }} />
                               ))}
                             </div>
                             <div className="flex-1 min-w-0">
