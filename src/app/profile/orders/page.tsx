@@ -28,14 +28,15 @@ interface Order {
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  draft: { label: 'Draft', color: 'bg-gray-100 text-gray-800', icon: Package },
-  pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Loader2 },
-  posted: { label: 'Posted', color: 'bg-purple-100 text-purple-800', icon: PackageCheck },
-  on_delivery: { label: 'On Delivery', color: 'bg-indigo-100 text-indigo-800', icon: Truck },
-  delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
-  refunded: { label: 'Refunded', color: 'bg-gray-100 text-gray-800', icon: RefreshCwIcon },
+  DRAFT: { label: 'Draft', color: 'bg-gray-100 text-gray-800', icon: Package },
+  PENDING: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+  PROCESSING: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Loader2 },
+  POSTED: { label: 'Posted', color: 'bg-purple-100 text-purple-800', icon: PackageCheck },
+  ON_DELIVERY: { label: 'On Delivery', color: 'bg-indigo-100 text-indigo-800', icon: Truck },
+  DELIVERED: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: CheckCircle },
+  CANCELLED: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
+  REFUNDED: { label: 'Refunded', color: 'bg-gray-100 text-gray-800', icon: RefreshCwIcon },
+  EXPIRED: { label: 'Expired', color: 'bg-red-100 text-red-800', icon: XCircle },
 };
 
 export default function OrdersPage() {
@@ -59,7 +60,7 @@ export default function OrdersPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(`/api/orders?userId=${profile?.id}`);
+      const response = await fetch('/api/orders/my', { headers: { 'Authorization': `Bearer ${localStorage.getItem('backend_jwt')}`, 'Content-Type': 'application/json' } });
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders);

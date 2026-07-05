@@ -3,14 +3,22 @@ import { NextRequest, NextResponse } from 'next/server';
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
 const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
 
-async function proxyToBackend(request: NextRequest, method: string): Promise<NextResponse> {
+async function proxyToBackend(request: NextRequest, method: string, extraPath = ''): Promise<NextResponse> {
   const url = new URL(request.url);
-  const path = url.search;
-  const backendUrl = `${API_BASE}/orders${path}`;
+  const orderNumber = url.searchParams.get('orderNumber');
+  // Convert ?orderNumber=xxx to path param for Spring Boot
+  if (orderNumber) {
+    url.searchParams.delete('orderNumber');
+  }
+  const path = orderNumber ? `/${orderNumber}` : extraPath;
+  const query = url.search;
+  const backendUrl = `${API_BASE}/orders${path}${query}`;
 
   try {
     const body = method === 'GET' || method === 'DELETE' ? undefined : await request.json().catch(() => undefined);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const auth = request.headers.get('authorization');
+    if (auth) headers['authorization'] = auth;
     const cookie = request.headers.get('cookie');
     if (cookie) headers['cookie'] = cookie;
 
