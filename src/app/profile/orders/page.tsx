@@ -145,7 +145,7 @@ export default function OrdersPage() {
         ) : (
           <div className="space-y-4">
             {filteredOrders.map(order => {
-              const status = statusConfig[order.status] || statusConfig.pending;
+              const status = statusConfig[order.status] || statusConfig.PENDING;
               const StatusIcon = status.icon;
               const itemCount = order.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
               const isDraft = order.status === 'draft';
