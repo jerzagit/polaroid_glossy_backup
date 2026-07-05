@@ -93,6 +93,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const syncWithBackend = useCallback(async () => {
+    if (!session?.user?.email) return;
+
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const savedJwt = localStorage.getItem('backend_jwt');
+      if (savedJwt) headers['Authorization'] = `Bearer ${savedJwt}`;
+
+      const res = await fetch(`${API_BASE}/auth/sync`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          email: session.user.email,
+          name: session.user.name,
+          avatarUrl: session.user.image,
+          provider: 'google',
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          setBackendJwt(data.token);
+          localStorage.setItem('backend_jwt', data.token);
+          if (data.refreshToken) {
+            localStorage.setItem('backend_refresh_token', data.refreshToken);
+          }
+        }
+      }
+    } catch {
+      // Backend sync not available yet - silently continue
+    }
+  }, [session]);
+
   const exchangeGoogleToken = useCallback(async () => {
     if (!session?.user?.email) return;
 
@@ -120,7 +154,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Backend Google auth not available yet - silently continue
     }
-  }, [session]);
+
+    // Also sync user profile to Spring Boot
+    await syncWithBackend();
+  }, [session, syncWithBackend]);
 
   useEffect(() => {
     if (session?.user) {
