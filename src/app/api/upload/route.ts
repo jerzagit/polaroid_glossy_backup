@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { appendFallbackOrderImage, getFallbackOrder } from '@/lib/orderFallback';
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
 const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
+const ALLOW_LOCAL_FALLBACK = process.env.NODE_ENV !== 'production';
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_UPLOADS_PER_WINDOW = 30;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -9,10 +11,12 @@ const ORDER_NUMBER_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9-]{5,63}$/;
 const ORDER_ITEM_ID_PATTERN = /^[a-zA-Z0-9_-]{1,100}$/;
 const CLOSED_ORDER_STATUSES = new Set(['cancelled', 'refunded', 'delivered', 'posted', 'on_delivery']);
 const BLOCKED_PAYMENT_STATUSES = new Set(['failed', 'cancelled', 'refunded']);
+const UPLOAD_ALLOWED_ORDER_STATUSES = new Set(['pending', 'processing']);
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
 
 type OrderItemLike = {
+  id?: unknown;
   images?: unknown;
   customTexts?: unknown;
   expectedImageCount?: unknown;
@@ -71,6 +75,25 @@ function parseJsonArray(value: unknown): unknown[] {
   }
 }
 
+function asNumber(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function getExpectedImageCount(item: OrderItemLike, uploaded: number, customTextCount: number) {
+  const explicitExpected = asNumber(item.expectedImageCount);
+  if (explicitExpected !== null && explicitExpected > 0) {
+    return Math.max(explicitExpected, uploaded);
+  }
+
+  const quantity = Math.max(1, asNumber(item.quantity) ?? 1);
+  if (customTextCount > 0) {
+    return Math.max(customTextCount * quantity, uploaded);
+  }
+
+  return Math.max(quantity, uploaded);
+}
+
 function getOrder(payload: unknown): OrderLike | null {
   if (!payload || typeof payload !== 'object') return null;
 
@@ -97,15 +120,38 @@ function getUploadCounts(order: OrderLike) {
       const item = rawItem as OrderItemLike;
       const images = parseJsonArray(item.images);
       const customTexts = parseJsonArray(item.customTexts);
-      const expectedImageCount = typeof item.expectedImageCount === 'number' ? item.expectedImageCount : null;
-      const quantity = typeof item.quantity === 'number' ? item.quantity : 0;
+      const expectedImageCount = getExpectedImageCount(item, images.length, customTexts.length);
 
       totals.uploaded += images.length;
-      totals.expected += expectedImageCount ?? Math.max(customTexts.length, images.length, quantity, 0);
+      totals.expected += expectedImageCount;
       return totals;
     },
     { expected: 0, uploaded: 0 }
   );
+}
+
+function getOrderItemUploadCounts(order: OrderLike, orderItemId: string) {
+  if (!Array.isArray(order.items)) {
+    return { expected: null as number | null, uploaded: null as number | null };
+  }
+
+  const rawItem = order.items.find(item => {
+    if (!item || typeof item !== 'object') return false;
+    return asString((item as OrderItemLike).id) === orderItemId;
+  });
+
+  if (!rawItem || typeof rawItem !== 'object') {
+    return { expected: null as number | null, uploaded: null as number | null };
+  }
+
+  const item = rawItem as OrderItemLike;
+  const images = parseJsonArray(item.images);
+  const customTexts = parseJsonArray(item.customTexts);
+
+  return {
+    uploaded: images.length,
+    expected: getExpectedImageCount(item, images.length, customTexts.length),
+  };
 }
 
 async function hasValidImageSignature(file: File) {
@@ -130,25 +176,40 @@ function validateFile(file: File) {
   return null;
 }
 
-async function fetchVerifiedOrder(request: NextRequest, orderId: string, customerEmail: string) {
+async function fetchVerifiedOrder(request: NextRequest, orderId: string, customerEmail: string, orderItemId: string | null) {
   const headers: Record<string, string> = {};
+  const auth = request.headers.get('authorization');
+  if (auth) headers.authorization = auth;
   const cookie = request.headers.get('cookie');
   if (cookie) headers.cookie = cookie;
 
   const params = new URLSearchParams({ orderNumber: orderId });
-  const res = await fetch(`${API_BASE}/orders?${params}`, {
-    headers,
-    signal: AbortSignal.timeout(10000),
-  });
+  let data: unknown;
+  let resOk = false;
 
-  if (!res.ok) {
+  try {
+    const res = await fetch(`${API_BASE}/orders?${params}`, {
+      headers,
+      signal: AbortSignal.timeout(10000),
+    });
+
+    resOk = res.ok;
+    data = await res.json();
+  } catch {
+    const fallbackOrder = ALLOW_LOCAL_FALLBACK ? getFallbackOrder(orderId) : null;
+    if (fallbackOrder) {
+      data = { success: true, order: fallbackOrder };
+      resOk = true;
+    }
+  }
+
+  if (!resOk) {
     return {
       ok: false,
       response: NextResponse.json({ success: false, error: 'Order could not be verified' }, { status: 403 }),
     };
   }
 
-  const data = await res.json();
   const order = getOrder(data);
   if (!order) {
     return {
@@ -167,7 +228,7 @@ async function fetchVerifiedOrder(request: NextRequest, orderId: string, custome
 
   const status = asString(order.status).toLowerCase();
   const paymentStatus = asString(order.paymentStatus).toLowerCase();
-  if (CLOSED_ORDER_STATUSES.has(status) || BLOCKED_PAYMENT_STATUSES.has(paymentStatus)) {
+  if (!UPLOAD_ALLOWED_ORDER_STATUSES.has(status) || CLOSED_ORDER_STATUSES.has(status) || BLOCKED_PAYMENT_STATUSES.has(paymentStatus)) {
     return {
       ok: false,
       response: NextResponse.json({ success: false, error: 'Order is not open for uploads' }, { status: 409 }),
@@ -180,6 +241,16 @@ async function fetchVerifiedOrder(request: NextRequest, orderId: string, custome
       ok: false,
       response: NextResponse.json({ success: false, error: 'Order already has the expected number of uploads' }, { status: 409 }),
     };
+  }
+
+  if (orderItemId) {
+    const itemCounts = getOrderItemUploadCounts(order, orderItemId);
+    if (itemCounts.expected !== null && itemCounts.expected > 0 && itemCounts.uploaded !== null && itemCounts.uploaded >= itemCounts.expected) {
+      return {
+        ok: false,
+        response: NextResponse.json({ success: false, error: 'This order item already has the expected number of uploads' }, { status: 409 }),
+      };
+    }
   }
 
   return { ok: true, response: null };
@@ -223,8 +294,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Too many upload attempts' }, { status: 429 });
     }
 
-    const verification = await fetchVerifiedOrder(request, orderId, customerEmail);
-    if (!verification.ok) return verification.response;
+    const verification = await fetchVerifiedOrder(request, orderId, customerEmail, typeof orderItemId === 'string' && orderItemId.trim() ? orderItemId : null);
+    if (!verification.ok) {
+      return verification.response ?? NextResponse.json({ success: false, error: 'Order could not be verified' }, { status: 403 });
+    }
 
     const backendForm = new FormData();
     backendForm.append('file', file);
@@ -236,14 +309,35 @@ export async function POST(request: NextRequest) {
     if (typeof orderItemId === 'string' && orderItemId.trim()) {
       params.set('orderItemId', orderItemId);
     }
-    const res = await fetch(`${API_BASE}/files/upload?${params}`, {
-      method: 'POST',
-      body: backendForm,
-      signal: AbortSignal.timeout(30000),
-    });
+    const backendHeaders: Record<string, string> = {};
+    const auth = request.headers.get('authorization');
+    if (auth) backendHeaders.authorization = auth;
+    const cookie = request.headers.get('cookie');
+    if (cookie) backendHeaders.cookie = cookie;
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    try {
+      const res = await fetch(`${API_BASE}/files/upload?${params}`, {
+        method: 'POST',
+        headers: backendHeaders,
+        body: backendForm,
+        signal: AbortSignal.timeout(30000),
+      });
+
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    } catch {
+      if (ALLOW_LOCAL_FALLBACK && getFallbackOrder(orderId)) {
+        const fallbackUrl = `/local-dev-uploads/${orderId}/${encodeURIComponent(file.name)}`;
+        appendFallbackOrderImage(orderId, typeof orderItemId === 'string' ? orderItemId : null, fallbackUrl);
+        return NextResponse.json({
+          success: true,
+          url: fallbackUrl,
+          warning: 'Backend unavailable; returned local development fallback upload URL.',
+        });
+      }
+
+      throw new Error('Backend upload unavailable');
+    }
   } catch {
     return NextResponse.json(
       { success: false, error: 'Upload failed' },

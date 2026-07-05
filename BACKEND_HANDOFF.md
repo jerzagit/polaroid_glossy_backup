@@ -52,6 +52,8 @@ spring.jpa.hibernate.ddl-auto=validate
 11. [API Contract — Cart (NEW)](#11-api-contract--cart)
 12. [Image Upload Flow Changes (NEW)](#12-image-upload-flow-changes)
 
+> Additional feature-specific handoff: see [`docs/order-image-fulfillment-handoff.md`](./docs/order-image-fulfillment-handoff.md) for customer order detail image viewing/uploading, `status IN ('pending','processing')` upload rules, expected image count enforcement, and Cloudflare R2 response requirements.
+
 ---
 
 ## 1. Database Schema

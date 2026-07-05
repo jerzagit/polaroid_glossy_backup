@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createFallbackOrder, getFallbackOrder } from '@/lib/orderFallback';
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
 const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
+const ALLOW_LOCAL_FALLBACK = process.env.NODE_ENV !== 'production';
 
 async function proxyToBackend(request: NextRequest, method: string, extraPath = ''): Promise<NextResponse> {
   const url = new URL(request.url);
@@ -14,8 +16,9 @@ async function proxyToBackend(request: NextRequest, method: string, extraPath = 
   const query = url.search;
   const backendUrl = `${API_BASE}/orders${path}${query}`;
 
+  const body = method === 'GET' || method === 'DELETE' ? undefined : await request.json().catch(() => undefined);
+
   try {
-    const body = method === 'GET' || method === 'DELETE' ? undefined : await request.json().catch(() => undefined);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const auth = request.headers.get('authorization');
     if (auth) headers['authorization'] = auth;
@@ -31,6 +34,22 @@ async function proxyToBackend(request: NextRequest, method: string, extraPath = 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch {
+    if (ALLOW_LOCAL_FALLBACK && method === 'GET' && orderNumber) {
+      const order = getFallbackOrder(orderNumber);
+      if (order) {
+        return NextResponse.json({ success: true, order });
+      }
+    }
+
+    if (ALLOW_LOCAL_FALLBACK && method === 'POST' && body && typeof body === 'object') {
+      const order = createFallbackOrder(body);
+      return NextResponse.json({
+        success: true,
+        order,
+        warning: 'Backend unavailable; returned local development fallback order.',
+      });
+    }
+
     return NextResponse.json(
       { success: false, error: 'Backend unavailable' },
       { status: 503 }

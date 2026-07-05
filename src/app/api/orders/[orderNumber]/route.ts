@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getFallbackOrder } from '@/lib/orderFallback';
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
 const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
+const ALLOW_LOCAL_FALLBACK = process.env.NODE_ENV !== 'production';
 
 export async function GET(
   _request: NextRequest,
@@ -30,10 +32,15 @@ export async function GET(
 
     // Backend returns raw order object or error; wrap for frontend consistency
     return NextResponse.json(
-      res.ok ? { success: true, order: data } : data,
+      res.ok && data?.success && data?.order ? data : (res.ok ? { success: true, order: data } : data),
       { status: res.status }
     );
   } catch {
+    const order = ALLOW_LOCAL_FALLBACK ? getFallbackOrder(orderNumber) : null;
+    if (order) {
+      return NextResponse.json({ success: true, order });
+    }
+
     return NextResponse.json(
       { success: false, error: 'Backend unavailable' },
       { status: 503 }

@@ -185,6 +185,8 @@ const getShippingCost = (stateId: string): number => {
   return state ? state.shippingCost : 11;
 };
 
+const MALAYSIA_POSTCODE_PATTERN = /^\d{5}$/;
+
 export default function PolaroidPrintPage() {
   const { lang, setLang, t } = useLanguage();
   const { user, profile, loading: authLoading, signInWithGoogle, signOut, backendJwt } = useAuth();
@@ -595,6 +597,11 @@ export default function PolaroidPrintPage() {
       return;
     }
 
+    if (!MALAYSIA_POSTCODE_PATTERN.test(orderFormData.postalCode)) {
+      toast.error(lang === 'my' ? 'Sila masukkan poskod 5 digit yang sah' : 'Please enter a valid 5-digit postcode');
+      return;
+    }
+
     if (!orderFormData.customerState) {
       toast.error(t.toast_select_state);
       return;
@@ -614,17 +621,24 @@ export default function PolaroidPrintPage() {
     }
 
     try {
+      const expectedImageCount = cart.reduce((sum, item) => sum + item.photos.length * item.quantity, 0);
       const items = cart.map(item => ({
-        sizeId: item.sizeId.toUpperCase(),
+        sizeId: item.sizeId.toLowerCase(),
         quantity: item.quantity,
         imageUrls: [],
+        images: [],
+        expectedImageCount: item.photos.length * item.quantity,
         customTexts: item.photos.map(p => p.customText || ''),
+        unitPrice: item.unitPrice,
       }));
 
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
+          uploadMode: 'now',
+          expectedImageCount,
+          userId: profile?.id,
           customerName: orderFormData.customerName,
           customerEmail: orderFormData.customerEmail,
           customerPhone: orderFormData.customerPhone,
@@ -635,7 +649,13 @@ export default function PolaroidPrintPage() {
           customerCity: orderFormData.city,
           customerState: orderFormData.customerState,
           customerCountry: orderFormData.country,
+          customerNotes: orderFormData.notes,
           notes: orderFormData.notes,
+          paymentMethod,
+          paymentStatus: 'pending',
+          subtotal: cartTotal,
+          shipping: shippingCost,
+          total: cartTotal + shippingCost,
           items
         })
       });
@@ -684,7 +704,6 @@ export default function PolaroidPrintPage() {
 
         if (paymentMethod === 'toyyibpay') {
           console.log('Creating ToyyibPay bill...');
-          const expectedImageCount = cart.reduce((sum, item) => sum + item.photos.length * item.quantity, 0);
           const billResponse = await fetch('/api/toyyibpay/create-bill', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1493,10 +1512,13 @@ export default function PolaroidPrintPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="postal">Postal / Zip Code</Label>
-                <Input id="postal" type="tel" inputMode="numeric" placeholder="Postal code" maxLength={10} value={orderFormData.postalCode} onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, '');
+                <Input id="postal" type="tel" inputMode="numeric" placeholder="77000" maxLength={5} value={orderFormData.postalCode} onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 5);
                   setOrderFormData(prev => ({ ...prev, postalCode: digits }));
                 }} />
+                {orderFormData.postalCode && !MALAYSIA_POSTCODE_PATTERN.test(orderFormData.postalCode) && (
+                  <p className="text-xs text-red-500">{lang === 'my' ? 'Poskod mesti 5 digit' : 'Postcode must be 5 digits'}</p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
