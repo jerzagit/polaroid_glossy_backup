@@ -94,8 +94,6 @@ interface PrintSize {
   description?: string;
 }
 
-type UploadMode = 'now' | 'later';
-
 interface PhotoItem {
   id: string;
   file: File;
@@ -234,8 +232,6 @@ export default function PolaroidPrintPage() {
   const [trackingInput, setTrackingInput] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('toyyibpay');
-  const [uploadMode, setUploadMode] = useState<UploadMode>('now');
-  
   // Form
   const [orderFormData, setOrderFormData] = useState({
     customerName: '',
@@ -546,7 +542,6 @@ export default function PolaroidPrintPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          uploadMode,
           expectedImageCount,
           userId: profile?.id,
           paymentMethod,
@@ -573,7 +568,8 @@ export default function PolaroidPrintPage() {
         const uploadToken = data.uploadToken || data.order?.uploadToken;
         const createdItems = Array.isArray(data.order?.items) ? data.order.items : [];
 
-        if (uploadMode === 'now') {
+        // Authenticated users upload before payment; guests upload after payment
+        if (user) {
           // Upload all photos to this order before redirecting to payment.
           const uploadPromises: Promise<boolean>[] = [];
           for (const [itemIndex, item] of cart.entries()) {
@@ -618,7 +614,6 @@ export default function PolaroidPrintPage() {
             body: JSON.stringify({
               orderId: data.order.id,
               orderNumber,
-              uploadMode,
               expectedImageCount,
               amount: cartTotal + shippingCost,
               customerEmail: orderFormData.customerEmail,
@@ -658,7 +653,7 @@ export default function PolaroidPrintPage() {
     } finally {
       setIsProcessing(false);
     }
-  }, [orderFormData, cart, cartTotal, profile?.id, paymentMethod, uploadMode]);
+  }, [orderFormData, cart, cartTotal, profile?.id, paymentMethod, user]);
 
   const handleCancelOrder = useCallback(async (orderId: string) => {
     try {
@@ -1413,25 +1408,6 @@ export default function PolaroidPrintPage() {
 
         <Card className="mt-3 md:mt-6">
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Photo upload</Label>
-              <Select value={uploadMode} onValueChange={(value) => setUploadMode(value as UploadMode)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select upload timing" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="now">
-                    <span className="font-medium">Upload before payment</span>
-                    <span className="text-xs text-muted-foreground ml-2">recommended</span>
-                  </SelectItem>
-                  <SelectItem value="later">
-                    <span className="font-medium">Upload later</span>
-                    <span className="text-xs text-muted-foreground ml-2">after order is secured</span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="space-y-2">
               <Label>{t.label_payment}</Label>
               <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as 'bank_transfer' | 'toyyibpay')}>
