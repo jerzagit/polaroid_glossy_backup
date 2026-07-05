@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!session?.user?.email) return;
 
     try {
-      const res = await fetch(`${API_BASE}/auth/google`, {
+      const res = await fetch('/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
