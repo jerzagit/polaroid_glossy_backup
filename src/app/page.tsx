@@ -1810,9 +1810,6 @@ export default function PolaroidPrintPage() {
                       <PackageOpen className="w-4 h-4 mr-2" /> {t.menu_orders}
                     </Link>
                   </Button>
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => { setShowUserMenu(false); setShowTrackingModal(true); }}>
-                    <Search className="w-4 h-4 mr-2" /> {t.menu_track}
-                  </Button>
                   <Separator className="my-2" />
                   <Button variant="ghost" className="w-full justify-start text-destructive" onClick={() => { setShowUserMenu(false); signOut(); }}>
                     <LogOut className="w-4 h-4 mr-2" /> {t.btn_signout}
@@ -1895,7 +1892,7 @@ export default function PolaroidPrintPage() {
                     <Menu className="w-4 h-4" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-72 sm:w-80">
+                <SheetContent side="right" className="w-72 sm:w-80 flex flex-col">
                   <SheetHeader>
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
@@ -1904,42 +1901,68 @@ export default function PolaroidPrintPage() {
                       <SheetTitle className="text-base">Polaroid Glossy MY</SheetTitle>
                     </div>
                   </SheetHeader>
-                  <div className="flex flex-col gap-3 px-4 mt-4">
-                    <div className="flex items-center justify-center border rounded-lg overflow-hidden">
-                      <button
-                        className={cn("flex-1 px-3 py-2 text-sm font-semibold transition-colors", lang === 'en' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
-                        onClick={() => setLang('en')}
-                      >
-                        ENG
-                      </button>
-                      <button
-                        className={cn("flex-1 px-3 py-2 text-sm font-semibold transition-colors", lang === 'my' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
-                        onClick={() => setLang('my')}
-                      >
-                        MY
-                      </button>
-                    </div>
-                    <ThemeSwitcher />
-                    <Button variant="ghost" className="justify-start" asChild>
-                      <Link href="/products">
-                        <Package className="w-4 h-4 mr-3" /> Products
-                      </Link>
-                    </Button>
-                    <Button variant="ghost" className="justify-start" asChild>
-                      <Link href="/faq">
-                        <MessageSquare className="w-4 h-4 mr-3" /> {t.nav_faq}
-                      </Link>
-                    </Button>
-                    <Button variant="ghost" className="justify-start" onClick={() => setShowTrackingModal(true)}>
-                      <Search className="w-4 h-4 mr-3" /> {t.nav_track}
-                    </Button>
-                    {currentStep >= 0 && !orderComplete && (
-                      <Button variant="ghost" className="justify-start" onClick={() => setCurrentStep(-1)}>
-                        <Camera className="w-4 h-4 mr-3" /> {t.nav_home}
-                      </Button>
+                  <div className="flex-1 flex flex-col px-4 mt-4">
+                    {user && (
+                      <div className="mb-3 p-3 rounded-lg bg-muted/50">
+                        <p className="font-medium text-sm">{profile?.name || 'User'}</p>
+                        <p className="text-xs text-muted-foreground truncate">{profile?.email || user.email}</p>
+                      </div>
                     )}
-                    <div className="border-t pt-3">
-                      {renderUserMenu()}
+                    <nav className="flex flex-col gap-1">
+                      {user && (
+                        <Button variant="ghost" className="justify-start" asChild>
+                          <Link href="/profile/orders">
+                            <PackageOpen className="w-4 h-4 mr-3" /> {t.menu_orders}
+                          </Link>
+                        </Button>
+                      )}
+                      <Button variant="ghost" className="justify-start" asChild>
+                        <Link href="/products">
+                          <Package className="w-4 h-4 mr-3" /> Products
+                        </Link>
+                      </Button>
+                      <Button variant="ghost" className="justify-start" onClick={() => setShowTrackingModal(true)}>
+                        <Search className="w-4 h-4 mr-3" /> {t.nav_track}
+                      </Button>
+                      <Button variant="ghost" className="justify-start" asChild>
+                        <Link href="/faq">
+                          <MessageSquare className="w-4 h-4 mr-3" /> {t.nav_faq}
+                        </Link>
+                      </Button>
+                      {currentStep >= 0 && !orderComplete && (
+                        <Button variant="ghost" className="justify-start" onClick={() => setCurrentStep(-1)}>
+                          <Camera className="w-4 h-4 mr-3" /> {t.nav_home}
+                        </Button>
+                      )}
+                      {user && (
+                        <Button variant="ghost" className="justify-start" asChild>
+                          <Link href="/profile">
+                            <User className="w-4 h-4 mr-3" /> Profile
+                          </Link>
+                        </Button>
+                      )}
+                    </nav>
+                    <div className="mt-auto border-t pt-4 space-y-3">
+                      <ThemeSwitcher />
+                      <div className="flex items-center justify-center border rounded-lg overflow-hidden">
+                        <button
+                          className={cn("flex-1 px-3 py-2 text-sm font-semibold transition-colors", lang === 'en' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+                          onClick={() => setLang('en')}
+                        >
+                          ENG
+                        </button>
+                        <button
+                          className={cn("flex-1 px-3 py-2 text-sm font-semibold transition-colors", lang === 'my' ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+                          onClick={() => setLang('my')}
+                        >
+                          MY
+                        </button>
+                      </div>
+                      {user && (
+                        <Button variant="ghost" className="w-full justify-start text-destructive" onClick={() => signOut()}>
+                          <LogOut className="w-4 h-4 mr-3" /> {t.btn_signout}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </SheetContent>
