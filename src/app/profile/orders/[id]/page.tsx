@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Package, Clock, Loader2, CheckCircle, XCircle, Truck, RefreshCwIcon,
-  PackageCheck, Copy, CreditCard, ImageIcon, Upload, AlertCircle
+  PackageCheck, Copy, CreditCard, ImageIcon, Upload, AlertCircle, FileImage, Receipt
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { compressImage } from '@/lib/imageCompression';
@@ -38,6 +38,9 @@ interface Order {
   orderNumber: string;
   status: string;
   paymentStatus?: string;
+  paymentMethod?: string;
+  paymentProofUrl?: string;
+  paymentReference?: string;
   customerEmail?: string;
   total: number;
   items: OrderItemType[];
@@ -179,6 +182,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [paymentReference, setPaymentReference] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -222,6 +227,60 @@ export default function OrderDetailPage() {
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard');
+  };
+
+  const handleUploadPaymentProof = async (file: File | null) => {
+    if (!order || !file) return;
+
+    setUploadingProof(true);
+    try {
+      const compressedFile = await compressImage(file);
+      const formData = new FormData();
+      const token = localStorage.getItem('backend_jwt');
+      formData.append('file', compressedFile);
+      formData.append('orderId', order.orderNumber);
+      formData.append('customerEmail', order.customerEmail || profile?.email || user?.email || '');
+      formData.append('purpose', 'payment_proof');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: formData,
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      const proofUrl = data.url;
+
+      const submitResponse = await fetch(`/api/orders/${order.orderNumber}/payment-proof`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          paymentProofUrl: proofUrl,
+          paymentReference: paymentReference.trim() || undefined,
+        }),
+      });
+
+      const submitData = await submitResponse.json();
+      if (!submitResponse.ok || !submitData.success) {
+        throw new Error(submitData.error || 'Failed to submit payment proof');
+      }
+
+      toast.success('Payment proof submitted successfully');
+      setPaymentReference('');
+      await fetchOrder();
+    } catch (error) {
+      console.error('Payment proof upload failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload payment proof');
+    } finally {
+      setUploadingProof(false);
+    }
   };
 
   const handleUploadImages = async (item: OrderItemType, files: FileList | null) => {
@@ -473,6 +532,85 @@ export default function OrderDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="font-mono text-sm">{order.trackingNumber}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {order.paymentMethod === 'bank_transfer' && (normalizedStatus === 'pending' || normalizedStatus === 'draft') && !order.paymentProofUrl && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Receipt className="w-4 h-4" /> Submit Payment Proof
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-muted rounded-lg p-4 text-sm space-y-1">
+                    <p className="font-semibold">Maybank</p>
+                    <p>Account: <span className="font-mono">5186 2614 2087</span></p>
+                    <p>Name: Acachiaa Empire</p>
+                    <p>Amount: <span className="font-bold">RM {order.total?.toFixed(2)}</span></p>
+                    <p className="text-xs text-muted-foreground mt-2">Reference: {order.orderNumber}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Reference / Receipt Number (optional)</label>
+                    <input
+                      type="text"
+                      value={paymentReference}
+                      onChange={(e) => setPaymentReference(e.target.value)}
+                      placeholder="e.g. 1234567890"
+                      className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Upload Screenshot</label>
+                    <input
+                      id="payment-proof-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      disabled={uploadingProof}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleUploadPaymentProof(file);
+                        e.currentTarget.value = '';
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-1 w-full"
+                      disabled={uploadingProof}
+                      onClick={() => document.getElementById('payment-proof-upload')?.click()}
+                    >
+                      {uploadingProof ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</>
+                      ) : (
+                        <><FileImage className="w-4 h-4 mr-2" /> Choose Screenshot</>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {order.paymentMethod === 'bank_transfer' && order.paymentProofUrl && normalizedStatus === 'pending' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Clock className="w-4 h-4" /> Payment Proof Submitted
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    Waiting for admin to confirm your payment
+                  </div>
+                  {order.paymentReference && (
+                    <p className="text-sm">Reference: <span className="font-mono">{order.paymentReference}</span></p>
+                  )}
+                  <a href={order.paymentProofUrl} target="_blank" rel="noreferrer" className="block aspect-video max-w-xs overflow-hidden rounded-md border bg-muted">
+                    <img src={order.paymentProofUrl} alt="Payment proof" className="h-full w-full object-cover" />
+                  </a>
                 </CardContent>
               </Card>
             )}

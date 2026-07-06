@@ -106,6 +106,8 @@ model Order {
   paymentMethod String?         @default("bank_transfer") // bank_transfer, toyyibpay
   paymentStatus String?          @default("pending") // pending, paid, failed
   toyyibpayRef String?
+  paymentProofUrl String?
+  paymentReference String?
   paidAt        DateTime?
   notes         String?
   trackingNumber String?

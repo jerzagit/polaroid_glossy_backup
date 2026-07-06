@@ -23,6 +23,8 @@ type FallbackOrderInput = {
   customerNotes?: unknown;
   paymentMethod?: unknown;
   paymentStatus?: unknown;
+  paymentProofUrl?: unknown;
+  paymentReference?: unknown;
   subtotal?: unknown;
   shipping?: unknown;
   total?: unknown;
@@ -45,6 +47,8 @@ export type FallbackOrder = {
   status: string;
   paymentMethod: string;
   paymentStatus: string;
+  paymentProofUrl: string | null;
+  paymentReference: string | null;
   subtotal: number;
   shipping: number;
   total: number;
@@ -164,6 +168,8 @@ export function createFallbackOrder(input: FallbackOrderInput) {
     status: 'pending',
     paymentMethod: asString(input.paymentMethod, 'bank_transfer'),
     paymentStatus: asString(input.paymentStatus, 'pending'),
+    paymentProofUrl: asString(input.paymentProofUrl) || null,
+    paymentReference: asString(input.paymentReference) || null,
     subtotal,
     shipping,
     total,
@@ -201,4 +207,20 @@ export function appendFallbackOrderImage(orderNumber: string, orderItemId: strin
   item.images = JSON.stringify(images);
   order.updatedAt = new Date().toISOString();
   return true;
+}
+
+export function updateFallbackOrderPaymentProof(
+  orderNumber: string,
+  paymentProofUrl: string,
+  paymentReference?: string
+) {
+  const order = getFallbackOrder(orderNumber);
+  if (!order) return null;
+
+  order.paymentProofUrl = paymentProofUrl;
+  if (paymentReference) {
+    order.paymentReference = paymentReference;
+  }
+  order.updatedAt = new Date().toISOString();
+  return order;
 }

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { ArrowLeft, Package, Clock, Loader2, CheckCircle, XCircle, Truck, RefreshCwIcon, PackageCheck } from 'lucide-react';
+import { ArrowLeft, Package, Clock, Loader2, CheckCircle, XCircle, Truck, RefreshCwIcon, PackageCheck, Receipt, Upload, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface OrderItem {
@@ -24,6 +24,9 @@ interface Order {
   orderNumber: string;
   status: string;
   total: number;
+  paymentMethod?: string;
+  paymentProofUrl?: string | null;
+  paymentReference?: string | null;
   items: OrderItem[];
   createdAt: string;
 }
@@ -149,6 +152,7 @@ export default function OrdersPage() {
               const StatusIcon = status.icon;
               const itemCount = order.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
               const isDraft = order.status === 'draft';
+              const normalizedStatus = order.status?.toLowerCase() || 'pending';
 
               return (
                 <Link key={order.id} href={`/profile/orders/${order.orderNumber}`}>
@@ -166,6 +170,23 @@ export default function OrdersPage() {
                           <p className="text-xs md:text-sm text-muted-foreground mt-1">
                             {itemCount} item{itemCount !== 1 ? 's' : ''} — RM {order.total?.toFixed(2)}
                           </p>
+
+                          {/* Payment proof status indicator */}
+                          {order.paymentMethod === 'bank_transfer' && normalizedStatus === 'pending' && (
+                            <div className="mt-2">
+                              {order.paymentProofUrl ? (
+                                <Badge variant="outline" className="text-blue-600 border-blue-400 gap-1">
+                                  <Check className="w-3 h-3" />
+                                  Payment proof submitted — awaiting confirmation
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-amber-600 border-amber-400 gap-1">
+                                  <Upload className="w-3 h-3" />
+                                  Awaiting payment proof upload
+                                </Badge>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="text-right shrink-0">
                           <Badge className={status.color}>
