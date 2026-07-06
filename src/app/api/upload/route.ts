@@ -183,12 +183,11 @@ async function fetchVerifiedOrder(request: NextRequest, orderId: string, custome
   const cookie = request.headers.get('cookie');
   if (cookie) headers.cookie = cookie;
 
-  const params = new URLSearchParams({ orderNumber: orderId });
   let data: unknown;
   let resOk = false;
 
   try {
-    const res = await fetch(`${API_BASE}/orders?${params}`, {
+    const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderId)}`, {
       headers,
       signal: AbortSignal.timeout(10000),
     });
