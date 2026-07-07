@@ -43,7 +43,8 @@ import {
   CheckCircle,
   ClockIcon,
   TruckIcon,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { compressImage, WHATSAPP_HD_SETTINGS } from '@/lib/imageCompression';
+import { saveCartPhotos, loadCartPhotos, removeCartPhotos, clearAllCartPhotos } from '@/lib/photoStorage';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
@@ -198,6 +200,14 @@ export default function PolaroidPrintPage() {
     return headers;
   };
 
+  // Auth headers for file uploads — omits Content-Type so the browser sets multipart/form-data boundary
+  const uploadAuthHeaders = (): Record<string, string> => {
+    const token = backendJwt || (typeof window !== 'undefined' ? localStorage.getItem('backend_jwt') : null);
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+  };
+
   // Derived from translations
   const printSizes: PrintSize[] = [
     { id: '2r', name: '2R', displayName: t.size_2r_display, width: 2.5, height: 3.5, price: 0.50, description: t.size_2r_desc },
@@ -272,20 +282,43 @@ export default function PolaroidPrintPage() {
   const [reviewForm, setReviewForm] = useState({ rating: 5, title: '', comment: '' });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const checkoutReuploadRef = useRef<HTMLInputElement>(null);
 
   const cartTotal = cart.reduce((sum, item) => sum + item.size.price * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPhotos = cart.reduce((sum, item) => sum + item.photos.length * item.quantity, 0);
 
-  // Load cart from localStorage
+  // Load cart from localStorage + restore File objects from IndexedDB
   useEffect(() => {
     const savedCart = localStorage.getItem('polaroid_cart');
-    if (savedCart) {
-      try {
-        setCart(JSON.parse(savedCart));
-      } catch {
-        localStorage.removeItem('polaroid_cart');
-      }
+    if (!savedCart) return;
+
+    try {
+      const parsed = JSON.parse(savedCart);
+      // Restore File objects from IndexedDB for each cart item
+      (async () => {
+        const restored = await Promise.all(
+          parsed.map(async (item: CartItem) => {
+            try {
+              const photoMap = await loadCartPhotos(item.id);
+              if (photoMap.size === 0) return item;
+              return {
+                ...item,
+                photos: item.photos.map((p: PhotoItem) => {
+                  const stored = photoMap.get(p.id);
+                  if (!stored) return p;
+                  return { ...p, file: stored.file, preview: stored.preview };
+                }),
+              };
+            } catch {
+              return item;
+            }
+          })
+        );
+        setCart(restored);
+      })();
+    } catch {
+      localStorage.removeItem('polaroid_cart');
     }
   }, []);
 
@@ -349,8 +382,7 @@ export default function PolaroidPrintPage() {
     }
   }, []);
 
-  // Save cart to localStorage — strip File objects and base64 previews (too large)
-  // Photos only exist in browser memory for the current session
+  // Save cart to localStorage + persist File objects to IndexedDB
   useEffect(() => {
     try {
       const serialisable = cart.map(item => ({
@@ -360,6 +392,11 @@ export default function PolaroidPrintPage() {
       localStorage.setItem('polaroid_cart', JSON.stringify(serialisable));
     } catch {
       localStorage.removeItem('polaroid_cart');
+    }
+
+    // Persist File objects to IndexedDB (survives page refresh)
+    for (const item of cart) {
+      saveCartPhotos(item.id, item.photos).catch(() => {});
     }
   }, [cart]);
 
@@ -520,6 +557,57 @@ export default function PolaroidPrintPage() {
     ));
   }, []);
 
+  // Re-upload missing photos at checkout (after page refresh where File objects were lost)
+  const handleCheckoutReupload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const processFile = async (file: File): Promise<PhotoItem> => {
+      const compressedFile = await compressImage(file, WHATSAPP_HD_SETTINGS);
+      const preview = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result as string);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(compressedFile);
+      });
+      const photoId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      return { id: photoId, file: compressedFile, preview, customText: '', uploading: false };
+    };
+
+    try {
+      const results = await Promise.allSettled(Array.from(files).map(processFile));
+      const processed = results
+        .filter((r): r is PromiseFulfilledResult<PhotoItem> => r.status === 'fulfilled')
+        .map(r => r.value);
+
+      if (processed.length > 0) {
+        // Replace photos in ALL cart items that have missing files
+        setCart(prev => prev.map(item => {
+          const missingPhotos = item.photos.filter(p => !p.file);
+          if (missingPhotos.length === 0) return item;
+          // Replace the first N missing photos with newly uploaded ones
+          let replacementIndex = 0;
+          const newPhotos = item.photos.map(p => {
+            if (!p.file && replacementIndex < processed.length) {
+              return processed[replacementIndex++];
+            }
+            return p;
+          });
+          // If there are still unassigned new photos, append them
+          while (replacementIndex < processed.length) {
+            newPhotos.push(processed[replacementIndex++]);
+          }
+          return { ...item, photos: newPhotos };
+        }));
+        toast.success(t.toast_photos_added(processed.length));
+      }
+    } catch {
+      toast.error(t.toast_compress_fail);
+    } finally {
+      if (checkoutReuploadRef.current) checkoutReuploadRef.current.value = '';
+    }
+  }, []);
+
   const addToCart = useCallback(() => {
     if (photos.length === 0) {
       toast.error(t.toast_no_photo);
@@ -549,6 +637,7 @@ export default function PolaroidPrintPage() {
 
   const removeFromCart = useCallback((itemId: string) => {
     setCart(prev => prev.filter(item => item.id !== itemId));
+    removeCartPhotos(itemId).catch(() => {});
     toast.success(t.toast_removed);
   }, []);
 
@@ -682,7 +771,7 @@ export default function PolaroidPrintPage() {
             if (uploadToken) formData.append('uploadToken', uploadToken);
             if (orderItemId) formData.append('orderItemId', orderItemId);
             uploadPromises.push(
-              fetch('/api/upload', { method: 'POST', body: formData })
+              fetch('/api/upload', { method: 'POST', headers: uploadAuthHeaders(), body: formData })
                 .then(r => r.json())
                 .then((uploadData: { success: boolean; url?: string }) => {
                   return !!(uploadData.success && uploadData.url);
@@ -731,6 +820,7 @@ export default function PolaroidPrintPage() {
             });
             setCart([]);
             localStorage.removeItem('polaroid_cart');
+            clearAllCartPhotos().catch(() => {});
             window.location.href = billData.paymentUrl;
             return;
           } else {
@@ -750,6 +840,7 @@ export default function PolaroidPrintPage() {
         setCurrentStep(4);
         setCart([]);
         localStorage.removeItem('polaroid_cart');
+        clearAllCartPhotos().catch(() => {});
         toast.success(t.toast_order_success);
       } else {
         console.error('Order creation failed:', data);
@@ -1620,6 +1711,43 @@ export default function PolaroidPrintPage() {
             </div>
           </CardContent>
         </Card>
+
+        {cart.some(item => item.photos.some(p => !p.file)) && (
+          <div className="mt-3 md:mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-yellow-800">
+                  {lang === 'my' ? 'Ada foto yang perlu dipilih semula' : 'Some photos need to be re-selected'}
+                </p>
+                <p className="text-yellow-700 mt-1">
+                  {lang === 'my'
+                    ? 'Foto-foto ini hilang selepas halaman dimuat semula. Pilih semula fail foto untuk memastikan foto dimuat naik bersama pesanan ini.'
+                    : 'These photos were lost after a page refresh. Re-select the photo files to ensure they are uploaded with this order.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => checkoutReuploadRef.current?.click()}
+                className="border-yellow-300 text-yellow-800 hover:bg-yellow-100"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {lang === 'my' ? 'Pilih Semula Foto' : 'Re-select Photos'}
+              </Button>
+              <input
+                ref={checkoutReuploadRef}
+                type="file"
+                accept="image/*,.heic,.heif"
+                multiple
+                className="hidden"
+                onChange={handleCheckoutReupload}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-3 md:gap-4 mt-3 md:mt-6">
           <Button variant="outline" className="flex-1" onClick={() => setCurrentStep(2)}>{t.btn_back_cart}</Button>
