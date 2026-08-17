@@ -328,6 +328,7 @@ export function ProductCatalog({ onSelect }: ProductCatalogProps) {
   const [products, setProducts] = useState<ProductListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [borderFilter, setBorderFilter] = useState<'all' | 'border' | 'no-border'>('all');
 
   useEffect(() => {
     fetch('/api/products')
@@ -354,9 +355,36 @@ export function ProductCatalog({ onSelect }: ProductCatalogProps) {
     );
   }
 
+  const filteredProducts = products.filter(product => {
+    if (borderFilter === 'all') return true;
+    const id = product.id.toLowerCase();
+    return borderFilter === 'border' ? id.endsWith('-border') : id.endsWith('-no-border');
+  });
+
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
-      {products.map((product, index) => (
+    <div>
+      <div className="flex flex-wrap items-center justify-center gap-2 mb-6" role="group" aria-label="Filter products by border style">
+        {([
+          ['all', 'All products'],
+          ['border', 'White border'],
+          ['no-border', 'No border'],
+        ] as const).map(([value, label]) => (
+          <Button
+            key={value}
+            type="button"
+            size="sm"
+            variant={borderFilter === value ? 'default' : 'outline'}
+            onClick={() => setBorderFilter(value)}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
+
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">No products match this filter.</div>
+      ) : <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
+      {filteredProducts.map((product, index) => (
         <motion.div
           key={product.id}
           initial={{ opacity: 0, y: 30 }}
@@ -368,6 +396,7 @@ export function ProductCatalog({ onSelect }: ProductCatalogProps) {
           <ProductCard product={product} onSelect={onSelect} />
         </motion.div>
       ))}
+      </div>}
     </div>
   );
 }
