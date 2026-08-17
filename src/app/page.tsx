@@ -1422,8 +1422,8 @@ export default function PolaroidPrintPage() {
               <div className="flex flex-wrap justify-center gap-2 mb-4" role="group" aria-label="Filter products by border style">
                 {([
                   ['all', 'All products'],
-                  ['border', 'White border'],
-                  ['no-border', 'No border'],
+                  ['border', 'Film-Frame or Border'],
+                  ['no-border', 'Fill or Borderless'],
                 ] as const).map(([value, label]) => (
                   <Button
                     key={value}
