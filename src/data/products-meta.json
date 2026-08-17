@@ -103,6 +103,50 @@
       "tiktokVideos": []
     },
     {
+      "id": "3r-no-border",
+      "images": [
+        "/images/product-printing.png"
+      ],
+      "popular": true,
+      "tag": "3R NO BORDER",
+      "accentColor": "#0ea5e9",
+      "shortDescription": "Full-colour 3R cards without a border, in an 8.9 × 12.7 cm format.",
+      "fullDescription": "Full-colour 3R photo cards without a white border. The 8.9 × 12.7 cm format gives your photos more room for detail while keeping the convenient Polaroid feel.",
+      "features": ["Full-colour card", "No white border", "Best seller"],
+      "specs": { "dimensions": "8.9 × 12.7 cm", "paper": "Glossy photo-grade 260gsm", "finish": "Glossy", "printMethod": "Dye-sublimation", "processingTime": "3–4 working days", "minQty": 10 },
+      "pricingTiers": [
+        { "quantity": 10, "regularPrice": 8, "discountedPrice": 7.2 },
+        { "quantity": 20, "regularPrice": 16, "discountedPrice": 14.4 },
+        { "quantity": 50, "regularPrice": 40, "discountedPrice": 36 },
+        { "quantity": 100, "regularPrice": 80, "discountedPrice": 72 }
+      ],
+      "rating": 4.9,
+      "reviewCount": 0,
+      "tiktokVideos": []
+    },
+    {
+      "id": "3r-border",
+      "images": [
+        "/images/product-printing.png"
+      ],
+      "popular": false,
+      "tag": "3R BORDER",
+      "accentColor": "#0284c7",
+      "shortDescription": "White-border 3R Polaroid-style prints in an 8.9 × 12.7 cm format.",
+      "fullDescription": "Classic 3R Polaroid-style prints with a clean white border. The 8.9 × 12.7 cm format provides a larger canvas for your favourite memories.",
+      "features": ["White border", "Polaroid style", "Classic finish"],
+      "specs": { "dimensions": "8.9 × 12.7 cm", "paper": "Glossy photo-grade 260gsm", "finish": "Glossy", "printMethod": "Dye-sublimation", "processingTime": "3–4 working days", "minQty": 10 },
+      "pricingTiers": [
+        { "quantity": 10, "regularPrice": 7, "discountedPrice": 6.3 },
+        { "quantity": 20, "regularPrice": 14, "discountedPrice": 12.6 },
+        { "quantity": 50, "regularPrice": 35, "discountedPrice": 31.5 },
+        { "quantity": 100, "regularPrice": 70, "discountedPrice": 63 }
+      ],
+      "rating": 4.8,
+      "reviewCount": 0,
+      "tiktokVideos": []
+    },
+    {
       "id": "2r",
       "images": [
         "/images/customer-1.png",
