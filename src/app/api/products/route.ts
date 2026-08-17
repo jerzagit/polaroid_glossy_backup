@@ -17,6 +17,12 @@ export interface ProductSpecs {
   minQty: number;
 }
 
+export interface PricingTier {
+  quantity: number;
+  regularPrice: number;
+  discountedPrice: number;
+}
+
 export interface ProductListing {
   id: string;
   name: string;
@@ -36,9 +42,11 @@ export interface ProductListing {
   specs: ProductSpecs;
   rating: number;
   reviewCount: number;
+  pricingTiers?: PricingTier[];
 }
 
 const FALLBACK_SIZES = [
+  { id: 'ic', name: 'IC Size', displayName: 'IC Size (5.5 × 8 cm)', width: 5.5, height: 8, price: 4.50, description: 'Malaysia IC size - discounted quantity packs' },
   { id: '2r', name: '2R', displayName: '2R (2.5 x 3.5 inches)', width: 2.5, height: 3.5, price: 0.50, description: 'Wallet size - Perfect for keepsakes' },
   { id: '3r', name: '3R', displayName: '3R (3.5 x 5 inches)', width: 3.5, height: 5, price: 0.75, description: 'Standard photo size - Great for albums' },
   { id: '4r', name: '4R', displayName: '4R (4 x 6 inches)', width: 4, height: 6, price: 1.00, description: 'Most popular - Classic polaroid style' },
@@ -59,7 +67,7 @@ async function fetchFromBackend(): Promise<ProductListing[] | null> {
     const jsonMetaMap = new Map(productsMeta.products.map(m => [m.id, m]));
     const fallbackMap = new Map(FALLBACK_SIZES.map(s => [s.id.toLowerCase(), s]));
 
-    return raw.map(item => {
+    const backendProducts = raw.map(item => {
       const rawId = String(item.id ?? '').toLowerCase();
       const meta = jsonMetaMap.get(rawId) ?? jsonMetaMap.get(String(item.id ?? ''));
       const fallback = fallbackMap.get(rawId);
@@ -95,8 +103,17 @@ async function fetchFromBackend(): Promise<ProductListing[] | null> {
         },
         rating: meta?.rating ?? 4.8,
         reviewCount: meta?.reviewCount ?? 100,
+        pricingTiers: meta?.pricingTiers,
       } satisfies ProductListing;
     });
+
+    // Keep locally configured promotional products visible until the backend
+    // catalog has been seeded with them.
+    const localPromotions = buildFromFallback().filter(product =>
+      product.pricingTiers && !backendProducts.some(existing => existing.id === product.id),
+    );
+
+    return [...backendProducts, ...localPromotions];
   } catch {
     return null;
   }
@@ -132,6 +149,7 @@ function buildFromFallback(): ProductListing[] {
       },
       rating: meta?.rating ?? 4.8,
       reviewCount: meta?.reviewCount ?? 100,
+      pricingTiers: meta?.pricingTiers,
     };
   });
 }
@@ -194,6 +212,7 @@ export async function GET() {
             },
             rating: meta?.rating ?? 4.8,
             reviewCount: meta?.reviewCount ?? 100,
+            pricingTiers: meta?.pricingTiers,
           };
         });
       }

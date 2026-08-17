@@ -15,6 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     if (!size) {
       const fallback = [
+        { id: 'ic', name: 'IC Size', displayName: 'IC Size (5.5 × 8 cm)', width: 5.5, height: 8, price: 4.50, description: 'Malaysia IC size - discounted quantity packs' },
         { id: '2r', name: '2R', displayName: '2R (2.5 x 3.5 inches)', width: 2.5, height: 3.5, price: 0.50, description: 'Wallet size - Perfect for keepsakes' },
         { id: '3r', name: '3R', displayName: '3R (3.5 x 5 inches)', width: 3.5, height: 5, price: 0.75, description: 'Standard photo size - Great for albums' },
         { id: '4r', name: '4R', displayName: '4R (4 x 6 inches)', width: 4, height: 6, price: 1.00, description: 'Most popular - Classic polaroid style' },
@@ -55,6 +56,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       },
       rating: meta?.rating ?? 4.8,
       reviewCount: meta?.reviewCount ?? 100,
+      pricingTiers: meta?.pricingTiers,
       tiktokVideos: meta?.tiktokVideos ?? [],
     };
 

@@ -1,6 +1,35 @@
 {
   "products": [
     {
+      "id": "ic",
+      "images": [
+        "/images/product-collection.png"
+      ],
+      "popular": true,
+      "tag": "MOST POPULAR",
+      "accentColor": "#ec4899",
+      "shortDescription": "Malaysia IC-size prints, made for wallets and official documents.",
+      "fullDescription": "Compact 5.5 × 8 cm prints sized to match the Malaysia identity-card format. Choose a quantity pack and save more with our discounted bundle pricing.",
+      "features": ["Malaysia IC size", "Wallet-ready", "Best seller"],
+      "specs": {
+        "dimensions": "5.5 × 8 cm",
+        "paper": "Glossy photo-grade 230gsm",
+        "finish": "Glossy",
+        "printMethod": "Dye-sublimation",
+        "processingTime": "3–4 working days",
+        "minQty": 10
+      },
+      "pricingTiers": [
+        { "quantity": 10, "regularPrice": 5, "discountedPrice": 4.5 },
+        { "quantity": 20, "regularPrice": 10, "discountedPrice": 9 },
+        { "quantity": 50, "regularPrice": 25, "discountedPrice": 22.5 },
+        { "quantity": 100, "regularPrice": 40, "discountedPrice": 36 }
+      ],
+      "rating": 4.9,
+      "reviewCount": 0,
+      "tiktokVideos": []
+    },
+    {
       "id": "2r",
       "images": [
         "/images/customer-1.png",

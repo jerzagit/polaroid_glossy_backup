@@ -94,6 +94,7 @@ interface PrintSize {
   height: number;
   price: number;
   description?: string;
+  pricingTiers?: { quantity: number; regularPrice: number; discountedPrice: number }[];
 }
 
 interface PhotoItem {
@@ -111,6 +112,11 @@ interface CartItem {
   quantity: number;
   photos: PhotoItem[];
   unitPrice: number;
+}
+
+function getUnitPrice(size: PrintSize, quantity: number) {
+  const tier = size.pricingTiers?.find(item => item.quantity === quantity);
+  return tier ? tier.discountedPrice / tier.quantity : size.price;
 }
 
 interface Order {
@@ -210,6 +216,7 @@ export default function PolaroidPrintPage() {
 
   // Derived from translations
   const printSizes: PrintSize[] = [
+    { id: 'ic', name: 'IC Size', displayName: '5.5 × 8 cm (Malaysia IC)', width: 5.5, height: 8, price: 4.50, description: 'Malaysia IC size - quantity pack pricing', pricingTiers: [{ quantity: 10, regularPrice: 5, discountedPrice: 4.5 }, { quantity: 20, regularPrice: 10, discountedPrice: 9 }, { quantity: 50, regularPrice: 25, discountedPrice: 22.5 }, { quantity: 100, regularPrice: 40, discountedPrice: 36 }] },
     { id: '2r', name: '2R', displayName: t.size_2r_display, width: 2.5, height: 3.5, price: 0.50, description: t.size_2r_desc },
     { id: '3r', name: '3R', displayName: t.size_3r_display, width: 3.5, height: 5, price: 0.75, description: t.size_3r_desc },
     { id: '4r', name: '4R', displayName: t.size_4r_display, width: 4, height: 6, price: 1.00, description: t.size_4r_desc },
@@ -284,7 +291,7 @@ export default function PolaroidPrintPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const checkoutReuploadRef = useRef<HTMLInputElement>(null);
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.size.price * item.quantity, 0);
+  const cartTotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity * item.photos.length, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPhotos = cart.reduce((sum, item) => sum + item.photos.length * item.quantity, 0);
 
@@ -623,7 +630,7 @@ export default function PolaroidPrintPage() {
         ...p,
         preview: p.preview // Keep the base64 preview
       })),
-      unitPrice: selectedSize.price
+      unitPrice: getUnitPrice(selectedSize, quantity)
     };
 
     setCart(prev => [...prev, newItem]);
@@ -1386,21 +1393,32 @@ export default function PolaroidPrintPage() {
                   <Card
                     key={size.id}
                     className={cn("cursor-pointer transition-all", selectedSize.id === size.id ? "ring-2 ring-primary" : "hover:shadow-md")}
-                    onClick={() => setSelectedSize(size)}
+                    onClick={() => {
+                      setSelectedSize(size);
+                      if (size.pricingTiers) setQuantity(size.pricingTiers[0].quantity);
+                    }}
                   >
                     <CardContent className="p-4 text-center">
                       <p className="font-semibold">{size.name}</p>
-                      <p className="text-2xl font-bold text-primary">RM{size.price.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">{t.per_print}</p>
+                      <p className="text-2xl font-bold text-primary">RM{(size.pricingTiers?.[0]?.discountedPrice ?? size.price).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">{size.pricingTiers ? `per ${size.pricingTiers[0].quantity} pcs` : t.per_print}</p>
                     </CardContent>
                   </Card>
                 ))}
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex flex-col items-center justify-center gap-3">
               <Label className="text-lg">{t.qty_label}</Label>
-              <div className="flex items-center gap-2">
+              {selectedSize.pricingTiers ? (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {selectedSize.pricingTiers.map(tier => (
+                    <Button key={tier.quantity} variant={quantity === tier.quantity ? 'default' : 'outline'} onClick={() => setQuantity(tier.quantity)}>
+                      {tier.quantity} pcs · RM{tier.discountedPrice.toFixed(2)}
+                    </Button>
+                  ))}
+                </div>
+              ) : <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
                   <Minus className="w-4 h-4" />
                 </Button>
@@ -1408,7 +1426,7 @@ export default function PolaroidPrintPage() {
                 <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>
                   <Plus className="w-4 h-4" />
                 </Button>
-              </div>
+              </div>}
             </div>
 
             <Card className="bg-primary/5 border-primary/20">
@@ -1419,7 +1437,7 @@ export default function PolaroidPrintPage() {
                     <p className="text-sm text-muted-foreground">{t.summary_total(photos.length * quantity)}</p>
                   </div>
                   <span className="font-bold text-primary text-3xl">
-                    RM{(selectedSize.price * photos.length * quantity).toFixed(2)}
+                    RM{(getUnitPrice(selectedSize, quantity) * photos.length * quantity).toFixed(2)}
                   </span>
                 </div>
               </CardContent>
@@ -1490,7 +1508,7 @@ export default function PolaroidPrintPage() {
                               <Plus className="w-3 h-3" />
                             </Button>
                           </div>
-                          <span className="font-bold text-lg">RM{(item.size.price * item.photos.length * item.quantity).toFixed(2)}</span>
+                          <span className="font-bold text-lg">RM{(item.unitPrice * item.photos.length * item.quantity).toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -1691,7 +1709,7 @@ export default function PolaroidPrintPage() {
               {cart.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm">
                   <span>{t.checkout_item(item.size.name, item.photos.length, item.quantity)}</span>
-                  <span>RM{(item.size.price * item.photos.length * item.quantity).toFixed(2)}</span>
+                  <span>RM{(item.unitPrice * item.photos.length * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
               <Separator />
@@ -2173,7 +2191,7 @@ export default function PolaroidPrintPage() {
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm">{item.size.name}</p>
                               <p className="text-xs text-muted-foreground">{t.drawer_item(item.photos.length, item.quantity)}</p>
-                              <p className="text-sm font-bold">RM{(item.size.price * item.photos.length * item.quantity).toFixed(2)}</p>
+                              <p className="text-sm font-bold">RM{(item.unitPrice * item.photos.length * item.quantity).toFixed(2)}</p>
                             </div>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeFromCart(item.id)}><X className="w-4 h-4" /></Button>
                           </div>
