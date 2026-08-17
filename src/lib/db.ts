@@ -1,9 +1,9 @@
-// Stub — Prisma is not available in Vercel deployments.
+// Stub — Prisma is not available in serverless deployments.
 // All API routes using db have try/catch fallbacks that serve
 // static data from JSON when the database is unreachable.
 
 function stubMethod(): Promise<never> {
-  return Promise.reject(new Error('Database not available (Vercel mode)'));
+  return Promise.reject(new Error('Database not available (serverless mode)'));
 }
 
 function makeModel(name: string) {

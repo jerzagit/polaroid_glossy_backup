@@ -153,7 +153,7 @@ npx prisma studio
 2. **Code**: Make changes, test locally (`npm run dev`)
 3. **Commit & Push**: `git add . && git commit -m "<type>: <description>" && git push origin <branch>`
 4. **PR**: Create PR to `main` via GitHub (link printed after push)
-5. **Merge**: Merge PR on GitHub → **Vercel auto-deploys production**
+5. **Merge**: Merge PR on GitHub → **Netlify auto-deploys production**
 6. **Sync local-dev**: `git checkout local-dev && git merge main`
 7. **If backend changes needed**, tell the backend team what endpoints/mock data to update
 

@@ -32,7 +32,7 @@ Three environments share the same codebase — only `.env` / `DATABASE_URL` chan
 |---|---|---|---|
 | **dev** | `polaroid_glossy_dev` (PostgreSQL local) | Next.js only | `.env` (default) |
 | **uat** | `polaroid_glossy_uat` (PostgreSQL local) | Next.js **+ Spring Boot** | `.env.uat` |
-| **prod** | PostgreSQL hosted (Supabase / RDS) | Next.js **+ Spring Boot** | Vercel env vars |
+| **prod** | PostgreSQL hosted (Supabase / RDS) | Next.js **+ Spring Boot** | Netlify env vars |
 
 To switch to UAT:
 ```bash
@@ -269,27 +269,13 @@ AWS_S3_BUCKET=polaroid-glossy-prod
 }
 ```
 
-### 2.4 Deploy to Vercel (recommended)
+### 2.4 Deploy to Netlify (recommended)
 
 ```bash
-npm i -g vercel
-vercel --prod
+netlify deploy --prod --build
 
-# Add env vars in Vercel dashboard or via CLI:
-vercel env add DATABASE_URL production
-vercel env add NEXTAUTH_SECRET production
-vercel env add NEXTAUTH_URL production
-vercel env add GOOGLE_CLIENT_ID production
-vercel env add GOOGLE_CLIENT_SECRET production
-vercel env add TOYYIBPAY_SECRET_KEY production
-vercel env add TOYYIBPAY_CATEGORY_CODE production
-vercel env add TOYYIBPAY_BASE_URL production
-vercel env add TOYYIBPAY_RETURN_URL production
-vercel env add TOYYIBPAY_CALLBACK_URL production
-vercel env add AWS_ACCESS_KEY_ID production
-vercel env add AWS_SECRET_ACCESS_KEY production
-vercel env add AWS_REGION production
-vercel env add AWS_S3_BUCKET production
+# Set production environment variables in the Netlify dashboard:
+# https://app.netlify.com/projects/polaroid-glossy/configuration/env
 ```
 
 ### 2.5 Deploy to VPS (alternative)
@@ -333,7 +319,7 @@ server {
 - [ ] `src/lib/s3.ts` updated to return CloudFront URL
 - [ ] Separate IAM users created (Next.js PutObject only, Spring Boot GetObject only)
 - [ ] `AWS_S3_BUCKET=polaroid-glossy-prod` set
-- [ ] SSL certificate active (Vercel handles automatically)
+- [ ] SSL certificate active (Netlify handles automatically)
 - [ ] Full end-to-end order test on production before launch
 
 ---

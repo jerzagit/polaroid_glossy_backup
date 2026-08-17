@@ -612,9 +612,9 @@ All cart endpoints must follow this response format:
 
 ### Phase 2: Deploy Frontend Changes
 1. Frontend changes are already in place
-2. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel
+2. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Netlify
 3. Create `order-photos` bucket in Supabase
-4. Deploy to Vercel
+4. Deploy to Netlify
 
 ### Phase 3: Image Service Update
 1. Update `ImageDownloadService` to handle Supabase URLs
