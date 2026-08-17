@@ -56,3 +56,6 @@ server.log
 # prisma
 prisma/*.db
 prisma/*.db-journal
+# Local Netlify folder
+.netlify
+.vercel/

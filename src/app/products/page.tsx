@@ -11,8 +11,6 @@ import { ProductCatalog } from '@/components/ProductCatalog';
 import Link from 'next/link';
 
 const FALLBACK_SIZES = [
-  { id: '2r', name: '2R', displayName: '2R', width: 2.5, height: 3.5, price: 0.50 },
-  { id: '3r', name: '3R', displayName: '3R', width: 3.5, height: 5, price: 0.75 },
   { id: '4r', name: '4R', displayName: '4R', width: 4, height: 6, price: 1.00 },
   { id: 'a4', name: 'A4', displayName: 'A4', width: 8.3, height: 11.7, price: 3.50 },
 ];
