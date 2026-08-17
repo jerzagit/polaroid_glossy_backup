@@ -16,6 +16,7 @@ interface ProductCatalogProps {
   onSelect: (size: {
     id: string; name: string; displayName: string;
     width: number; height: number; price: number; description?: string;
+    pricingTiers?: { quantity: number; regularPrice: number; discountedPrice: number }[];
   }) => void;
 }
 
@@ -201,7 +202,7 @@ function ProductCard({ product, onSelect }: { product: ProductListing; onSelect:
 
           {/* Dimension badge */}
           <div className="absolute bottom-3 right-3 z-10 bg-black/60 backdrop-blur-sm text-white/70 text-[10px] font-mono px-2 py-0.5 rounded-md border border-white/10">
-            {product.width}″ × {product.height}″
+            {product.specs.dimensions}
           </div>
         </div>
 
@@ -216,9 +217,11 @@ function ProductCard({ product, onSelect }: { product: ProductListing; onSelect:
             </div>
             <div className="text-right shrink-0">
               <p className="text-3xl font-black leading-none" style={{ color: product.accentColor }}>
-                RM{product.price.toFixed(2)}
+                RM{(product.pricingTiers?.[0]?.discountedPrice ?? product.price).toFixed(2)}
               </p>
-              <p className="text-[10px] text-muted-foreground">{t.per_print}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {product.pricingTiers ? `per ${product.pricingTiers[0].quantity} pcs` : t.per_print}
+              </p>
             </div>
           </div>
 
@@ -227,6 +230,17 @@ function ProductCard({ product, onSelect }: { product: ProductListing; onSelect:
 
           {/* Short description */}
           <p className="text-sm text-muted-foreground leading-relaxed">{sizeDescMap[product.id] ?? product.shortDescription}</p>
+
+          {product.pricingTiers && (
+            <div className="rounded-lg border border-border p-2 space-y-1">
+              {product.pricingTiers.map(tier => (
+                <div key={tier.quantity} className="flex justify-between text-xs">
+                  <span>{tier.quantity} pcs</span>
+                  <span><span className="line-through text-muted-foreground mr-1">RM{tier.regularPrice.toFixed(2)}</span><strong>RM{tier.discountedPrice.toFixed(2)}</strong></span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Full description toggle */}
           <div>
@@ -295,6 +309,7 @@ function ProductCard({ product, onSelect }: { product: ProductListing; onSelect:
                   height: product.height,
                   price: product.price,
                   description: product.description,
+                  pricingTiers: product.pricingTiers,
                 });
               }}
             >
