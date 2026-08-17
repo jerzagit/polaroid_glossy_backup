@@ -213,7 +213,7 @@ export default function ProductPage() {
   ];
 
   const sizeDescMap: Record<string, string> = {
-    '2r': t.size_2r_desc, '3r': t.size_3r_desc, '4r': t.size_4r_desc, 'a4': t.size_a4_desc,
+    '4r': t.size_4r_desc, 'a4': t.size_a4_desc,
   };
 
   return (

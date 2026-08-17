@@ -74,8 +74,6 @@ export type FallbackOrder = {
 };
 
 const FALLBACK_PRICES: Record<string, number> = {
-  '2r': 0.5,
-  '3r': 0.75,
   '4r': 1,
   a4: 3.5,
 };

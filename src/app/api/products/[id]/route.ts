@@ -20,9 +20,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         { id: '2r-no-border', name: '2R No Border', displayName: '2R No Border (6.3 × 8.9 cm)', width: 6.3, height: 8.9, price: 6.30, description: 'Full-colour card without white border' },
         { id: '2r-border', name: '2R Border', displayName: '2R Border (6.3 × 8.9 cm)', width: 6.3, height: 8.9, price: 5.85, description: 'White-border Polaroid style' },
         { id: '3r-no-border', name: '3R No Border', displayName: '3R No Border (8.9 × 12.7 cm)', width: 8.9, height: 12.7, price: 7.20, description: 'Full-colour card without white border' },
-        { id: '3r-border', name: '3R Border', displayName: '3R Border (8.9 × 12.7 cm)', width: 8.9, height: 12.7, price: 6.30, description: 'White-border Polaroid style' },
-        { id: '2r', name: '2R', displayName: '2R (2.5 x 3.5 inches)', width: 2.5, height: 3.5, price: 0.50, description: 'Wallet size - Perfect for keepsakes' },
-        { id: '3r', name: '3R', displayName: '3R (3.5 x 5 inches)', width: 3.5, height: 5, price: 0.75, description: 'Standard photo size - Great for albums' },
         { id: '4r', name: '4R', displayName: '4R (4 x 6 inches)', width: 4, height: 6, price: 1.00, description: 'Most popular - Classic polaroid style' },
         { id: 'a4', name: 'A4', displayName: 'A4 (8.3 x 11.7 inches)', width: 8.3, height: 11.7, price: 3.50, description: 'Poster size - Perfect for displays' },
       ].find(s => s.id === id);
