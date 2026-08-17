@@ -3,7 +3,9 @@
     {
       "id": "ic",
       "images": [
-        "/images/product-collection.png"
+        "/images/products/ic-size.jpg",
+        "/images/products/size-comparison.jpg",
+        "/images/products/glossy-waterproof.jpg"
       ],
       "popular": true,
       "tag": "MOST POPULAR",
@@ -32,7 +34,9 @@
     {
       "id": "polaroid-mini",
       "images": [
-        "/images/product-collection.png"
+        "/images/products/polaroid-mini.jpg",
+        "/images/products/size-comparison.jpg",
+        "/images/products/glossy-waterproof.jpg"
       ],
       "popular": true,
       "tag": "MINI BESTSELLER",
@@ -61,7 +65,9 @@
     {
       "id": "2r-no-border",
       "images": [
-        "/images/hero-polaroids.png"
+        "/images/products/3r-no-border.jpg",
+        "/images/products/size-comparison.jpg",
+        "/images/products/glossy-waterproof.jpg"
       ],
       "popular": true,
       "tag": "2R NO BORDER",
@@ -83,7 +89,9 @@
     {
       "id": "2r-border",
       "images": [
-        "/images/hero-polaroids.png"
+        "/images/products/2r-border.jpg",
+        "/images/products/size-comparison.jpg",
+        "/images/products/glossy-waterproof.jpg"
       ],
       "popular": false,
       "tag": "2R BORDER",
@@ -105,7 +113,9 @@
     {
       "id": "3r-no-border",
       "images": [
-        "/images/product-printing.png"
+        "/images/products/3r-no-border.jpg",
+        "/images/products/size-comparison-large.jpg",
+        "/images/products/glossy-waterproof.jpg"
       ],
       "popular": true,
       "tag": "3R NO BORDER",
@@ -127,7 +137,9 @@
     {
       "id": "3r-border",
       "images": [
-        "/images/product-printing.png"
+        "/images/products/3r-border.jpg",
+        "/images/products/size-comparison-large.jpg",
+        "/images/products/glossy-waterproof.jpg"
       ],
       "popular": false,
       "tag": "3R BORDER",
