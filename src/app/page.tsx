@@ -248,6 +248,7 @@ export default function PolaroidPrintPage() {
   const [currentStep, setCurrentStep] = useState(-1);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedSize, setSelectedSize] = useState<PrintSize>(printSizes[2]);
+  const [borderStyleFilter, setBorderStyleFilter] = useState<'all' | 'border' | 'no-border'>('all');
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [showCart, setShowCart] = useState(false);
@@ -275,6 +276,31 @@ export default function PolaroidPrintPage() {
   const [trackingEmail, setTrackingEmail] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('toyyibpay');
+
+  const visiblePrintSizes = printSizes.filter((size) => {
+    if (borderStyleFilter === 'all') return true;
+    const sizeId = size.id.toLowerCase();
+    return borderStyleFilter === 'border'
+      ? sizeId.endsWith('-border')
+      : sizeId.endsWith('-no-border');
+  });
+
+  const handleBorderStyleFilterChange = (value: 'all' | 'border' | 'no-border') => {
+    setBorderStyleFilter(value);
+    const nextVisibleSizes = printSizes.filter((size) => {
+      if (value === 'all') return true;
+      const sizeId = size.id.toLowerCase();
+      return value === 'border'
+        ? sizeId.endsWith('-border')
+        : sizeId.endsWith('-no-border');
+    });
+
+    if (!nextVisibleSizes.some((size) => size.id === selectedSize.id) && nextVisibleSizes[0]) {
+      setSelectedSize(nextVisibleSizes[0]);
+      if (nextVisibleSizes[0].pricingTiers) setQuantity(nextVisibleSizes[0].pricingTiers[0].quantity);
+    }
+  };
+
   // Form
   const [orderFormData, setOrderFormData] = useState({
     customerName: '',
@@ -1393,8 +1419,25 @@ export default function PolaroidPrintPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-4 md:mt-8 space-y-4 md:space-y-6">
             <div>
               <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">{t.select_size_title}</h3>
+              <div className="flex flex-wrap justify-center gap-2 mb-4" role="group" aria-label="Filter products by border style">
+                {([
+                  ['all', 'All products'],
+                  ['border', 'White border'],
+                  ['no-border', 'No border'],
+                ] as const).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    size="sm"
+                    variant={borderStyleFilter === value ? 'default' : 'outline'}
+                    onClick={() => handleBorderStyleFilterChange(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                {printSizes.map((size) => (
+                {visiblePrintSizes.map((size) => (
                   <Card
                     key={size.id}
                     className={cn("cursor-pointer transition-all", selectedSize.id === size.id ? "ring-2 ring-primary" : "hover:shadow-md")}
