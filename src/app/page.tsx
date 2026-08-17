@@ -217,6 +217,7 @@ export default function PolaroidPrintPage() {
   // Derived from translations
   const printSizes: PrintSize[] = [
     { id: 'ic', name: 'IC Size', displayName: '5.5 × 8 cm (Malaysia IC)', width: 5.5, height: 8, price: 4.50, description: 'Malaysia IC size - quantity pack pricing', pricingTiers: [{ quantity: 10, regularPrice: 5, discountedPrice: 4.5 }, { quantity: 20, regularPrice: 10, discountedPrice: 9 }, { quantity: 50, regularPrice: 25, discountedPrice: 22.5 }, { quantity: 100, regularPrice: 40, discountedPrice: 36 }] },
+    { id: 'polaroid-mini', name: 'Polaroid Mini', displayName: '5.0 × 8.9 cm', width: 5, height: 8.9, price: 3.60, description: 'Compact mini format - quantity pack pricing', pricingTiers: [{ quantity: 10, regularPrice: 4, discountedPrice: 3.6 }, { quantity: 20, regularPrice: 8, discountedPrice: 7.2 }, { quantity: 50, regularPrice: 15, discountedPrice: 13.5 }, { quantity: 100, regularPrice: 30, discountedPrice: 27 }] },
     { id: '2r', name: '2R', displayName: t.size_2r_display, width: 2.5, height: 3.5, price: 0.50, description: t.size_2r_desc },
     { id: '3r', name: '3R', displayName: t.size_3r_display, width: 3.5, height: 5, price: 0.75, description: t.size_3r_desc },
     { id: '4r', name: '4R', displayName: t.size_4r_display, width: 4, height: 6, price: 1.00, description: t.size_4r_desc },

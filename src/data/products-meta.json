@@ -30,6 +30,35 @@
       "tiktokVideos": []
     },
     {
+      "id": "polaroid-mini",
+      "images": [
+        "/images/product-collection.png"
+      ],
+      "popular": true,
+      "tag": "MINI BESTSELLER",
+      "accentColor": "#8b5cf6",
+      "shortDescription": "Mini polaroid prints in a compact 5.0 × 8.9 cm format.",
+      "fullDescription": "Compact 5.0 × 8.9 cm Polaroid Mini prints with discounted quantity packs for gifts, keepsakes, and memory walls.",
+      "features": ["Compact mini format", "Gift-ready", "Best seller"],
+      "specs": {
+        "dimensions": "5.0 × 8.9 cm",
+        "paper": "Glossy photo-grade 230gsm",
+        "finish": "Glossy",
+        "printMethod": "Dye-sublimation",
+        "processingTime": "3–4 working days",
+        "minQty": 10
+      },
+      "pricingTiers": [
+        { "quantity": 10, "regularPrice": 4, "discountedPrice": 3.6 },
+        { "quantity": 20, "regularPrice": 8, "discountedPrice": 7.2 },
+        { "quantity": 50, "regularPrice": 15, "discountedPrice": 13.5 },
+        { "quantity": 100, "regularPrice": 30, "discountedPrice": 27 }
+      ],
+      "rating": 4.9,
+      "reviewCount": 0,
+      "tiktokVideos": []
+    },
+    {
       "id": "2r",
       "images": [
         "/images/customer-1.png",
