@@ -1,27 +1,57 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Chrome } from 'lucide-react';
-import { useEffect, Suspense } from 'react';
+import { ArrowLeft, Chrome, Mail, Lock, Loader2 } from 'lucide-react';
+import { useEffect, Suspense, useState } from 'react';
+import { signIn } from 'next-auth/react';
 
 function LoginForm() {
   const { user, loading, signInWithGoogle } = useAuth();
-  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
+  const errorParam = searchParams.get('error');
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
   useEffect(() => {
     if (!loading && user) {
       router.push(redirect);
     }
   }, [user, loading, router, redirect]);
+
+  useEffect(() => {
+    if (errorParam) {
+      setEmailError('Login failed. Please check your credentials.');
+    }
+  }, [errorParam]);
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailLoading(true);
+    setEmailError('');
+
+    const result = await signIn('credentials', {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setEmailError('Invalid email or password');
+      setEmailLoading(false);
+    } else {
+      router.push(redirect);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -59,9 +89,37 @@ function LoginForm() {
               </span>
             </div>
 
-            <CardDescription className="text-center text-sm">
-              Email & password registration coming soon.
-            </CardDescription>
+            <form onSubmit={handleEmailLogin} className="space-y-3">
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              {emailError && (
+                <p className="text-xs text-red-500 text-center">{emailError}</p>
+              )}
+              <Button type="submit" className="w-full" size="lg" disabled={emailLoading}>
+                {emailLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                Sign in with Email
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>

@@ -1,9 +1,10 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 
-// NOTE: User records are owned by the Spring Boot backend. The frontend only
-// handles the Google OAuth handshake here; the backend JWT is obtained
-// separately via POST {BACKEND_API_BASE}/auth/google (see AuthContext).
+// Admin credentials stored in env vars (ADMIN_EMAIL / ADMIN_PASSWORD)
+// Falls back to bcrypt hash for flexibility
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,6 +15,37 @@ export const authOptions: NextAuthOptions = {
         params: {
           scope: "openid email profile",
         },
+      },
+    }),
+    CredentialsProvider({
+      name: "Email",
+      credentials: {
+        email: { label: "Email", type: "email", placeholder: "admin@polaroidglossy.my" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+
+        const adminEmail = process.env.ADMIN_EMAILS?.split(",")[0]?.trim().toLowerCase();
+        const adminPassword = process.env.ADMIN_PASSWORD;
+
+        if (!adminPassword) return null;
+
+        const emailMatch = credentials.email.toLowerCase() === adminEmail;
+        if (!emailMatch) return null;
+
+        // Check if ADMIN_PASSWORD is a bcrypt hash or plain text
+        const passwordValid = adminPassword.startsWith("$2")
+          ? await bcrypt.compare(credentials.password, adminPassword)
+          : credentials.password === adminPassword;
+
+        if (!passwordValid) return null;
+
+        return {
+          id: adminEmail,
+          email: adminEmail,
+          name: "Admin",
+        };
       },
     }),
   ],

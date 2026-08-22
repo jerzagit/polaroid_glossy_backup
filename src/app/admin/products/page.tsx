@@ -402,9 +402,11 @@ export default function AdminProductsPage() {
           <nav className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground flex-1 min-w-0">
             <Link href="/" className="hover:text-foreground transition-colors shrink-0">Home</Link>
             <ChevronRight className="w-3 h-3 shrink-0" />
-            <span className="text-foreground font-semibold">Admin</span>
+            <Link href="/admin/orders" className="hover:text-foreground transition-colors shrink-0">Orders</Link>
             <ChevronRight className="w-3 h-3 shrink-0" />
-            <span className="text-foreground font-semibold truncate">Products</span>
+            <span className="text-foreground font-semibold">Products</span>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+            <Link href="/admin/users" className="hover:text-foreground transition-colors shrink-0">Users</Link>
           </nav>
           <span className="text-[10px] font-black tracking-widest bg-amber-500/20 text-amber-600 px-2 py-0.5 rounded-full uppercase shrink-0">
             Admin Panel
