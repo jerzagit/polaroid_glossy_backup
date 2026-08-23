@@ -1,0 +1,27 @@
+[build]
+  publish = ".next"
+  command = "npm run build"
+
+[build.environment]
+  NEXTAUTH_URL = "https://polaroidglossy.my"
+  NEXT_PUBLIC_BACKEND_API_BASE = "https://polaroid-glossy-backend.fly.dev"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[redirects]]
+  from = "/_next/image"
+  to = "/.netlify/images?url=:url&w=:width&q=:quality"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/_ipx/*"
+  to = "/.netlify/images?url=:url&w=:width&q=:quality"
+  status = 200
+  force = false
