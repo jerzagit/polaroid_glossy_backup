@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2, XCircle, Clock, Loader2, Eye, ChevronDown, ChevronUp,
-  AlertCircle, Package, Receipt, Upload, User, Mail, Phone, MapPin
+  AlertCircle, Package, Receipt, Upload, User, Users, Mail, Phone, MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -379,7 +379,12 @@ export default function AdminOrdersPage() {
         <div className="container mx-auto px-3 md:px-4 py-2 md:py-3 flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild className="h-8 md:h-9 px-2 gap-1">
             <Link href="/admin/products">
-              <Package className="w-4 h-4" /> <span className="text-xs md:text-sm">Admin</span>
+              <Package className="w-4 h-4" /> <span className="text-xs md:text-sm">Products</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild className="h-8 md:h-9 px-2 gap-1">
+            <Link href="/admin/users">
+              <Users className="w-4 h-4" /> <span className="text-xs md:text-sm">Users</span>
             </Link>
           </Button>
           <div className="flex items-center gap-1.5 ml-auto">
