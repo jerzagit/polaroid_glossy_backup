@@ -886,6 +886,7 @@ export default function PolaroidPrintPage() {
       const expectedImageCount = cart.reduce((sum, item) => sum + item.photos.length, 0);
       const items = cart.map(item => ({
         sizeId: item.sizeId.toLowerCase(),
+        sizeName: item.size.displayName ?? item.sizeId.toLowerCase(),
         quantity: item.quantity,
         imageUrls: [],
         images: [],
