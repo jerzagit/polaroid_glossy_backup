@@ -55,6 +55,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -260,6 +261,7 @@ export default function PolaroidPrintPage() {
   const [showCart, setShowCart] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
@@ -382,6 +384,7 @@ export default function PolaroidPrintPage() {
 
     const processPending = async () => {
       setIsUploading(true);
+      setPhotoProgress({ done: 0, total: pendingPhotos.length });
 
       const processFile = async (file: File): Promise<PhotoItem> => {
         const preview = await new Promise<string>((resolve, reject) => {
@@ -396,7 +399,13 @@ export default function PolaroidPrintPage() {
       };
 
       try {
-        const results = await Promise.allSettled(pendingPhotos.map(processFile));
+        const results = await Promise.allSettled(pendingPhotos.map(async file => {
+          try {
+            return await processFile(file);
+          } finally {
+            setPhotoProgress(progress => progress && ({ ...progress, done: progress.done + 1 }));
+          }
+        }));
         const processed = results
           .filter((r): r is PromiseFulfilledResult<PhotoItem> => r.status === 'fulfilled')
           .map(r => r.value);
@@ -408,6 +417,7 @@ export default function PolaroidPrintPage() {
       } finally {
         setPendingPhotos([]);
         setIsUploading(false);
+        setPhotoProgress(null);
       }
     };
 
@@ -546,22 +556,30 @@ export default function PolaroidPrintPage() {
 
     // Gate: require login before uploading
     if (!user) {
+      setIsUploading(true);
+      setPhotoProgress({ done: 0, total: files.length });
       const compressed: File[] = [];
       for (const file of Array.from(files)) {
         try {
           compressed.push(await compressImage(file, WHATSAPP_HD_SETTINGS));
         } catch { /* skip bad files */ }
+        finally {
+          setPhotoProgress(progress => progress && ({ ...progress, done: progress.done + 1 }));
+        }
       }
       if (compressed.length > 0) {
         setPendingPhotos(compressed);
         setShowLoginModal(true);
         toast.info('Please sign in to upload your photos.');
       }
+      setIsUploading(false);
+      setPhotoProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setIsUploading(true);
+    setPhotoProgress({ done: 0, total: files.length });
 
     const processFile = async (file: File): Promise<PhotoItem> => {
       const compressedFile = await compressImage(file, WHATSAPP_HD_SETTINGS);
@@ -578,7 +596,13 @@ export default function PolaroidPrintPage() {
     };
 
     try {
-      const results = await Promise.allSettled(Array.from(files).map(processFile));
+      const results = await Promise.allSettled(Array.from(files).map(async file => {
+        try {
+          return await processFile(file);
+        } finally {
+          setPhotoProgress(progress => progress && ({ ...progress, done: progress.done + 1 }));
+        }
+      }));
       const processedPhotos = results
         .filter((r): r is PromiseFulfilledResult<PhotoItem> => r.status === 'fulfilled')
         .map(r => r.value);
@@ -595,6 +619,7 @@ export default function PolaroidPrintPage() {
       toast.error(t.toast_compress_fail);
     } finally {
       setIsUploading(false);
+      setPhotoProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, [user]);
@@ -1355,7 +1380,7 @@ export default function PolaroidPrintPage() {
             "hover:border-primary hover:bg-primary/5",
             photos.length > 0 ? "border-primary bg-primary/5" : "border-border"
           )}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => !isUploading && fileInputRef.current?.click()}
         >
           <input
             ref={fileInputRef}
@@ -1366,16 +1391,23 @@ export default function PolaroidPrintPage() {
             onChange={handlePhotoUpload}
           />
           <div className="space-y-4">
-            <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-              {isUploading ? (
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              ) : (
+            {!isUploading && (
+              <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
                 <Upload className="w-8 h-8 text-primary" />
-              )}
-            </div>
+              </div>
+            )}
             <div>
-              {isUploading ? (
-                <p className="text-lg font-medium">{t.upload_compressing}</p>
+              {isUploading && photoProgress ? (
+                <div className="mx-auto max-w-md space-y-3">
+                  <p className="text-lg font-medium">
+                    {t.upload_progress(photoProgress.done, photoProgress.total)}
+                  </p>
+                  <Progress
+                    value={(photoProgress.done / photoProgress.total) * 100}
+                    aria-label={t.upload_progress(photoProgress.done, photoProgress.total)}
+                    className="h-3"
+                  />
+                </div>
               ) : (
                 <>
                   <p className="text-lg font-medium">{t.upload_drop}</p>

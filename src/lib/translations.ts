@@ -34,6 +34,7 @@ export interface Trans {
   review_by: string; review_anon: string;
   // Upload
   upload_title: string; upload_desc: string; upload_compressing: string;
+  upload_progress: (done: number, total: number) => string;
   upload_drop: string; upload_browse: string; upload_formats: string;
   upload_count: (n: number) => string;
   btn_addmore: string; caption_placeholder: string; select_size_title: string;
@@ -183,7 +184,9 @@ const en: Trans = {
   reviews_title: 'Customer Reviews', review_by: 'By', review_anon: 'Anonymous',
   upload_title: 'Upload Your Photos',
   upload_desc: 'Upload multiple photos to transform into beautiful polaroid prints',
-  upload_compressing: 'Compressing photos...', upload_drop: 'Drop your photos here',
+  upload_compressing: 'Compressing photos...',
+  upload_progress: (done, total) => `Processing photos: ${done} / ${total}`,
+  upload_drop: 'Drop your photos here',
   upload_browse: 'or click to browse • Select multiple photos at once',
   upload_formats: 'Supports: JPG, PNG, WEBP, HEIC (Max 25MB each)',
   upload_count: (n) => `${n} photo${n > 1 ? 's' : ''} uploaded`,
@@ -392,7 +395,9 @@ const my: Trans = {
   reviews_title: 'Ulasan Pelanggan', review_by: 'Oleh', review_anon: 'Tanpa Nama',
   upload_title: 'Muat Naik Foto Anda',
   upload_desc: 'Muat naik berbilang foto untuk diubah menjadi cetakan polaroid yang cantik',
-  upload_compressing: 'Memampatkan foto...', upload_drop: 'Letakkan foto anda di sini',
+  upload_compressing: 'Memampatkan foto...',
+  upload_progress: (done, total) => `Memproses foto: ${done} / ${total}`,
+  upload_drop: 'Letakkan foto anda di sini',
   upload_browse: 'atau klik untuk melayari • Pilih berbilang foto sekaligus',
   upload_formats: 'Sokong: JPG, PNG, WEBP, HEIC (Maks 25MB setiap satu)',
   upload_count: (n) => `${n} foto dimuat naik`,
