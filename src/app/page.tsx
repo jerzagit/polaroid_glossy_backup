@@ -350,10 +350,15 @@ export default function PolaroidPrintPage() {
       (async () => {
         const restored = await Promise.all(
           parsed.map(async (item: CartItem) => {
+            // Always re-attach the live size + recompute the unit price. Carts
+            // saved before tier pricing existed (or with stale metadata) can
+            // otherwise fall back to size.price and over-charge.
+            const currentSize = printSizes.find(s => s.id === item.sizeId);
             const normalizedItem = {
               ...item,
+              size: currentSize ?? item.size,
               quantity: item.photos.length,
-              unitPrice: getUnitPrice(item.size, item.photos.length),
+              unitPrice: getUnitPrice(currentSize ?? item.size, item.photos.length),
             };
 
             try {
