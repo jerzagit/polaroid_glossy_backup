@@ -68,5 +68,5 @@ All prices are in Malaysian Ringgit (RM). The 10-piece tier is marked as the mos
 - The earlier 2R No-border entry `RM14 → RM14.60` was treated as a typo because the discounted price was higher than the regular price. It is recorded as RM14 → RM12.60, following the 10% discount pattern.
 - The final “RM60 → RM54” entries for 2R were interpreted as the 100-piece tier.
 - Each border/no-border choice is represented as a separate selectable product in the current frontend catalog.
-- Checkout quantity is currently per uploaded photo. For example, 10 pcs with 3 uploaded photos means 30 total prints and applies the 10-piece pack price to each photo.
+- Checkout sets define the minimum upload count. One set uses the product's smallest pricing tier (10 photos for tier-priced products), and each uploaded photo produces one print. Customers may upload beyond the minimum; the per-print rate is selected automatically from the highest pricing tier reached by the final print count.
 - The frontend currently calculates these promotional prices locally. The Spring Boot/Fly backend still needs the product records and tier-pricing rules before production orders can be authoritative.
