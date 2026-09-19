@@ -18,6 +18,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Hydration guard: mark mounted so the localStorage-derived theme is only
+    // applied on the client, avoiding a server/client mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const savedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
     if (savedTheme && ["soft-pink", "lavender-dream", "coral-sunset", "mint-fresh"].includes(savedTheme)) {

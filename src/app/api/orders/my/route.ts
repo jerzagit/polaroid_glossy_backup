@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const res = await fetch(backendUrl, {
       method: 'GET',
       headers,
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(30000),
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });

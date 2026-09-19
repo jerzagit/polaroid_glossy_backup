@@ -30,6 +30,8 @@ function LoginForm() {
 
   useEffect(() => {
     if (errorParam) {
+      // One-time: surface the OAuth `error` query param (from NextAuth redirects) as a form error.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmailError('Login failed. Please check your credentials.');
     }
   }, [errorParam]);

@@ -450,7 +450,7 @@ export default function AdminProductsPage() {
                 <div className="text-center py-20 text-muted-foreground">
                   <Package2 className="w-12 h-12 mx-auto mb-4 opacity-30" />
                   <p className="font-semibold">No products found</p>
-                  <p className="text-sm mt-1">Click "Add Product" to create your first print size.</p>
+                  <p className="text-sm mt-1">Click &quot;Add Product&quot; to create your first print size.</p>
                 </div>
               ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">

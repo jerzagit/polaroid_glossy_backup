@@ -23,7 +23,7 @@ export async function GET() {
     let dbMetaMap = new Map<string, Record<string, unknown>>();
     try {
       const dbMeta = await db.productMeta.findMany();
-      dbMetaMap = new Map(dbMeta.map(m => [m.id, {
+      dbMetaMap = new Map((dbMeta as Array<Record<string, unknown>>).map(m => [m.id as string, {
         ...m,
         images: JSON.parse(m.images as string),
         features: JSON.parse(m.features as string),
