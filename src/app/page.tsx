@@ -114,9 +114,18 @@ interface CartItem {
   unitPrice: number;
 }
 
-function getUnitPrice(size: PrintSize, quantity: number) {
-  const tier = size.pricingTiers?.find(item => item.quantity === quantity);
-  return tier ? tier.discountedPrice / tier.quantity : size.price;
+function getSetSize(size: PrintSize) {
+  return size.pricingTiers?.[0]?.quantity ?? 1;
+}
+
+function getUnitPrice(size: PrintSize, printCount: number) {
+  if (!size.pricingTiers?.length) return size.price;
+
+  const applicableTier = [...size.pricingTiers]
+    .sort((a, b) => b.quantity - a.quantity)
+    .find(tier => printCount >= tier.quantity) ?? size.pricingTiers[0];
+
+  return applicableTier.discountedPrice / applicableTier.quantity;
 }
 
 interface Order {
@@ -247,7 +256,7 @@ export default function PolaroidPrintPage() {
   const [selectedSize, setSelectedSize] = useState<PrintSize>(printSizes[2]);
   const [borderStyleFilter, setBorderStyleFilter] = useState<'all' | 'border' | 'no-border'>('all');
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
-  const [quantity, setQuantity] = useState(1);
+  const [sets, setSets] = useState(1);
   const [showCart, setShowCart] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -294,7 +303,7 @@ export default function PolaroidPrintPage() {
 
     if (!nextVisibleSizes.some((size) => size.id === selectedSize.id) && nextVisibleSizes[0]) {
       setSelectedSize(nextVisibleSizes[0]);
-      if (nextVisibleSizes[0].pricingTiers) setQuantity(nextVisibleSizes[0].pricingTiers[0].quantity);
+      setSets(1);
     }
   };
 
@@ -319,9 +328,14 @@ export default function PolaroidPrintPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const checkoutReuploadRef = useRef<HTMLInputElement>(null);
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity * item.photos.length, 0);
+  const cartTotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPhotos = cart.reduce((sum, item) => sum + item.photos.length * item.quantity, 0);
+  const totalPhotos = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const setSize = getSetSize(selectedSize);
+  const minimumPhotos = setSize * sets;
+  const photosNeeded = Math.max(0, minimumPhotos - photos.length);
+  const selectedUnitPrice = getUnitPrice(selectedSize, photos.length);
 
   // Load cart from localStorage + restore File objects from IndexedDB
   useEffect(() => {
@@ -334,11 +348,17 @@ export default function PolaroidPrintPage() {
       (async () => {
         const restored = await Promise.all(
           parsed.map(async (item: CartItem) => {
+            const normalizedItem = {
+              ...item,
+              quantity: item.photos.length,
+              unitPrice: getUnitPrice(item.size, item.photos.length),
+            };
+
             try {
               const photoMap = await loadCartPhotos(item.id);
-              if (photoMap.size === 0) return item;
+              if (photoMap.size === 0) return normalizedItem;
               return {
-                ...item,
+                ...normalizedItem,
                 photos: item.photos.map((p: PhotoItem) => {
                   const stored = photoMap.get(p.id);
                   if (!stored) return p;
@@ -346,7 +366,7 @@ export default function PolaroidPrintPage() {
                 }),
               };
             } catch {
-              return item;
+              return normalizedItem;
             }
           })
         );
@@ -649,38 +669,39 @@ export default function PolaroidPrintPage() {
       return;
     }
 
+    const requiredPhotos = getSetSize(selectedSize) * sets;
+    if (photos.length < requiredPhotos) {
+      toast.error(lang === 'my'
+        ? `Tambah ${requiredPhotos - photos.length} lagi foto untuk melengkapkan set ini.`
+        : `Add ${requiredPhotos - photos.length} more photo${requiredPhotos - photos.length === 1 ? '' : 's'} to complete this set.`);
+      return;
+    }
+
     const newItem: CartItem = {
       id: Date.now().toString(),
       sizeId: selectedSize.id,
       size: selectedSize,
-      quantity,
+      quantity: photos.length,
       photos: photos.map(p => ({
         ...p,
         preview: p.preview // Keep the base64 preview
       })),
-      unitPrice: getUnitPrice(selectedSize, quantity)
+      unitPrice: getUnitPrice(selectedSize, photos.length)
     };
 
     setCart(prev => [...prev, newItem]);
-    toast.success(t.toast_cart_added(photos.length, quantity));
+    toast.success(t.toast_cart_added(photos.length, 1));
     
     // Reset
     setPhotos([]);
-    setQuantity(1);
+    setSets(1);
     setCurrentStep(2);
-  }, [photos, selectedSize, quantity]);
+  }, [photos, selectedSize, sets, lang]);
 
   const removeFromCart = useCallback((itemId: string) => {
     setCart(prev => prev.filter(item => item.id !== itemId));
     removeCartPhotos(itemId).catch(() => {});
     toast.success(t.toast_removed);
-  }, []);
-
-  const updateCartQuantity = useCallback((itemId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    setCart(prev => prev.map(item => 
-      item.id === itemId ? { ...item, quantity: newQuantity } : item
-    ));
   }, []);
 
   const handleCheckout = useCallback(async () => {
@@ -745,13 +766,13 @@ export default function PolaroidPrintPage() {
     }
 
     try {
-      const expectedImageCount = cart.reduce((sum, item) => sum + item.photos.length * item.quantity, 0);
+      const expectedImageCount = cart.reduce((sum, item) => sum + item.photos.length, 0);
       const items = cart.map(item => ({
         sizeId: item.sizeId.toLowerCase(),
         quantity: item.quantity,
         imageUrls: [],
         images: [],
-        expectedImageCount: item.photos.length * item.quantity,
+        expectedImageCount: item.photos.length,
         customTexts: item.photos.map(p => p.customText || ''),
         unitPrice: item.unitPrice,
       }));
@@ -1440,7 +1461,7 @@ export default function PolaroidPrintPage() {
                     className={cn("cursor-pointer transition-all", selectedSize.id === size.id ? "ring-2 ring-primary" : "hover:shadow-md")}
                     onClick={() => {
                       setSelectedSize(size);
-                      if (size.pricingTiers) setQuantity(size.pricingTiers[0].quantity);
+                      setSets(1);
                     }}
                   >
                     <CardContent className="p-4 text-center">
@@ -1453,42 +1474,48 @@ export default function PolaroidPrintPage() {
               </div>
             </div>
 
-            <div className="flex flex-col items-center justify-center gap-3">
+            <div className="flex flex-col items-center justify-center gap-2">
               <Label className="text-lg">{t.qty_label}</Label>
-              {selectedSize.pricingTiers ? (
-                <div className="flex flex-wrap justify-center gap-2">
-                  {selectedSize.pricingTiers.map(tier => (
-                    <Button key={tier.quantity} variant={quantity === tier.quantity ? 'default' : 'outline'} onClick={() => setQuantity(tier.quantity)}>
-                      {tier.quantity} pcs · RM{tier.discountedPrice.toFixed(2)}
-                    </Button>
-                  ))}
-                </div>
-              ) : <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+              <p className="text-sm text-muted-foreground">
+                {lang === 'my'
+                  ? `1 set = minimum ${setSize} foto`
+                  : `1 set = minimum ${setSize} photo${setSize === 1 ? '' : 's'}`}
+              </p>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="icon" onClick={() => setSets(Math.max(1, sets - 1))} disabled={sets === 1}>
                   <Minus className="w-4 h-4" />
                 </Button>
-                <span className="w-12 text-center text-xl font-semibold">{quantity}</span>
-                <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>
+                <span className="min-w-20 text-center text-xl font-semibold">× {sets}</span>
+                <Button variant="outline" size="icon" onClick={() => setSets(sets + 1)}>
                   <Plus className="w-4 h-4" />
                 </Button>
-              </div>}
+              </div>
             </div>
 
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="py-4">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-lg font-semibold">{t.summary_prints(photos.length, quantity)}</p>
-                    <p className="text-sm text-muted-foreground">{t.summary_total(photos.length * quantity)}</p>
+                    <p className="text-lg font-semibold">{t.summary_prints(photos.length, 1)}</p>
+                    <p className="text-sm text-muted-foreground">{t.summary_total(photos.length)}</p>
+                    <p className={cn("text-sm mt-1", photosNeeded > 0 ? "text-amber-700" : "text-green-700")}>
+                      {photosNeeded > 0
+                        ? (lang === 'my'
+                          ? `${photos.length} daripada ${minimumPhotos} foto dimuat naik · tambah ${photosNeeded} lagi`
+                          : `${photos.length} of ${minimumPhotos} photos uploaded · add ${photosNeeded} more`)
+                        : (lang === 'my'
+                          ? `Set lengkap${photos.length > minimumPhotos ? ` · ${photos.length - minimumPhotos} foto tambahan` : ''}`
+                          : `Set complete${photos.length > minimumPhotos ? ` · ${photos.length - minimumPhotos} extra photo${photos.length - minimumPhotos === 1 ? '' : 's'}` : ''}`)}
+                    </p>
                   </div>
                   <span className="font-bold text-primary text-3xl">
-                    RM{(getUnitPrice(selectedSize, quantity) * photos.length * quantity).toFixed(2)}
+                    RM{(selectedUnitPrice * photos.length).toFixed(2)}
                   </span>
                 </div>
               </CardContent>
             </Card>
 
-            <Button className="w-full" size="lg" onClick={addToCart}>
+            <Button className="w-full" size="lg" onClick={addToCart} disabled={photosNeeded > 0}>
               <ShoppingCart className="w-5 h-5 mr-2" /> {t.btn_addcart}
             </Button>
           </motion.div>
@@ -1537,23 +1564,17 @@ export default function PolaroidPrintPage() {
                         <div className="flex justify-between items-start">
                           <div>
                             <h4 className="font-semibold">{item.size.displayName}</h4>
-                            <p className="text-sm text-muted-foreground">{t.cart_item_desc(item.photos.length, item.quantity)}</p>
+                            <p className="text-sm text-muted-foreground">{t.cart_item_desc(item.photos.length, 1)}</p>
                           </div>
                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeFromCart(item.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                         <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateCartQuantity(item.id, item.quantity - 1)}>
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            <span className="w-8 text-center">{item.quantity}</span>
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateCartQuantity(item.id, item.quantity + 1)}>
-                              <Plus className="w-3 h-3" />
-                            </Button>
-                          </div>
-                          <span className="font-bold text-lg">RM{(item.unitPrice * item.photos.length * item.quantity).toFixed(2)}</span>
+                          <span className="text-sm text-muted-foreground">
+                            RM{item.unitPrice.toFixed(2)} {t.per_print}
+                          </span>
+                          <span className="font-bold text-lg">RM{(item.unitPrice * item.quantity).toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -1753,8 +1774,8 @@ export default function PolaroidPrintPage() {
             <div className="space-y-3">
               {cart.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm">
-                  <span>{t.checkout_item(item.size.name, item.photos.length, item.quantity)}</span>
-                  <span>RM{(item.unitPrice * item.photos.length * item.quantity).toFixed(2)}</span>
+                  <span>{t.checkout_item(item.size.name, item.photos.length, 1)}</span>
+                  <span>RM{(item.unitPrice * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
               <Separator />
@@ -2235,8 +2256,8 @@ export default function PolaroidPrintPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm">{item.size.name}</p>
-                              <p className="text-xs text-muted-foreground">{t.drawer_item(item.photos.length, item.quantity)}</p>
-                              <p className="text-sm font-bold">RM{(item.unitPrice * item.photos.length * item.quantity).toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">{t.drawer_item(item.photos.length, 1)}</p>
+                              <p className="text-sm font-bold">RM{(item.unitPrice * item.quantity).toFixed(2)}</p>
                             </div>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeFromCart(item.id)}><X className="w-4 h-4" /></Button>
                           </div>
