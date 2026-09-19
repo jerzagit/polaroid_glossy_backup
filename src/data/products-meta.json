@@ -91,8 +91,8 @@
       },
       "pricingTiers": [
         { "quantity": 1, "regularPrice": 1.5, "discountedPrice": 1.5 },
-        { "quantity": 5, "regularPrice": 5, "discountedPrice": 5 },
-        { "quantity": 10, "regularPrice": 4, "discountedPrice": 4 },
+        { "quantity": 5, "regularPrice": 4, "discountedPrice": 4 },
+        { "quantity": 10, "regularPrice": 5, "discountedPrice": 5 },
         { "quantity": 20, "regularPrice": 8, "discountedPrice": 8 },
         { "quantity": 50, "regularPrice": 15, "discountedPrice": 15 },
         { "quantity": 100, "regularPrice": 30, "discountedPrice": 30 },
