@@ -2446,8 +2446,8 @@ export default function PolaroidPrintPage() {
                         <p className="font-mono font-semibold">{order.orderNumber}</p>
                         <p className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
                       </div>
-                      <Badge className={cn("font-medium", statusConfig[order.status]?.color || 'bg-gray-100 text-gray-800')}>
-                        {statusConfig[order.status]?.label || order.status}
+                      <Badge className={cn("font-medium", statusConfig[order.status?.toLowerCase()]?.color || 'bg-gray-100 text-gray-800')}>
+                        {statusConfig[order.status?.toLowerCase()]?.label || order.status}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
@@ -2458,12 +2458,12 @@ export default function PolaroidPrintPage() {
                             <Copy className="w-3 h-3 mr-1" /> {t.btn_copy_tracking}
                           </Button>
                         )}
-                        {order.status === 'delivered' && !reviews.find(r => r.orderId === order.id) && (
+                        {order.status?.toLowerCase() === 'delivered' && !reviews.find(r => r.orderId === order.id) && (
                           <Button size="sm" onClick={() => { setSelectedOrderForReview(order); setShowReviewModal(true); setShowOrdersModal(false); }}>
                             <MessageSquare className="w-3 h-3 mr-1" /> {t.btn_write_review}
                           </Button>
                         )}
-                        {['pending', 'processing'].includes(order.status) && (
+                        {['pending', 'processing'].includes(order.status?.toLowerCase()) && (
                           <Button variant="destructive" size="sm" onClick={() => handleCancelOrder(order.id)}>
                             <XCircle className="w-3 h-3 mr-1" /> {t.btn_cancel}
                           </Button>

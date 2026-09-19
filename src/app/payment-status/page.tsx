@@ -42,8 +42,8 @@ function PaymentStatusContent() {
       .then(data => {
         if (cancelled) return;
         if (data.success && data.order) {
-          if (data.order.paymentStatus === 'paid') setVerifiedStatus('success');
-          else if (data.order.paymentStatus === 'pending') setVerifiedStatus('pending');
+          if (data.order.paymentStatus?.toLowerCase() === 'paid') setVerifiedStatus('success');
+          else if (data.order.paymentStatus?.toLowerCase() === 'pending') setVerifiedStatus('pending');
           else setVerifiedStatus('failed');
         } else {
           setVerifiedStatus('failed');
