@@ -115,8 +115,8 @@ interface CartItem {
   unitPrice: number;
 }
 
-function getSetSize(size: PrintSize) {
-  return size.pricingTiers?.[0]?.quantity ?? 1;
+function getSetSize(_size: PrintSize) {
+  return 1; // No minimum order — a customer may order a single print
 }
 
 function getUnitPrice(size: PrintSize, printCount: number) {
@@ -226,7 +226,8 @@ export default function PolaroidPrintPage() {
 
   // Derived from translations
   const printSizes: PrintSize[] = [
-    { id: 'ic', name: 'IC Size', displayName: '5.5 × 8 cm (Malaysia IC)', width: 5.5, height: 8, price: 4.50, description: 'Malaysia IC size - quantity pack pricing', pricingTiers: [{ quantity: 10, regularPrice: 5, discountedPrice: 4.5 }, { quantity: 20, regularPrice: 10, discountedPrice: 9 }, { quantity: 50, regularPrice: 25, discountedPrice: 22.5 }, { quantity: 100, regularPrice: 40, discountedPrice: 36 }] },
+    { id: 'ic', name: 'Polaroid', displayName: '5.5 × 8.9 cm · Full image', width: 5.5, height: 8.9, price: 2.00, description: 'Polaroid full-image print without a white border', pricingTiers: [{ quantity: 1, regularPrice: 2, discountedPrice: 2 }, { quantity: 20, regularPrice: 8, discountedPrice: 8 }] },
+    { id: 'ic-border', name: 'Polaroid Border', displayName: '5.5 × 8.9 cm · White border', width: 5.5, height: 8.9, price: 2.00, description: 'Classic white-border Polaroid style', pricingTiers: [{ quantity: 1, regularPrice: 2, discountedPrice: 2 }, { quantity: 20, regularPrice: 8, discountedPrice: 8 }] },
     { id: 'polaroid-mini', name: 'Polaroid Mini', displayName: '5.0 × 8.9 cm', width: 5, height: 8.9, price: 3.60, description: 'Compact mini format - quantity pack pricing', pricingTiers: [{ quantity: 10, regularPrice: 4, discountedPrice: 3.6 }, { quantity: 20, regularPrice: 8, discountedPrice: 7.2 }, { quantity: 50, regularPrice: 15, discountedPrice: 13.5 }, { quantity: 100, regularPrice: 30, discountedPrice: 27 }] },
     { id: '2r-no-border', name: '2R No Border', displayName: '6.3 × 8.9 cm · Full colour', width: 6.3, height: 8.9, price: 6.30, description: 'Full-colour card without white border', pricingTiers: [{ quantity: 10, regularPrice: 7, discountedPrice: 6.3 }, { quantity: 20, regularPrice: 14, discountedPrice: 12.6 }, { quantity: 50, regularPrice: 35, discountedPrice: 31.5 }, { quantity: 100, regularPrice: 60, discountedPrice: 54 }] },
     { id: '2r-border', name: '2R Border', displayName: '6.3 × 8.9 cm · White border', width: 6.3, height: 8.9, price: 5.85, description: 'White-border Polaroid style', pricingTiers: [{ quantity: 10, regularPrice: 6.5, discountedPrice: 5.85 }, { quantity: 20, regularPrice: 13, discountedPrice: 11 }, { quantity: 50, regularPrice: 32, discountedPrice: 28 }, { quantity: 100, regularPrice: 60, discountedPrice: 54 }] },

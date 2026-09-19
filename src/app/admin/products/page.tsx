@@ -84,7 +84,7 @@ function ProductCard({ product, onEdit, onToggle, toggling }: {
                 {product.isActive ? 'Active' : 'Inactive'}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground font-mono mt-0.5">{product.displayName}</p>
+            <p className="text-xs text-muted-foreground font-mono mt-0.5">{product.id} · {product.displayName}</p>
           </div>
           <p className="text-2xl font-black shrink-0" style={{ color: product.accentColor }}>
             RM{product.price.toFixed(2)}
@@ -194,6 +194,7 @@ function ProductForm({ product, onSave, onCancel, saving }: {
           </h3>
           <div className="grid sm:grid-cols-2 gap-3">
             <Field label="Name *" value={form.name} onChange={v => set('name', v)} placeholder="e.g. 5R" disabled={!isNew} />
+            <Field label="ID" value={product?.id ?? 'auto — generated from Name'} onChange={() => {}} disabled />
             <Field label="Display Name *" value={form.displayName} onChange={v => set('displayName', v)} placeholder="5R (5 x 7 inches)" />
           </div>
           <div className="grid grid-cols-3 gap-3">

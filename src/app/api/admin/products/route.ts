@@ -15,6 +15,12 @@ export async function GET() {
       if (!sizes || sizes.length === 0) throw new Error('empty');
     } catch {
       sizes = [
+        { id: 'ic', name: 'Polaroid', displayName: 'Polaroid (5.5 × 8.9 cm)', width: 5.5, height: 8.9, price: 2.00, description: 'Polaroid full-image print without a white border', isActive: true },
+        { id: 'ic-border', name: 'Polaroid Border', displayName: 'Polaroid Border (5.5 × 8.9 cm)', width: 5.5, height: 8.9, price: 2.00, description: 'Classic white-border Polaroid style', isActive: true },
+        { id: 'polaroid-mini', name: 'Polaroid Mini', displayName: 'Polaroid Mini (5.0 × 8.9 cm)', width: 5, height: 8.9, price: 3.60, description: 'Compact mini format', isActive: true },
+        { id: '2r-no-border', name: '2R No Border', displayName: '2R No Border (6.3 × 8.9 cm)', width: 6.3, height: 8.9, price: 6.30, description: 'Full-colour card without white border', isActive: true },
+        { id: '2r-border', name: '2R Border', displayName: '2R Border (6.3 × 8.9 cm)', width: 6.3, height: 8.9, price: 5.85, description: 'White-border Polaroid style', isActive: true },
+        { id: '3r-no-border', name: '3R No Border', displayName: '3R No Border (8.9 × 12.7 cm)', width: 8.9, height: 12.7, price: 7.20, description: 'Full-colour card without white border', isActive: true },
         { id: '4r', name: '4R', displayName: '4R (4 x 6 inches)', width: 4, height: 6, price: 1.00, description: 'Most popular', isActive: true },
         { id: 'a4', name: 'A4', displayName: 'A4 (8.3 x 11.7 inches)', width: 8.3, height: 11.7, price: 3.50, description: 'Poster size', isActive: true },
       ];

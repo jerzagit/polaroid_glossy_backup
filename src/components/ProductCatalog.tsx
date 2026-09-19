@@ -356,7 +356,7 @@ export function ProductCatalog({ onSelect }: ProductCatalogProps) {
   const filteredProducts = products.filter(product => {
     if (borderFilter === 'all') return true;
     const id = product.id.toLowerCase();
-    return borderFilter === 'border' ? id.endsWith('-border') : id.endsWith('-no-border');
+    return borderFilter === 'border' ? id.endsWith('-border') : !id.endsWith('-border');
   });
 
   return (

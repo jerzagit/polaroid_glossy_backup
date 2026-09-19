@@ -8,27 +8,54 @@
         "/images/products/glossy-waterproof.jpg"
       ],
       "popular": true,
-      "tag": "MOST POPULAR",
+      "tag": "POLAROID",
       "accentColor": "#ec4899",
-      "shortDescription": "Malaysia IC-size prints, made for wallets and official documents.",
-      "fullDescription": "Compact 5.5 × 8 cm prints sized to match the Malaysia identity-card format. Choose a quantity pack and save more with our discounted bundle pricing.",
-      "features": ["Malaysia IC size", "Wallet-ready", "Best seller"],
+      "shortDescription": "Full-image Polaroid prints with no white border, in a 5.5 × 8.9 cm format.",
+      "fullDescription": "Crisp 5.5 × 8.9 cm prints that fill the whole card edge to edge — no white border. Order a single print or buy in bulk to save.",
+      "features": ["Full-image print", "No white border", "Glossy waterproof"],
       "specs": {
-        "dimensions": "5.5 × 8 cm",
-        "paper": "Glossy photo-grade 230gsm",
+        "dimensions": "5.5 × 8.9 cm",
+        "paper": "Glossy photo-grade 260gsm",
         "finish": "Glossy",
         "printMethod": "Dye-sublimation",
         "processingTime": "3–4 working days",
-        "minQty": 10
+        "minQty": 1
       },
       "pricingTiers": [
-        { "quantity": 10, "regularPrice": 5, "discountedPrice": 4.5 },
-        { "quantity": 20, "regularPrice": 10, "discountedPrice": 9 },
-        { "quantity": 50, "regularPrice": 25, "discountedPrice": 22.5 },
-        { "quantity": 100, "regularPrice": 40, "discountedPrice": 36 }
+        { "quantity": 1, "regularPrice": 2, "discountedPrice": 2 },
+        { "quantity": 20, "regularPrice": 8, "discountedPrice": 8 }
       ],
       "rating": 4.9,
-      "reviewCount": 0,
+      "reviewCount": 1302,
+      "tiktokVideos": []
+    },
+    {
+      "id": "ic-border",
+      "images": [
+        "/images/products/2r-border.jpg",
+        "/images/products/size-comparison.jpg",
+        "/images/products/glossy-waterproof.jpg"
+      ],
+      "popular": true,
+      "tag": "POLAROID",
+      "accentColor": "#8b5cf6",
+      "shortDescription": "Classic white-border Polaroid prints in a 5.5 × 8.9 cm format.",
+      "fullDescription": "Authentic instant-film look with a clean white border on the 5.5 × 8.9 cm Polaroid format. Order a single print or buy in bulk to save.",
+      "features": ["White border", "Polaroid style", "Glossy waterproof"],
+      "specs": {
+        "dimensions": "5.5 × 8.9 cm",
+        "paper": "Glossy photo-grade 260gsm",
+        "finish": "Glossy",
+        "printMethod": "Dye-sublimation",
+        "processingTime": "3–4 working days",
+        "minQty": 1
+      },
+      "pricingTiers": [
+        { "quantity": 1, "regularPrice": 2, "discountedPrice": 2 },
+        { "quantity": 20, "regularPrice": 8, "discountedPrice": 8 }
+      ],
+      "rating": 4.9,
+      "reviewCount": 1302,
       "tiktokVideos": []
     },
     {
