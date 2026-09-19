@@ -262,6 +262,7 @@ export default function PolaroidPrintPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null);
+  const [checkoutUploadProgress, setCheckoutUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
@@ -836,36 +837,42 @@ export default function PolaroidPrintPage() {
         const createdItems = Array.isArray(data.order?.items) ? data.order.items : [];
         const orderTotal = cartTotal + shippingCost;
 
-        // Upload photos to Spring Boot → R2
-        const uploadPromises: Promise<boolean>[] = [];
+        // Upload sequentially so order verification and image-count updates cannot race.
+        const pendingUploads: Array<{ file: File; orderItemId?: string }> = [];
         for (const [itemIndex, item] of cart.entries()) {
           const orderItemId = createdItems[itemIndex]?.id;
           for (const photo of item.photos) {
             if (!photo.file) continue;
-            const formData = new FormData();
-            formData.append('file', photo.file);
-            formData.append('orderId', orderNumber);
-            formData.append('customerEmail', orderFormData.customerEmail);
-            if (uploadToken) formData.append('uploadToken', uploadToken);
-            if (orderItemId) formData.append('orderItemId', orderItemId);
-            uploadPromises.push(
-              fetch('/api/upload', { method: 'POST', headers: uploadAuthHeaders(), body: formData })
-                .then(r => r.json())
-                .then((uploadData: { success: boolean; url?: string }) => {
-                  return !!(uploadData.success && uploadData.url);
-                })
-                .catch(() => false)
-            );
+            pendingUploads.push({ file: photo.file, orderItemId });
           }
         }
 
-        if (uploadPromises.length > 0) {
-          const uploadResults = await Promise.all(uploadPromises);
-          const failedCount = uploadResults.filter(r => !r).length;
-          if (failedCount > 0) {
-            console.warn(`${failedCount} photo(s) could not be uploaded`);
-            toast.error(`${failedCount} photo(s) failed to upload. Contact support if needed.`);
+        if (pendingUploads.length !== expectedImageCount) {
+          throw new Error(`Only ${pendingUploads.length} of ${expectedImageCount} photo files are available. Please re-select the missing photos.`);
+        }
+
+        setCheckoutUploadProgress({ done: 0, total: pendingUploads.length });
+        for (const [index, upload] of pendingUploads.entries()) {
+          const formData = new FormData();
+          formData.append('file', upload.file);
+          formData.append('orderId', orderNumber);
+          formData.append('customerEmail', orderFormData.customerEmail);
+          if (uploadToken) formData.append('uploadToken', uploadToken);
+          if (upload.orderItemId) formData.append('orderItemId', upload.orderItemId);
+
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            headers: uploadAuthHeaders(),
+            body: formData,
+          });
+          const uploadData = await uploadResponse.json().catch(() => null) as { success?: boolean; url?: string; error?: string } | null;
+
+          if (!uploadResponse.ok || !uploadData?.success || !uploadData.url) {
+            const reason = uploadData?.error || `Upload request failed (${uploadResponse.status})`;
+            throw new Error(`Photo ${index + 1} of ${pendingUploads.length} failed: ${reason}`);
           }
+
+          setCheckoutUploadProgress({ done: index + 1, total: pendingUploads.length });
         }
 
         if (paymentMethod === 'toyyibpay') {
@@ -925,9 +932,10 @@ export default function PolaroidPrintPage() {
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      toast.error(t.toast_order_fail);
+      toast.error(error instanceof Error ? error.message : t.toast_order_fail);
     } finally {
       setIsProcessing(false);
+      setCheckoutUploadProgress(null);
     }
   }, [orderFormData, cart, cartTotal, profile?.id, paymentMethod, user]);
 
@@ -1859,10 +1867,31 @@ export default function PolaroidPrintPage() {
           </div>
         )}
 
+        {isProcessing && checkoutUploadProgress && (
+          <div className="mt-3 md:mt-6 space-y-2" aria-live="polite">
+            <div className="flex items-center justify-between text-sm font-medium">
+              <span>{lang === 'my' ? 'Memuat naik foto' : 'Uploading photos'}</span>
+              <span>{checkoutUploadProgress.done} / {checkoutUploadProgress.total}</span>
+            </div>
+            <Progress
+              value={(checkoutUploadProgress.done / checkoutUploadProgress.total) * 100}
+              aria-label={`${checkoutUploadProgress.done} of ${checkoutUploadProgress.total} photos uploaded`}
+              className="h-3"
+            />
+          </div>
+        )}
+
         <div className="flex gap-3 md:gap-4 mt-3 md:mt-6">
           <Button variant="outline" className="flex-1" onClick={() => setCurrentStep(2)}>{t.btn_back_cart}</Button>
           <Button className="flex-1" onClick={handleCheckout} disabled={isProcessing}>
-            {isProcessing ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />{t.btn_processing}</>) : (<><CreditCard className="w-4 h-4 mr-2" />{paymentMethod === 'toyyibpay' ? t.btn_pay_toyyibpay : t.btn_place_order}</>)}
+            {isProcessing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                {checkoutUploadProgress
+                  ? `${checkoutUploadProgress.done} / ${checkoutUploadProgress.total}`
+                  : t.btn_processing}
+              </>
+            ) : (<><CreditCard className="w-4 h-4 mr-2" />{paymentMethod === 'toyyibpay' ? t.btn_pay_toyyibpay : t.btn_place_order}</>)}
           </Button>
         </div>
         </>
