@@ -77,7 +77,7 @@ export default function OrdersPage() {
 
   const filteredOrders = activeTab === 'all'
     ? orders
-    : orders.filter(o => o.status === activeTab);
+    : orders.filter(o => o.status?.toLowerCase() === activeTab);
 
   const tabs = [
     { id: 'all', label: 'All' },
@@ -151,7 +151,7 @@ export default function OrdersPage() {
               const status = statusConfig[order.status?.toLowerCase()] || statusConfig.pending;
               const StatusIcon = status.icon;
               const itemCount = order.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
-              const isDraft = order.status === 'draft';
+              const isDraft = order.status?.toLowerCase() === 'draft';
               const normalizedStatus = order.status?.toLowerCase() || 'pending';
 
               return (
