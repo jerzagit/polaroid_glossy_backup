@@ -260,7 +260,6 @@ export default function PolaroidPrintPage() {
   const [showCart, setShowCart] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
@@ -404,7 +403,6 @@ export default function PolaroidPrintPage() {
 
         if (processed.length > 0) {
           setPhotos(prev => [...prev, ...processed]);
-          setUploadProgress({ done: processed.length, total: processed.length });
           toast.success(t.toast_photos_added(processed.length));
         }
       } finally {
@@ -588,7 +586,6 @@ export default function PolaroidPrintPage() {
 
       if (processedPhotos.length > 0) {
         setPhotos(prev => [...prev, ...processedPhotos]);
-        setUploadProgress({ done: processedPhotos.length, total: processedPhotos.length });
         toast.success(t.toast_photos_added(processedPhotos.length));
       }
       if (failedCount > 0) {
@@ -838,7 +835,6 @@ export default function PolaroidPrintPage() {
         }
 
         if (uploadPromises.length > 0) {
-          setUploadProgress({ done: 0, total: uploadPromises.length });
           const uploadResults = await Promise.all(uploadPromises);
           const failedCount = uploadResults.filter(r => !r).length;
           if (failedCount > 0) {
@@ -1371,7 +1367,7 @@ export default function PolaroidPrintPage() {
           />
           <div className="space-y-4">
             <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-              {isUploading || uploadProgress ? (
+              {isUploading ? (
                 <Loader2 className="w-8 h-8 text-primary animate-spin" />
               ) : (
                 <Upload className="w-8 h-8 text-primary" />
@@ -1380,8 +1376,6 @@ export default function PolaroidPrintPage() {
             <div>
               {isUploading ? (
                 <p className="text-lg font-medium">{t.upload_compressing}</p>
-              ) : uploadProgress ? (
-                <p className="text-lg font-medium">Uploading {uploadProgress.done} / {uploadProgress.total}</p>
               ) : (
                 <>
                   <p className="text-lg font-medium">{t.upload_drop}</p>
