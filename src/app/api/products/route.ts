@@ -46,14 +46,18 @@ export interface ProductListing {
 }
 
 const FALLBACK_SIZES = [
-  { id: 'ic', name: 'Polaroid', displayName: 'Polaroid (5.5 × 8.9 cm)', width: 5.5, height: 8.9, price: 2.00, description: 'Polaroid full-image print without a white border' },
-  { id: 'ic-border', name: 'Polaroid Border', displayName: 'Polaroid Border (5.5 × 8.9 cm)', width: 5.5, height: 8.9, price: 2.00, description: 'Classic white-border Polaroid style' },
-  { id: 'polaroid-mini', name: 'Polaroid Mini', displayName: 'Polaroid Mini (5.0 × 8.9 cm)', width: 5, height: 8.9, price: 3.60, description: 'Compact mini format - discounted quantity packs' },
-  { id: '2r-no-border', name: '2R No Border', displayName: '2R No Border (6.3 × 8.9 cm)', width: 6.3, height: 8.9, price: 6.30, description: 'Full-colour card without white border' },
-  { id: '2r-border', name: '2R Border', displayName: '2R Border (6.3 × 8.9 cm)', width: 6.3, height: 8.9, price: 5.85, description: 'White-border Polaroid style' },
-  { id: '3r-no-border', name: '3R No Border', displayName: '3R No Border (8.9 × 12.7 cm)', width: 8.9, height: 12.7, price: 7.20, description: 'Full-colour card without white border' },
-  { id: '4r', name: '4R', displayName: '4R (4 x 6 inches)', width: 4, height: 6, price: 1.00, description: 'Most popular - Classic polaroid style' },
-  { id: 'a4', name: 'A4', displayName: 'A4 (8.3 x 11.7 inches)', width: 8.3, height: 11.7, price: 3.50, description: 'Poster size - Perfect for displays' },
+  { id: 'ic', name: 'Polaroid Full', displayName: 'Polaroid (5.5 × 8.9 cm) · Full', width: 5.5, height: 8.9, price: 2.00, description: 'Polaroid full print without a white border' },
+  { id: 'ic-border', name: 'Polaroid Border', displayName: 'Polaroid (5.5 × 8.9 cm) · White border', width: 5.5, height: 8.9, price: 2.50, description: 'Polaroid with a white border' },
+  { id: 'polaroid-mini', name: 'Polaroid Mini', displayName: 'Polaroid Mini (5.0 × 8.9 cm) · White border', width: 5, height: 8.9, price: 1.50, description: 'Mini Polaroid with a white border' },
+  { id: '2r-no-border', name: '2R Full', displayName: '2R (6.3 × 8.9 cm) · Full', width: 6.3, height: 8.9, price: 2.50, description: '2R full print without a white border' },
+  { id: '2r-border', name: '2R Border', displayName: '2R (6.3 × 8.9 cm) · White border', width: 6.3, height: 8.9, price: 2.00, description: '2R Polaroid style with a white border' },
+  { id: '3r-no-border', name: '3R Full', displayName: '3R (8.9 × 12.7 cm) · Full', width: 8.9, height: 12.7, price: 2.50, description: '3R full print without a white border' },
+  { id: '3r-border', name: '3R Border', displayName: '3R (8.9 × 12.7 cm) · White border', width: 8.9, height: 12.7, price: 2.40, description: '3R Polaroid style with a white border' },
+  { id: '4r', name: '4R', displayName: '4R (10 × 15 cm)', width: 10, height: 15, price: 2.50, description: 'Classic full-print album photo' },
+  { id: '5r', name: '5R', displayName: '5R (12.7 × 17.8 cm)', width: 12.7, height: 17.8, price: 4.00, description: 'Large full-print photo' },
+  { id: '6r', name: '6R', displayName: '6R (15.2 × 20.3 cm)', width: 15.2, height: 20.3, price: 5.00, description: 'Extra-large full-print photo' },
+  { id: 'strip-3', name: 'Strip 3', displayName: '3-Photo Strip', width: 6, height: 8.9, price: 1.80, description: 'Three photos in a single strip' },
+  { id: 'strip-4', name: 'Strip 4', displayName: '4-Photo Strip', width: 6, height: 11.9, price: 1.80, description: 'Four photos in a single strip' },
 ];
 
 async function fetchFromBackend(): Promise<ProductListing[] | null> {
