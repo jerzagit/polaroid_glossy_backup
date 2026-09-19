@@ -223,6 +223,14 @@
         "processingTime": "3–4 working days",
         "minQty": 1
       },
+      "pricingTiers": [
+        { "quantity": 1, "regularPrice": 2.5, "discountedPrice": 2.5 },
+        { "quantity": 10, "regularPrice": 10, "discountedPrice": 10 },
+        { "quantity": 20, "regularPrice": 20, "discountedPrice": 20 },
+        { "quantity": 50, "regularPrice": 50, "discountedPrice": 50 },
+        { "quantity": 100, "regularPrice": 100, "discountedPrice": 100 },
+        { "quantity": 120, "regularPrice": 120, "discountedPrice": 120 }
+      ],
       "rating": 4.9,
       "reviewCount": 1204,
       "tiktokVideos": []
@@ -248,6 +256,11 @@
         "processingTime": "3–4 working days",
         "minQty": 1
       },
+      "pricingTiers": [
+        { "quantity": 1, "regularPrice": 4, "discountedPrice": 4 },
+        { "quantity": 5, "regularPrice": 20, "discountedPrice": 20 },
+        { "quantity": 10, "regularPrice": 40, "discountedPrice": 40 }
+      ],
       "rating": 4.9,
       "reviewCount": 0,
       "tiktokVideos": []
@@ -273,6 +286,11 @@
         "processingTime": "3–4 working days",
         "minQty": 1
       },
+      "pricingTiers": [
+        { "quantity": 1, "regularPrice": 5, "discountedPrice": 5 },
+        { "quantity": 5, "regularPrice": 25, "discountedPrice": 25 },
+        { "quantity": 10, "regularPrice": 50, "discountedPrice": 50 }
+      ],
       "rating": 4.9,
       "reviewCount": 0,
       "tiktokVideos": []
