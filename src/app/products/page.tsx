@@ -11,13 +11,23 @@ import { ProductCatalog } from '@/components/ProductCatalog';
 import Link from 'next/link';
 
 const FALLBACK_SIZES = [
-  { id: '4r', name: '4R', displayName: '4R', width: 4, height: 6, price: 1.00 },
-  { id: 'a4', name: 'A4', displayName: 'A4', width: 8.3, height: 11.7, price: 3.50 },
+  { id: 'ic', name: 'Polaroid Full', displayName: 'Polaroid (5.5 × 8.9 cm)', width: 5.5, height: 8.9, price: 2.00 },
+  { id: 'ic-border', name: 'Polaroid Border', displayName: 'Polaroid (5.5 × 8.9 cm)', width: 5.5, height: 8.9, price: 2.50 },
+  { id: 'polaroid-mini', name: 'Polaroid Mini', displayName: 'Polaroid Mini (5.0 × 8.9 cm)', width: 5, height: 8.9, price: 1.50 },
+  { id: '2r-no-border', name: '2R Full', displayName: '2R (6.3 × 8.9 cm)', width: 6.3, height: 8.9, price: 2.50 },
+  { id: '2r-border', name: '2R Border', displayName: '2R (6.3 × 8.9 cm)', width: 6.3, height: 8.9, price: 2.00 },
+  { id: '3r-no-border', name: '3R Full', displayName: '3R (8.9 × 12.7 cm)', width: 8.9, height: 12.7, price: 2.50 },
+  { id: '3r-border', name: '3R Border', displayName: '3R (8.9 × 12.7 cm)', width: 8.9, height: 12.7, price: 2.40 },
+  { id: '4r', name: '4R', displayName: '4R (10 × 15 cm)', width: 10, height: 15, price: 2.50 },
+  { id: '5r', name: '5R', displayName: '5R (12.7 × 17.8 cm)', width: 12.7, height: 17.8, price: 4.00 },
+  { id: '6r', name: '6R', displayName: '6R (15.2 × 20.3 cm)', width: 15.2, height: 20.3, price: 5.00 },
+  { id: 'strip-3', name: 'Strip 3', displayName: '3-Photo Strip', width: 6, height: 8.9, price: 1.80 },
+  { id: 'strip-4', name: 'Strip 4', displayName: '4-Photo Strip', width: 6, height: 11.9, price: 1.80 },
 ];
 
 export default function ProductsPage() {
   const { t } = useLanguage();
-  const [selectedSize, setSelectedSize] = useState(FALLBACK_SIZES[2]);
+  const [selectedSize, setSelectedSize] = useState(FALLBACK_SIZES[1]);
 
   const productVideos = t.videos.map((item, i) => ({
     ...item,

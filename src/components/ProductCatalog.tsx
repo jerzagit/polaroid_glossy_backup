@@ -218,7 +218,7 @@ function ProductCard({ product, onSelect }: { product: ProductListing; onSelect:
                 RM{(product.pricingTiers?.[0]?.discountedPrice ?? product.price).toFixed(2)}
               </p>
               <p className="text-[10px] text-muted-foreground">
-                {product.pricingTiers ? `per ${product.pricingTiers[0].quantity} pcs` : t.per_print}
+                {product.pricingTiers ? (product.pricingTiers[0].quantity === 1 ? t.per_print : `per ${product.pricingTiers[0].quantity} pcs`) : t.per_print}
               </p>
             </div>
           </div>
@@ -234,7 +234,7 @@ function ProductCard({ product, onSelect }: { product: ProductListing; onSelect:
               {product.pricingTiers.map(tier => (
                 <div key={tier.quantity} className="flex justify-between text-xs">
                   <span>{tier.quantity} pcs</span>
-                  <span><span className="line-through text-muted-foreground mr-1">RM{tier.regularPrice.toFixed(2)}</span><strong>RM{tier.discountedPrice.toFixed(2)}</strong></span>
+                  <span>{tier.regularPrice > tier.discountedPrice && <span className="line-through text-muted-foreground mr-1">RM{tier.regularPrice.toFixed(2)}</span>}<strong>RM{tier.discountedPrice.toFixed(2)}</strong></span>
                 </div>
               ))}
             </div>
@@ -353,10 +353,11 @@ export function ProductCatalog({ onSelect }: ProductCatalogProps) {
     );
   }
 
+  const BORDER_IDS = new Set(['ic-border', 'polaroid-mini', '2r-border', '3r-border']);
+
   const filteredProducts = products.filter(product => {
     if (borderFilter === 'all') return true;
-    const id = product.id.toLowerCase();
-    return borderFilter === 'border' ? id.endsWith('-border') : id.endsWith('-no-border');
+    return borderFilter === 'border' ? BORDER_IDS.has(product.id) : !BORDER_IDS.has(product.id);
   });
 
   return (

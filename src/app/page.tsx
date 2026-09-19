@@ -115,8 +115,8 @@ interface CartItem {
   unitPrice: number;
 }
 
-function getSetSize(size: PrintSize) {
-  return size.pricingTiers?.[0]?.quantity ?? 1;
+function getSetSize(_size: PrintSize) {
+  return 1; // No minimum order — a customer may order a single print
 }
 
 function getUnitPrice(size: PrintSize, printCount: number) {
@@ -226,14 +226,51 @@ export default function PolaroidPrintPage() {
 
   // Derived from translations
   const printSizes: PrintSize[] = [
-    { id: 'ic', name: 'IC Size', displayName: '5.5 × 8 cm (Malaysia IC)', width: 5.5, height: 8, price: 4.50, description: 'Malaysia IC size - quantity pack pricing', pricingTiers: [{ quantity: 10, regularPrice: 5, discountedPrice: 4.5 }, { quantity: 20, regularPrice: 10, discountedPrice: 9 }, { quantity: 50, regularPrice: 25, discountedPrice: 22.5 }, { quantity: 100, regularPrice: 40, discountedPrice: 36 }] },
-    { id: 'polaroid-mini', name: 'Polaroid Mini', displayName: '5.0 × 8.9 cm', width: 5, height: 8.9, price: 3.60, description: 'Compact mini format - quantity pack pricing', pricingTiers: [{ quantity: 10, regularPrice: 4, discountedPrice: 3.6 }, { quantity: 20, regularPrice: 8, discountedPrice: 7.2 }, { quantity: 50, regularPrice: 15, discountedPrice: 13.5 }, { quantity: 100, regularPrice: 30, discountedPrice: 27 }] },
-    { id: '2r-no-border', name: '2R No Border', displayName: '6.3 × 8.9 cm · Full colour', width: 6.3, height: 8.9, price: 6.30, description: 'Full-colour card without white border', pricingTiers: [{ quantity: 10, regularPrice: 7, discountedPrice: 6.3 }, { quantity: 20, regularPrice: 14, discountedPrice: 12.6 }, { quantity: 50, regularPrice: 35, discountedPrice: 31.5 }, { quantity: 100, regularPrice: 60, discountedPrice: 54 }] },
-    { id: '2r-border', name: '2R Border', displayName: '6.3 × 8.9 cm · White border', width: 6.3, height: 8.9, price: 5.85, description: 'White-border Polaroid style', pricingTiers: [{ quantity: 10, regularPrice: 6.5, discountedPrice: 5.85 }, { quantity: 20, regularPrice: 13, discountedPrice: 11 }, { quantity: 50, regularPrice: 32, discountedPrice: 28 }, { quantity: 100, regularPrice: 60, discountedPrice: 54 }] },
-    { id: '3r-no-border', name: '3R No Border', displayName: '8.9 × 12.7 cm · Full colour', width: 8.9, height: 12.7, price: 7.20, description: 'Full-colour card without white border', pricingTiers: [{ quantity: 10, regularPrice: 8, discountedPrice: 7.2 }, { quantity: 20, regularPrice: 16, discountedPrice: 14.4 }, { quantity: 50, regularPrice: 40, discountedPrice: 36 }, { quantity: 100, regularPrice: 80, discountedPrice: 72 }] },
-    { id: '4r', name: '4R', displayName: t.size_4r_display, width: 4, height: 6, price: 1.00, description: t.size_4r_desc },
-    { id: 'a4', name: 'A4', displayName: t.size_a4_display, width: 8.3, height: 11.7, price: 3.50, description: t.size_a4_desc },
+    { id: 'ic', name: 'Polaroid Full', displayName: 'Polaroid (5.5 × 8.9 cm) · Full', width: 5.5, height: 8.9, price: 2.00, description: 'Polaroid full print without a white border', pricingTiers: [{ quantity: 1, regularPrice: 2, discountedPrice: 2 }, { quantity: 5, regularPrice: 6, discountedPrice: 6 }, { quantity: 10, regularPrice: 7, discountedPrice: 7 }, { quantity: 20, regularPrice: 10.5, discountedPrice: 10.5 }, { quantity: 50, regularPrice: 25, discountedPrice: 25 }, { quantity: 100, regularPrice: 40, discountedPrice: 40 }, { quantity: 250, regularPrice: 88, discountedPrice: 88 }] },
+    { id: 'ic-border', name: 'Polaroid Border', displayName: 'Polaroid (5.5 × 8.9 cm) · White border', width: 5.5, height: 8.9, price: 2.50, description: 'Polaroid with a white border', pricingTiers: [{ quantity: 1, regularPrice: 2.5, discountedPrice: 2.5 }, { quantity: 5, regularPrice: 7, discountedPrice: 7 }, { quantity: 10, regularPrice: 9, discountedPrice: 9 }, { quantity: 20, regularPrice: 14, discountedPrice: 14 }, { quantity: 50, regularPrice: 30, discountedPrice: 30 }, { quantity: 100, regularPrice: 50, discountedPrice: 50 }, { quantity: 250, regularPrice: 147, discountedPrice: 147 }] },
+    { id: 'polaroid-mini', name: 'Polaroid Mini', displayName: 'Polaroid Mini (5.0 × 8.9 cm) · White border', width: 5, height: 8.9, price: 1.50, description: 'Mini Polaroid with a white border', pricingTiers: [{ quantity: 1, regularPrice: 1.5, discountedPrice: 1.5 }, { quantity: 5, regularPrice: 4, discountedPrice: 4 }, { quantity: 10, regularPrice: 5, discountedPrice: 5 }, { quantity: 20, regularPrice: 8, discountedPrice: 8 }, { quantity: 50, regularPrice: 15, discountedPrice: 15 }, { quantity: 100, regularPrice: 30, discountedPrice: 30 }, { quantity: 250, regularPrice: 75, discountedPrice: 75 }] },
+    { id: '2r-no-border', name: '2R Full', displayName: '2R (6.3 × 8.9 cm) · Full', width: 6.3, height: 8.9, price: 2.50, description: '2R full print without a white border', pricingTiers: [{ quantity: 1, regularPrice: 2.5, discountedPrice: 2.5 }, { quantity: 10, regularPrice: 7, discountedPrice: 7 }, { quantity: 20, regularPrice: 14, discountedPrice: 14 }, { quantity: 50, regularPrice: 35, discountedPrice: 35 }, { quantity: 100, regularPrice: 60, discountedPrice: 60 }] },
+    { id: '2r-border', name: '2R Border', displayName: '2R (6.3 × 8.9 cm) · White border', width: 6.3, height: 8.9, price: 2.00, description: '2R Polaroid style with a white border', pricingTiers: [{ quantity: 1, regularPrice: 2, discountedPrice: 2 }, { quantity: 10, regularPrice: 6.5, discountedPrice: 6.5 }, { quantity: 20, regularPrice: 13, discountedPrice: 13 }, { quantity: 50, regularPrice: 32, discountedPrice: 32 }, { quantity: 100, regularPrice: 60, discountedPrice: 60 }] },
+    { id: '3r-no-border', name: '3R Full', displayName: '3R (8.9 × 12.7 cm) · Full', width: 8.9, height: 12.7, price: 2.50, description: '3R full print without a white border', pricingTiers: [{ quantity: 1, regularPrice: 2.5, discountedPrice: 2.5 }, { quantity: 10, regularPrice: 8, discountedPrice: 8 }, { quantity: 20, regularPrice: 16, discountedPrice: 16 }, { quantity: 50, regularPrice: 40, discountedPrice: 40 }, { quantity: 100, regularPrice: 80, discountedPrice: 80 }] },
+    { id: '3r-border', name: '3R Border', displayName: '3R (8.9 × 12.7 cm) · White border', width: 8.9, height: 12.7, price: 2.40, description: '3R Polaroid style with a white border', pricingTiers: [{ quantity: 1, regularPrice: 2.4, discountedPrice: 2.4 }, { quantity: 10, regularPrice: 7, discountedPrice: 7 }, { quantity: 20, regularPrice: 14, discountedPrice: 14 }, { quantity: 50, regularPrice: 35, discountedPrice: 35 }, { quantity: 100, regularPrice: 70, discountedPrice: 70 }] },
+    { id: '4r', name: '4R', displayName: '4R (10 × 15 cm)', width: 10, height: 15, price: 2.50, description: 'Classic full-print album photo', pricingTiers: [{ quantity: 1, regularPrice: 2.5, discountedPrice: 2.5 }, { quantity: 10, regularPrice: 10, discountedPrice: 10 }, { quantity: 20, regularPrice: 20, discountedPrice: 20 }, { quantity: 50, regularPrice: 50, discountedPrice: 50 }, { quantity: 100, regularPrice: 100, discountedPrice: 100 }, { quantity: 120, regularPrice: 120, discountedPrice: 120 }] },
+    { id: '5r', name: '5R', displayName: '5R (12.7 × 17.8 cm)', width: 12.7, height: 17.8, price: 4.00, description: 'Large full-print photo', pricingTiers: [{ quantity: 1, regularPrice: 4, discountedPrice: 4 }, { quantity: 5, regularPrice: 20, discountedPrice: 20 }, { quantity: 10, regularPrice: 40, discountedPrice: 40 }] },
+    { id: '6r', name: '6R', displayName: '6R (15.2 × 20.3 cm)', width: 15.2, height: 20.3, price: 5.00, description: 'Extra-large full-print photo', pricingTiers: [{ quantity: 1, regularPrice: 5, discountedPrice: 5 }, { quantity: 5, regularPrice: 25, discountedPrice: 25 }, { quantity: 10, regularPrice: 50, discountedPrice: 50 }] },
+    { id: 'strip-3', name: 'Strip 3', displayName: '3-Photo Strip', width: 6, height: 8.9, price: 1.80, description: 'Three photos in a single strip', pricingTiers: [{ quantity: 1, regularPrice: 1.8, discountedPrice: 1.8 }] },
+    { id: 'strip-4', name: 'Strip 4', displayName: '4-Photo Strip', width: 6, height: 11.9, price: 1.80, description: 'Four photos in a single strip', pricingTiers: [{ quantity: 1, regularPrice: 1.8, discountedPrice: 1.8 }] },
   ];
+
+  const BORDER_IDS = new Set(['ic-border', 'polaroid-mini', '2r-border', '3r-border']);
+
+  const sizeFamilies = [
+    { id: 'polaroid', label: 'Polaroid', defaultOption: 'ic-border', optionIds: ['ic', 'ic-border'] },
+    { id: 'polaroid-mini', label: 'Polaroid Mini', defaultOption: 'polaroid-mini', optionIds: ['polaroid-mini'] },
+    { id: '2r', label: '2R', defaultOption: '2r-no-border', optionIds: ['2r-no-border', '2r-border'] },
+    { id: '3r', label: '3R', defaultOption: '3r-no-border', optionIds: ['3r-no-border', '3r-border'] },
+    { id: '4r', label: '4R', defaultOption: '4r', optionIds: ['4r'] },
+    { id: '5r', label: '5R', defaultOption: '5r', optionIds: ['5r'] },
+    { id: '6r', label: '6R', defaultOption: '6r', optionIds: ['6r'] },
+    { id: 'strip', label: 'Strip', defaultOption: 'strip-3', optionIds: ['strip-3', 'strip-4'] },
+  ];
+
+  const optionLabels: Record<string, string> = {
+    'ic': 'Full',
+    'ic-border': 'Border',
+    'polaroid-mini': 'Border',
+    '2r-no-border': 'Full',
+    '2r-border': 'Border',
+    '3r-no-border': 'Full',
+    '3r-border': 'Border',
+    '4r': 'Full',
+    '5r': 'Full',
+    '6r': 'Full',
+    'strip-3': '3 photos',
+    'strip-4': '4 photos',
+  };
+
+  const getSizeById = (id: string): PrintSize => printSizes.find((s) => s.id === id) ?? printSizes[0];
+  const matchesBorder = (id: string, filter: 'all' | 'border' | 'no-border') =>
+    filter === 'all' || (filter === 'border' ? BORDER_IDS.has(id) : !BORDER_IDS.has(id));
   const [customerTestimonials, setCustomerTestimonials] = useState<Array<{ id: number; name: string; location: string; text: string; printType: string; imageUrl: string; rating: number }>>([]);
   const productVideos = t.videos.map((item, i) => ({
     ...item,
@@ -254,7 +291,8 @@ export default function PolaroidPrintPage() {
   // State
   const [currentStep, setCurrentStep] = useState(-1);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedSize, setSelectedSize] = useState<PrintSize>(printSizes[2]);
+  const [selectedFamilyId, setSelectedFamilyId] = useState('polaroid');
+  const [selectedOptionId, setSelectedOptionId] = useState('ic-border');
   const [borderStyleFilter, setBorderStyleFilter] = useState<'all' | 'border' | 'no-border'>('all');
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [sets, setSets] = useState(1);
@@ -285,26 +323,19 @@ export default function PolaroidPrintPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'bank_transfer' | 'toyyibpay'>('toyyibpay');
 
-  const visiblePrintSizes = printSizes.filter((size) => {
-    if (borderStyleFilter === 'all') return true;
-    const sizeId = size.id.toLowerCase();
-    return borderStyleFilter === 'border'
-      ? sizeId.endsWith('-border')
-      : sizeId.endsWith('-no-border');
-  });
+  const selectedFamily = sizeFamilies.find((f) => f.id === selectedFamilyId) ?? sizeFamilies[0];
+  const selectedSize: PrintSize = selectedFamily.optionIds.includes(selectedOptionId)
+    ? getSizeById(selectedOptionId)
+    : getSizeById(selectedFamily.defaultOption);
+
+  const visibleFamilies = sizeFamilies.filter((f) => f.optionIds.some((id) => matchesBorder(id, borderStyleFilter)));
 
   const handleBorderStyleFilterChange = (value: 'all' | 'border' | 'no-border') => {
     setBorderStyleFilter(value);
-    const nextVisibleSizes = printSizes.filter((size) => {
-      if (value === 'all') return true;
-      const sizeId = size.id.toLowerCase();
-      return value === 'border'
-        ? sizeId.endsWith('-border')
-        : sizeId.endsWith('-no-border');
-    });
-
-    if (!nextVisibleSizes.some((size) => size.id === selectedSize.id) && nextVisibleSizes[0]) {
-      setSelectedSize(nextVisibleSizes[0]);
+    const nextVisibleFamilies = sizeFamilies.filter((f) => f.optionIds.some((id) => matchesBorder(id, value)));
+    if (!nextVisibleFamilies.some((f) => f.id === selectedFamilyId) && nextVisibleFamilies[0]) {
+      setSelectedFamilyId(nextVisibleFamilies[0].id);
+      setSelectedOptionId(nextVisibleFamilies[0].defaultOption);
       setSets(1);
     }
   };
@@ -438,7 +469,11 @@ export default function PolaroidPrintPage() {
     const productId = urlParams.get('product');
     if (productId) {
       const match = printSizes.find(s => s.id === productId);
-      if (match) setSelectedSize(match);
+      if (match) {
+        const family = sizeFamilies.find((f) => f.optionIds.includes(match.id)) ?? sizeFamilies[0];
+        setSelectedFamilyId(family.id);
+        setSelectedOptionId(match.id);
+      }
       setCurrentStep(0);
       window.history.replaceState({}, '', window.location.pathname);
       return;
@@ -1413,7 +1448,9 @@ export default function PolaroidPrintPage() {
         </div>
         <ProductCatalog
           onSelect={(size) => {
-            setSelectedSize(size as typeof printSizes[0]);
+            const family = sizeFamilies.find((f) => f.optionIds.includes(size.id)) ?? sizeFamilies[0];
+            setSelectedFamilyId(family.id);
+            setSelectedOptionId(size.id);
             setCurrentStep(0);
           }}
         />
@@ -1577,22 +1614,52 @@ export default function PolaroidPrintPage() {
                 ))}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                {visiblePrintSizes.map((size) => (
-                  <Card
-                    key={size.id}
-                    className={cn("cursor-pointer transition-all", selectedSize.id === size.id ? "ring-2 ring-primary" : "hover:shadow-md")}
-                    onClick={() => {
-                      setSelectedSize(size);
-                      setSets(1);
-                    }}
-                  >
-                    <CardContent className="p-4 text-center">
-                      <p className="font-semibold">{size.name}</p>
-                      <p className="text-2xl font-bold text-primary">RM{(size.pricingTiers?.[0]?.discountedPrice ?? size.price).toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">{size.pricingTiers ? `per ${size.pricingTiers[0].quantity} pcs` : t.per_print}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+                {visibleFamilies.map((family) => {
+                  const familyActive = family.id === selectedFamilyId;
+                  const familyOptions = family.optionIds.map((oid) => getSizeById(oid));
+                  return (
+                    <Card
+                      key={family.id}
+                      className={cn(
+                        "cursor-pointer transition-all",
+                        familyActive ? "ring-2 ring-primary" : "hover:shadow-md"
+                      )}
+                    >
+                      <CardContent className="p-4 text-center space-y-2">
+                        <p className="font-semibold">{family.label}</p>
+                        <div className="flex flex-col gap-1.5">
+                          {familyOptions.map((opt) => {
+                            const optActive = familyActive && opt.id === selectedOptionId;
+                            const fromPrice = opt.pricingTiers?.[0]?.discountedPrice ?? opt.price;
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedFamilyId(family.id);
+                                  setSelectedOptionId(opt.id);
+                                  setSets(1);
+                                }}
+                                className={cn(
+                                  "rounded-lg border px-2 py-1.5 text-xs font-semibold transition-colors",
+                                  optActive
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "border-border hover:border-primary/50"
+                                )}
+                              >
+                                <span className="block">{optionLabels[opt.id]}</span>
+                                <span className={cn("block", optActive ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                                  RM{fromPrice.toFixed(2)}
+                                  {opt.pricingTiers ? (opt.pricingTiers[0].quantity === 1 ? ` ${t.per_print}` : ` per ${opt.pricingTiers[0].quantity} pcs`) : ''}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
 
