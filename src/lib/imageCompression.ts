@@ -1,5 +1,3 @@
-import type heic2any from 'heic2any';
-
 export interface CompressionOptions {
   maxWidth?: number;
   maxHeight?: number;
@@ -48,14 +46,12 @@ async function detectHeic(file: File): Promise<boolean> {
 
 async function convertHeicToBlob(file: File): Promise<Blob> {
   try {
-    const heic2anyModule = await import('heic2any');
-    const converter = heic2anyModule.default as typeof heic2any;
-    const result = await converter({
+    const { heicTo } = await import('heic-to');
+    return await heicTo({
       blob: file,
-      toType: 'image/jpeg',
+      type: 'image/jpeg',
       quality: WHATSAPP_HD_SETTINGS.quality,
     });
-    return Array.isArray(result) ? result[0] : result;
   } catch (err) {
     const msg = err instanceof Error
       ? err.message
