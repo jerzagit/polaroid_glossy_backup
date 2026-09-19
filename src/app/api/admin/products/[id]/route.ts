@@ -59,11 +59,11 @@ export async function PATCH(_request: NextRequest, { params }: { params: Promise
 
   const { id } = await params;
   try {
-    const current = await db.printSize.findUnique({ where: { id } });
+    const current = await db.printSize.findUnique({ where: { id } }) as { isActive?: boolean } | null;
     if (!current) {
       return NextResponse.json({ success: false, error: 'Print size not found in DB' }, { status: 404 });
     }
-    const updated = await db.printSize.update({ where: { id }, data: { isActive: !current.isActive } });
+    const updated = await db.printSize.update({ where: { id }, data: { isActive: !current.isActive } }) as { isActive?: boolean };
     return NextResponse.json({ success: true, isActive: updated.isActive });
   } catch (error) {
     console.error('Error toggling product:', error);

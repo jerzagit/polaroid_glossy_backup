@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const paymentStatus = status === '1' ? 'paid' : status === '2' ? 'pending' : 'failed';
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       paymentStatus,
     };
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const order = await db.order.update({
       where: { orderNumber: order_id },
       data: updateData,
-    });
+    }) as { id: string; orderNumber: string };
 
     if (!order) {
       console.error('Order not found:', order_id);

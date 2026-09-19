@@ -11,41 +11,55 @@ function PaymentStatusContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { t } = useLanguage();
-  const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<'success' | 'pending' | 'failed' | null>(null);
+  const [verifiedStatus, setVerifiedStatus] = useState<'success' | 'pending' | 'failed' | null>(null);
+
+  const refno = searchParams.get('refno');
+  const billcode = searchParams.get('billcode');
+  const order_id = searchParams.get('order_id') || searchParams.get('orderId');
+  const statusParam = searchParams.get('status') || searchParams.get('status_id');
+
+  // Derive the sync cases during render; only the backend verification case
+  // is handled by the effect (all setState happens in async callbacks).
+  let baseStatus: 'success' | 'pending' | 'failed' | null = null;
+  if (statusParam === '1' || statusParam === '2') {
+    baseStatus = statusParam === '1' ? 'success' : 'pending';
+  } else if (refno && billcode) {
+    baseStatus = 'success';
+  } else if (!order_id) {
+    baseStatus = 'failed';
+  }
+
+  const needVerification = baseStatus === null && Boolean(order_id);
+  const status = baseStatus ?? verifiedStatus;
+  const loading = needVerification && verifiedStatus === null;
 
   useEffect(() => {
-    const refno = searchParams.get('refno');
-    const billcode = searchParams.get('billcode');
-    const order_id = searchParams.get('order_id') || searchParams.get('orderId');
-    const statusParam = searchParams.get('status') || searchParams.get('status_id');
+    if (!needVerification) return;
 
-    if (statusParam === '1' || statusParam === '2') {
-      setStatus(statusParam === '1' ? 'success' : 'pending');
-    } else if (refno && billcode) {
-      setStatus('success');
-    } else if (order_id) {
-      fetchOrderStatus(order_id);
-    } else {
-      setStatus('failed');
-    }
-    setLoading(false);
-  }, [searchParams]);
+    let cancelled = false;
+    fetch(`/api/orders/${order_id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (cancelled) return;
+        if (data.success && data.order) {
+          if (data.order.paymentStatus === 'paid') setVerifiedStatus('success');
+          else if (data.order.paymentStatus === 'pending') setVerifiedStatus('pending');
+          else setVerifiedStatus('failed');
+        } else {
+          setVerifiedStatus('failed');
+        }
+      })
+      .catch(error => {
+        if (!cancelled) {
+          console.error('Error fetching order:', error);
+          setVerifiedStatus('failed');
+        }
+      });
 
-  const fetchOrderStatus = async (orderNumber: string) => {
-    try {
-      const res = await fetch(`/api/orders/${orderNumber}`);
-      const data = await res.json();
-      if (data.success && data.order) {
-        if (data.order.paymentStatus === 'paid') setStatus('success');
-        else if (data.order.paymentStatus === 'pending') setStatus('pending');
-        else setStatus('failed');
-      }
-    } catch (error) {
-      console.error('Error fetching order:', error);
-      setStatus('failed');
-    }
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [order_id, needVerification]);
 
   if (loading) {
     return (

@@ -189,7 +189,7 @@ async function fetchVerifiedOrder(request: NextRequest, orderId: string, custome
   try {
     const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderId)}`, {
       headers,
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(30000),
     });
 
     resOk = res.ok;
@@ -319,7 +319,7 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: backendHeaders,
         body: backendForm,
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(45000),
       });
 
       const data = await res.json();

@@ -23,7 +23,7 @@ type ModelStub = {
 };
 
 function m(name: string) {
-  return makeModel(name) as ModelStub;
+  return makeModel(name) as unknown as ModelStub;
 }
 
 export const db = {

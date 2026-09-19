@@ -124,6 +124,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (session?.user) {
+      // Sync React auth state with the external backend session on login changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       exchangeGoogleToken();
     } else if (isLocalMockEnabled()) {
       exchangeLocalMockToken().catch(() => {

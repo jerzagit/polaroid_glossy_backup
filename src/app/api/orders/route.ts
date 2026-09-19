@@ -5,6 +5,10 @@ const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://loc
 const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
 const ALLOW_LOCAL_FALLBACK = process.env.NODE_ENV !== 'production';
 
+// Order creation (POST/PUT) can involve a slow cold-started backend (email
+// notifications, upload flows). Reads are fast, so use a shorter timeout.
+const TIMEOUT_MS = { POST: 45000, PUT: 45000, DELETE: 45000, GET: 20000 } as const;
+
 async function proxyToBackend(request: NextRequest, method: string, extraPath = ''): Promise<NextResponse> {
   const url = new URL(request.url);
   const orderNumber = url.searchParams.get('orderNumber');
@@ -29,7 +33,7 @@ async function proxyToBackend(request: NextRequest, method: string, extraPath = 
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(TIMEOUT_MS[method as keyof typeof TIMEOUT_MS] ?? 20000),
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });

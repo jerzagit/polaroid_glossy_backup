@@ -501,7 +501,7 @@ export default function PolaroidPrintPage() {
       .then(r => r.json())
       .then(data => {
         if (data.success && data.testimonials?.length > 0) {
-          setCustomerTestimonials(data.testimonials.map((t: { textMy?: string; printTypeMy?: string; imageUrl?: string; image?: string }) => ({
+          setCustomerTestimonials(data.testimonials.map((t: { text?: string; textMy?: string; printType?: string; printTypeMy?: string; imageUrl?: string; image?: string; id?: string; rating?: number }) => ({
             ...t,
             text: lang === 'my' && t.textMy ? t.textMy : t.text,
             printType: lang === 'my' && t.printTypeMy ? t.printTypeMy : t.printType,
@@ -788,6 +788,60 @@ export default function PolaroidPrintPage() {
       return;
     }
 
+    // If the order POST fails/times out but the backend actually created the
+    // order, find the fresh matching order so we can resume uploads instead of
+    // losing the photos.
+    const findRecentlyCreatedOrder = async () => {
+      if (!user) return null;
+      try {
+        const response = await fetch('/api/orders/my', { headers: authHeaders() });
+        const data = await response.json().catch(() => null);
+        if (!data?.success || !Array.isArray(data.orders)) return null;
+
+        const email = orderFormData.customerEmail.trim().toLowerCase();
+        const now = Date.now();
+        const THREE_MINUTES = 3 * 60 * 1000;
+
+        const matches = data.orders.filter((order: Record<string, unknown>) => {
+          if (!order || typeof order !== 'object') return false;
+          const createdAt = typeof order.createdAt === 'string' ? new Date(order.createdAt).getTime() : 0;
+          if (!createdAt || now - createdAt > THREE_MINUTES) return false;
+          const orderEmail = typeof order.customerEmail === 'string' ? order.customerEmail.toLowerCase() : '';
+          if (!orderEmail || orderEmail !== email) return false;
+
+          const status = String(order.status ?? '').toLowerCase();
+          const paymentStatus = String(order.paymentStatus ?? '').toLowerCase();
+          if (status !== 'pending' && status !== 'processing') return false;
+          if (paymentStatus === 'failed' || paymentStatus === 'cancelled' || paymentStatus === 'refunded') return false;
+
+          const itemCount = Array.isArray(order.items) ? order.items.length : 0;
+          if (itemCount !== cart.length) return false;
+
+          return true;
+        }) as Array<{
+          orderNumber: string;
+          id: string;
+          uploadToken?: string;
+          createdAt?: string;
+          items?: Array<{ id?: string }>;
+        }>;
+
+        if (matches.length === 0) return null;
+        matches.sort((a, b) => (new Date(b.createdAt ?? 0).getTime()) - (new Date(a.createdAt ?? 0).getTime()));
+        const best = matches[0];
+
+        return {
+          orderNumber: best.orderNumber,
+          id: best.id,
+          uploadToken: best.uploadToken,
+          items: Array.isArray(best.items) ? best.items : [],
+        };
+      } catch (error) {
+        console.error('Order recovery lookup failed:', error);
+        return null;
+      }
+    };
+
     try {
       const expectedImageCount = cart.reduce((sum, item) => sum + item.photos.length, 0);
       const items = cart.map(item => ({
@@ -800,136 +854,165 @@ export default function PolaroidPrintPage() {
         unitPrice: item.unitPrice,
       }));
 
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({
-          uploadMode: 'now',
-          expectedImageCount,
-          userId: profile?.id,
-          customerName: orderFormData.customerName,
-          customerEmail: orderFormData.customerEmail,
-          customerPhone: orderFormData.customerPhone,
-          customerHouseUnitNo: orderFormData.customerHouseUnitNo || '-',
-          customerAddressLine1: orderFormData.addressLine1,
-          customerAddressLine2: orderFormData.addressLine2 || '-',
-          customerPostcode: orderFormData.postalCode,
-          customerCity: orderFormData.city,
-          customerState: orderFormData.customerState,
-          customerCountry: orderFormData.country,
-          customerNotes: orderFormData.notes,
-          notes: orderFormData.notes,
-          paymentMethod,
-          paymentStatus: 'pending',
-          subtotal: cartTotal,
-          shipping: shippingCost,
-          total: cartTotal + shippingCost,
-          items
-        })
-      });
+      const orderTotal = cartTotal + shippingCost;
 
-      const data = await response.json();
-      console.log('Order API response:', data);
+      let orderNumber: string | null = null;
+      let orderId: string | null = null;
+      let uploadToken: string | undefined;
+      let createdItems: Array<{ id?: string }> = [];
 
-      if (data.success) {
-        const orderNumber = data.order.orderNumber;
-        const uploadToken = data.uploadToken || data.order?.uploadToken;
-        const createdItems = Array.isArray(data.order?.items) ? data.order.items : [];
-        const orderTotal = cartTotal + shippingCost;
-
-        // Upload sequentially so order verification and image-count updates cannot race.
-        const pendingUploads: Array<{ file: File; orderItemId?: string }> = [];
-        for (const [itemIndex, item] of cart.entries()) {
-          const orderItemId = createdItems[itemIndex]?.id;
-          for (const photo of item.photos) {
-            if (!photo.file) continue;
-            pendingUploads.push({ file: photo.file, orderItemId });
-          }
-        }
-
-        if (pendingUploads.length !== expectedImageCount) {
-          throw new Error(`Only ${pendingUploads.length} of ${expectedImageCount} photo files are available. Please re-select the missing photos.`);
-        }
-
-        setCheckoutUploadProgress({ done: 0, total: pendingUploads.length });
-        for (const [index, upload] of pendingUploads.entries()) {
-          const formData = new FormData();
-          formData.append('file', upload.file);
-          formData.append('orderId', orderNumber);
-          formData.append('customerEmail', orderFormData.customerEmail);
-          if (uploadToken) formData.append('uploadToken', uploadToken);
-          if (upload.orderItemId) formData.append('orderItemId', upload.orderItemId);
-
-          const uploadResponse = await fetch('/api/upload', {
-            method: 'POST',
-            headers: uploadAuthHeaders(),
-            body: formData,
-          });
-          const uploadData = await uploadResponse.json().catch(() => null) as { success?: boolean; url?: string; error?: string } | null;
-
-          if (!uploadResponse.ok || !uploadData?.success || !uploadData.url) {
-            const reason = uploadData?.error || `Upload request failed (${uploadResponse.status})`;
-            throw new Error(`Photo ${index + 1} of ${pendingUploads.length} failed: ${reason}`);
-          }
-
-          setCheckoutUploadProgress({ done: index + 1, total: pendingUploads.length });
-        }
-
-        if (paymentMethod === 'toyyibpay') {
-          console.log('Creating ToyyibPay bill...');
-          const billResponse = await fetch('/api/toyyibpay/create-bill', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: data.order.id,
-              orderNumber,
-              expectedImageCount,
-              amount: cartTotal + shippingCost,
-              customerEmail: orderFormData.customerEmail,
-              customerName: orderFormData.customerName,
-              customerPhone: orderFormData.customerPhone
-            })
-          });
-
-          const billData = await billResponse.json();
-          console.log('ToyyibPay bill response:', billData);
-
-          if (billData.success && billData.paymentUrl) {
-            setOrderNumber(orderNumber);
-            setConfirmationDetails({
-              orderNumber,
-              customerEmail: orderFormData.customerEmail,
-              totalAmount: orderTotal,
-              paymentMethod,
-            });
-            setCart([]);
-            localStorage.removeItem('polaroid_cart');
-            clearAllCartPhotos().catch(() => {});
-            window.location.href = billData.paymentUrl;
-            return;
-          } else {
-            console.error('Bill creation failed:', billData);
-            throw new Error(billData.error || 'Failed to create payment');
-          }
-        }
-
-        setOrderNumber(orderNumber);
-        setConfirmationDetails({
-          orderNumber,
-          customerEmail: orderFormData.customerEmail,
-          totalAmount: orderTotal,
-          paymentMethod,
+      try {
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            uploadMode: 'now',
+            expectedImageCount,
+            userId: profile?.id,
+            customerName: orderFormData.customerName,
+            customerEmail: orderFormData.customerEmail,
+            customerPhone: orderFormData.customerPhone,
+            customerHouseUnitNo: orderFormData.customerHouseUnitNo || '-',
+            customerAddressLine1: orderFormData.addressLine1,
+            customerAddressLine2: orderFormData.addressLine2 || '-',
+            customerPostcode: orderFormData.postalCode,
+            customerCity: orderFormData.city,
+            customerState: orderFormData.customerState,
+            customerCountry: orderFormData.country,
+            customerNotes: orderFormData.notes,
+            notes: orderFormData.notes,
+            paymentMethod,
+            paymentStatus: 'pending',
+            subtotal: cartTotal,
+            shipping: shippingCost,
+            total: cartTotal + shippingCost,
+            items
+          })
         });
-        setOrderComplete(true);
-        setCurrentStep(4);
-        setCart([]);
-        localStorage.removeItem('polaroid_cart');
-        clearAllCartPhotos().catch(() => {});
-        toast.success(t.toast_order_success);
-      } else {
-        console.error('Order creation failed:', data);
-        throw new Error(data.error || 'Failed to place order');
+
+        const data = await response.json().catch(() => null);
+        console.log('Order API response:', data);
+
+        if (data?.success && data.order?.orderNumber) {
+          orderNumber = data.order.orderNumber;
+          orderId = data.order.id;
+          uploadToken = data.uploadToken || data.order?.uploadToken;
+          createdItems = Array.isArray(data.order?.items) ? data.order.items : [];
+        }
+      } catch (error) {
+        // The request itself failed (timeout/gateway). The backend may still
+        // have created the order, so try to recover it below.
+        console.error('Order creation request failed; attempting recovery:', error);
       }
+
+      // Recovery: when a backend is cold-starting or slow, the order POST can
+      // time out even though the order was actually created. If a matching
+      // order was just created for this customer, reuse it so the photos are
+      // not lost and no duplicate order is created.
+      if (!orderNumber || !orderId) {
+        const recovered = await findRecentlyCreatedOrder();
+        if (recovered) {
+          console.warn('Recovered order created by the failed checkout attempt:', recovered.orderNumber);
+          orderNumber = recovered.orderNumber;
+          orderId = recovered.id;
+          uploadToken = recovered.uploadToken;
+          createdItems = recovered.items;
+        }
+      }
+
+      if (!orderNumber || !orderId) {
+        throw new Error('Failed to place order. Your photos have been kept — please try again.');
+      }
+
+      // Upload sequentially so order verification and image-count updates cannot race.
+      const pendingUploads: Array<{ file: File; orderItemId?: string }> = [];
+      for (const [itemIndex, item] of cart.entries()) {
+        const orderItemId = createdItems[itemIndex]?.id;
+        for (const photo of item.photos) {
+          if (!photo.file) continue;
+          pendingUploads.push({ file: photo.file, orderItemId });
+        }
+      }
+
+      if (pendingUploads.length !== expectedImageCount) {
+        throw new Error(`Only ${pendingUploads.length} of ${expectedImageCount} photo files are available. Please re-select the missing photos.`);
+      }
+
+      setCheckoutUploadProgress({ done: 0, total: pendingUploads.length });
+      for (const [index, upload] of pendingUploads.entries()) {
+        const formData = new FormData();
+        formData.append('file', upload.file);
+        formData.append('orderId', orderNumber);
+        formData.append('customerEmail', orderFormData.customerEmail);
+        if (uploadToken) formData.append('uploadToken', uploadToken);
+        if (upload.orderItemId) formData.append('orderItemId', upload.orderItemId);
+
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          headers: uploadAuthHeaders(),
+          body: formData,
+        });
+        const uploadData = await uploadResponse.json().catch(() => null) as { success?: boolean; url?: string; error?: string } | null;
+
+        if (!uploadResponse.ok || !uploadData?.success || !uploadData.url) {
+          const reason = uploadData?.error || `Upload request failed (${uploadResponse.status})`;
+          throw new Error(`Photo ${index + 1} of ${pendingUploads.length} failed: ${reason}`);
+        }
+
+        setCheckoutUploadProgress({ done: index + 1, total: pendingUploads.length });
+      }
+
+      if (paymentMethod === 'toyyibpay') {
+        console.log('Creating ToyyibPay bill...');
+        const billResponse = await fetch('/api/toyyibpay/create-bill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId,
+            orderNumber,
+            expectedImageCount,
+            amount: cartTotal + shippingCost,
+            customerEmail: orderFormData.customerEmail,
+            customerName: orderFormData.customerName,
+            customerPhone: orderFormData.customerPhone
+          })
+        });
+
+        const billData = await billResponse.json();
+        console.log('ToyyibPay bill response:', billData);
+
+        if (billData.success && billData.paymentUrl) {
+          setOrderNumber(orderNumber);
+          setConfirmationDetails({
+            orderNumber,
+            customerEmail: orderFormData.customerEmail,
+            totalAmount: orderTotal,
+            paymentMethod,
+          });
+          setCart([]);
+          localStorage.removeItem('polaroid_cart');
+          clearAllCartPhotos().catch(() => {});
+          window.location.href = billData.paymentUrl;
+          return;
+        } else {
+          console.error('Bill creation failed:', billData);
+          throw new Error(billData.error || 'Failed to create payment');
+        }
+      }
+
+      setOrderNumber(orderNumber);
+      setConfirmationDetails({
+        orderNumber,
+        customerEmail: orderFormData.customerEmail,
+        totalAmount: orderTotal,
+        paymentMethod,
+      });
+      setOrderComplete(true);
+      setCurrentStep(4);
+      setCart([]);
+      localStorage.removeItem('polaroid_cart');
+      clearAllCartPhotos().catch(() => {});
+      toast.success(t.toast_order_success);
     } catch (error) {
       console.error('Checkout error:', error);
       toast.error(error instanceof Error ? error.message : t.toast_order_fail);
