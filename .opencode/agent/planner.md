@@ -12,8 +12,8 @@ permission:
     "git diff*": allow
     "git log*": allow
     "git branch*": allow
-    "bun run lint*": allow
-    "bun run build*": allow
+    "npm run lint*": allow
+    "npm run build*": allow
     "git push*": deny
     "git commit*": deny
     "git checkout -b*": deny

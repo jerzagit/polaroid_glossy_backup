@@ -3,20 +3,20 @@
 ## Development
 
 ```bash
-bun run dev    # Start dev server on localhost:3000
-bun run build  # Build for production (standalone output)
-bun run start  # Start production server
-bun run lint   # Run ESLint
+npm run dev    # Start dev server on localhost:3000
+npm run build  # Build for production (standalone output)
+npm run start  # Start production server
+npm run lint   # Run ESLint
 ```
 
 ## Database
 
 ```bash
-bun run db:generate  # Generate Prisma client
-bun run db:push      # Push schema to database (dev)
-bun run db:migrate   # Run migrations
-bun run db:reset     # Reset database (drops all data)
-npx prisma studio    # Open DB GUI at localhost:5555
+npx prisma generate      # Generate Prisma client
+npx prisma db push       # Push schema to database (dev)
+npx prisma migrate dev   # Run migrations
+npx prisma migrate reset # Reset database (drops all data)
+npx prisma studio        # Open DB GUI at localhost:5555
 ```
 
 ## Environment

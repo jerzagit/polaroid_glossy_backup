@@ -37,7 +37,7 @@ The rules that MUST be respected. Pull these from AGENTS.md (e.g. DB routes prox
 Ordered list of concrete changes: one bullet per edit, with the target file path and exactly what to change.
 
 ## Verification
-Exact commands to run, e.g. `bun run lint`, `bun run build`, `curl` checks. State the expected outcome.
+Exact commands to run, e.g. `npm run lint`, `npm run build`, `curl` checks. State the expected outcome.
 
 ## Open Questions
 Anything unresolved. For each, state the default/assumption to build against.
