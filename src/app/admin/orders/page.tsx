@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2, XCircle, Clock, Loader2, Eye, ChevronDown, ChevronUp,
-  AlertCircle, Package, Receipt, Upload, User, Users, Mail, Phone, MapPin
+  AlertCircle, Package, Receipt, User, Users, Phone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { statusConfig } from '@/lib/orderStatus';
 import Link from 'next/link';
 
 interface OrderItem {
@@ -41,6 +42,8 @@ interface Order {
 
 type FilterTab = 'all' | 'pending_proof' | 'proof_submitted' | 'verified';
 
+const STATUS_OPTIONS = ['pending', 'processing', 'posted', 'on_delivery', 'delivered', 'cancelled'];
+
 /* ─── Toast ─── */
 function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
   return (
@@ -61,7 +64,7 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
 function OrderCard({ order, onVerify, onReject, verifying }: {
   order: Order;
   onVerify: (orderNumber: string) => void;
-  onReject: (orderNumber: string) => void;
+  onReject: (orderNumber: string, reason: string) => void;
   verifying: string | null;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -70,7 +73,8 @@ function OrderCard({ order, onVerify, onReject, verifying }: {
   const isVerifying = verifying === order.orderNumber;
 
   const hasProof = !!order.paymentProofUrl;
-  const proofStatus = hasProof ? 'proof_submitted' : 'pending_proof';
+  const status = statusConfig[order.status?.toLowerCase()] || statusConfig.pending;
+  const StatusIcon = status.icon;
 
   return (
     <Card className="overflow-hidden">
@@ -81,6 +85,10 @@ function OrderCard({ order, onVerify, onReject, verifying }: {
               <span className="font-mono font-bold text-sm">{order.orderNumber}</span>
               <Badge variant="outline" className="text-xs">
                 RM {order.total?.toFixed(2)}
+              </Badge>
+              <Badge className={status.color}>
+                <StatusIcon className="w-3 h-3 mr-1 inline" />
+                {status.label}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -228,7 +236,7 @@ function OrderCard({ order, onVerify, onReject, verifying }: {
                             variant="destructive"
                             disabled={isVerifying || !rejectNote.trim()}
                             onClick={() => {
-                              onReject(order.orderNumber);
+                              onReject(order.orderNumber, rejectNote.trim());
                               setShowRejectForm(false);
                               setRejectNote('');
                             }}
@@ -273,10 +281,25 @@ export default function AdminOrdersPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [verifying, setVerifying] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    fetchOrders();
+    const token = localStorage.getItem('backend_jwt');
+    setAuthorized(!!token);
+    if (token) {
+      void fetchOrders();
+    } else {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   const fetchOrders = async () => {
     try {
@@ -290,9 +313,12 @@ export default function AdminOrdersPage() {
       const data = await res.json();
       if (data.success) {
         setOrders(data.orders);
+      } else {
+        setToast({ message: data.error || 'Failed to load orders', type: 'error' });
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      setToast({ message: 'Failed to load orders', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -324,7 +350,7 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handleReject = async (orderNumber: string) => {
+  const handleReject = async (orderNumber: string, reason: string) => {
     setVerifying(orderNumber);
     try {
       const token = localStorage.getItem('backend_jwt');
@@ -334,7 +360,7 @@ export default function AdminOrdersPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'reject' }),
+        body: JSON.stringify({ action: 'reject', reason, note: reason }),
       });
       const data = await res.json();
       if (data.success) {
@@ -351,11 +377,19 @@ export default function AdminOrdersPage() {
   };
 
   // Filter logic
+  const query = search.trim().toLowerCase();
   const filteredOrders = orders.filter(order => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'pending_proof') return !order.paymentProofUrl && order.paymentMethod === 'bank_transfer';
-    if (activeTab === 'proof_submitted') return !!order.paymentProofUrl && order.paymentStatus !== 'paid';
-    if (activeTab === 'verified') return order.paymentStatus === 'paid';
+    if (activeTab === 'pending_proof' && !(!order.paymentProofUrl && order.paymentMethod === 'bank_transfer')) return false;
+    if (activeTab === 'proof_submitted' && !(!!order.paymentProofUrl && order.paymentStatus !== 'paid')) return false;
+    if (activeTab === 'verified' && order.paymentStatus !== 'paid') return false;
+    if (statusFilter !== 'all' && order.status?.toLowerCase() !== statusFilter) return false;
+    if (query) {
+      const haystack = [order.orderNumber, order.customerName, order.customerEmail]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
     return true;
   });
 
@@ -400,6 +434,26 @@ export default function AdminOrdersPage() {
         <h1 className="text-2xl md:text-3xl font-bold mb-2">Payment Verification</h1>
         <p className="text-sm text-muted-foreground mb-6">Review and verify customer bank transfer payments</p>
 
+        <div className="flex flex-col gap-3 mb-4 sm:flex-row">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search order number, name or email"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring sm:w-64"
+          >
+            <option value="all">All statuses</option>
+            {STATUS_OPTIONS.map(value => (
+              <option key={value} value={value}>{statusConfig[value]?.label ?? value}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {tabs.map(tab => (
@@ -419,7 +473,18 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* Orders list */}
-        {loading ? (
+        {authorized === false ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="font-semibold text-lg mb-2">Not authorized</h3>
+              <p className="text-muted-foreground mb-4">Sign in with an admin account to review payments.</p>
+              <Button asChild>
+                <Link href="/auth/login?redirect=/admin/orders">Sign In</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
@@ -439,6 +504,7 @@ export default function AdminOrdersPage() {
           </Card>
         ) : (
           <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">Showing {filteredOrders.length} of {orders.length}</p>
             {filteredOrders.map(order => (
               <OrderCard
                 key={order.id}

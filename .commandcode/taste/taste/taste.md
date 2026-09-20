@@ -1,0 +1,12 @@
+# Taste
+- Always commit before deploying to production — commit first, then deploy (stated repeatedly and explicitly). Confidence: 0.9
+- After finishing a change, expects the agent to both commit the work and deploy it to production, not just leave it locally. Confidence: 0.8
+- Prefers changes integrated via a PR to `master` rather than ad-hoc commits on a working branch. Confidence: 0.6
+- Splits agent tooling by phase: uses opencode (with a free/zero-cost model) for planning, then hands the plan off to Command Code for execution. Confidence: 0.7
+- Prefers free / zero-cost models for the planning step rather than paid ones. Confidence: 0.7
+- Uses opencode (with free/zero-cost models) as the coding tool and Command Code/`cmd` for other phases; switched the opencode build agent off `big-pickle` to the vision-capable `muse-spark-1.3-contributor-free`. Confidence: 0.5
+- Wants the coding model to accept image input so they can paste UI screenshots into it (agreed to pin build to a vision-capable model rather than a text-only one). Confidence: 0.6
+- Prefers tool/model configuration applied globally (e.g. `~/.config/opencode/`) so it holds across all projects rather than per-repo. Confidence: 0.5
+- Prefers the agent to carry out git/deploy operations directly on their behalf ("do it on my behalf", "please proceed") rather than only providing step-by-step instructions. Confidence: 0.7
+- Works iteratively in short messages, reporting concrete symptoms/errors (screenshots, error text) and expecting a fix plus redeploy each round. Confidence: 0.6
+- When they will perform a workflow manually, wants exact numbered step-by-step instructions covering the whole flow end to end. Confidence: 0.6

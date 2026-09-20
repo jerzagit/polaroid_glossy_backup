@@ -3,20 +3,20 @@
 ## Development
 
 ```bash
-bun run dev    # Start dev server on localhost:3000
-bun run build  # Build for production (standalone output)
-bun run start  # Start production server
-bun run lint   # Run ESLint
+npm run dev    # Start dev server on localhost:3000
+npm run build  # Build for production (standalone output)
+npm run start  # Start production server
+npm run lint   # Run ESLint
 ```
 
 ## Database
 
 ```bash
-bun run db:generate  # Generate Prisma client
-bun run db:push      # Push schema to database (dev)
-bun run db:migrate   # Run migrations
-bun run db:reset     # Reset database (drops all data)
-npx prisma studio    # Open DB GUI at localhost:5555
+npx prisma generate      # Generate Prisma client
+npx prisma db push       # Push schema to database (dev)
+npx prisma migrate dev   # Run migrations
+npx prisma migrate reset # Reset database (drops all data)
+npx prisma studio        # Open DB GUI at localhost:5555
 ```
 
 ## Environment
@@ -169,3 +169,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
 }
 ```
+
+## Handoff: opencode → Command Code Desktop
+
+Workflow: **opencode plans, Command Code executes.** Use opencode for research/planning, then hand off to Command Code Desktop which runs on **DeepSeek V4.1 Flash** (`deepseek/deepseek-v4.1-flash`, configured in `~/.commandcode/config.json`).
+
+1. In opencode, plan the task (Tab → Plan mode).
+2. Run `/handoff` — writes a self-contained `PLAN.md` (root) with goal, context, files, constraints, steps, verification.
+3. In Command Code Desktop: open this repo, start a thread, reference `@PLAN.md`, and let it execute.
+4. One-time setup already done: `cmd` v1.58.0 installed, Go plan subscribed, model default is `deepseek/deepseek-v4.1-flash`. Optionally run `/import opencode` in Command Code to pull over opencode skills/agents/commands/MCP/AGENTS.md.
+
+Notes:
+
+- `/import opencode` copies opencode skills/agents/commands/MCP into Command Code config (`~/.commandcode/` and `.commandcode/`); `AGENTS.md` stays the shared memory file for both.
+- Session transcripts are NOT shared between the two tools — the handoff is always via `PLAN.md`.
+- When Command Code finishes, review its changes and sync back to `local-dev` per the branch workflow above.

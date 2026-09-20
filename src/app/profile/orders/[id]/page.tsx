@@ -9,11 +9,12 @@ import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft, Package, Clock, Loader2, CheckCircle, XCircle, Truck, RefreshCwIcon,
-  PackageCheck, Copy, CreditCard, ImageIcon, Upload, AlertCircle, FileImage, Receipt
+  ArrowLeft, Clock, Loader2, CheckCircle, XCircle,
+  Copy, CreditCard, ImageIcon, Upload, AlertCircle, FileImage, Receipt
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { compressImage } from '@/lib/imageCompression';
+import { statusConfig } from '@/lib/orderStatus';
 
 interface OrderItemType {
   id: string;
@@ -49,20 +50,16 @@ interface Order {
   statusHistory?: StatusHistory[];
 }
 
-const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  draft: { label: 'Draft', color: 'bg-gray-100 text-gray-800', icon: Package },
-  pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Loader2 },
-  posted: { label: 'Posted', color: 'bg-purple-100 text-purple-800', icon: PackageCheck },
-  on_delivery: { label: 'On Delivery', color: 'bg-indigo-100 text-indigo-800', icon: Truck },
-  delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
-  refunded: { label: 'Refunded', color: 'bg-gray-100 text-gray-800', icon: RefreshCwIcon },
-  expired: { label: 'Expired', color: 'bg-red-100 text-red-800', icon: XCircle },
-};
-
 const statusFlow = ['draft', 'pending', 'processing', 'posted', 'on_delivery', 'delivered'];
-const UPLOAD_OPEN_STATUSES = new Set(['pending', 'processing']);
+const UPLOAD_OPEN_STATUSES = new Set(['draft', 'pending', 'processing']);
+
+const ACCEPTED_IMAGE_TYPES = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
+
+const BANK_DETAILS = {
+  bank: 'Maybank',
+  account: '5186 2614 2087',
+  name: 'Acachiaa Empire',
+};
 
 function normalizeStatus(status?: string) {
   return (status || '').toLowerCase();
@@ -177,10 +174,12 @@ export default function OrderDetailPage() {
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
+  // The [id] route segment holds the order number, not a database id.
   const orderNumber = params.id as string;
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [paymentReference, setPaymentReference] = useState('');
@@ -212,13 +211,17 @@ export default function OrderDetailPage() {
 
   const fetchOrder = async (options?: { silent?: boolean }) => {
     try {
+      if (!options?.silent) setFetchError(false);
       const response = await fetch(`/api/orders/${orderNumber}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('backend_jwt')}`, 'Content-Type': 'application/json' } });
-      const data = await response.json();
-      if (data.success && data.order) {
+      const data = await response.json().catch(() => null);
+      if (data?.success && data.order) {
         setOrder(data.order);
+      } else if (!response.ok && !options?.silent) {
+        setFetchError(true);
       }
     } catch (error) {
       console.error('Error fetching order:', error);
+      if (!options?.silent) setFetchError(true);
     } finally {
       if (!options?.silent) setLoading(false);
     }
@@ -379,10 +382,18 @@ export default function OrderDetailPage() {
           <Card>
             <CardContent className="p-12 text-center">
               <XCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Order not found</h3>
-              <Button asChild>
-                <Link href="/profile/orders">Back to Orders</Link>
-              </Button>
+              <h3 className="font-semibold text-lg mb-2">{fetchError ? 'Could not load this order' : 'Order not found'}</h3>
+              <p className="text-muted-foreground mb-4">
+                {fetchError ? 'Something went wrong while fetching this order.' : 'We could not find that order number.'}
+              </p>
+              <div className="flex gap-2 justify-center">
+                {fetchError && (
+                  <Button onClick={() => { setLoading(true); fetchOrder(); }}>Retry</Button>
+                )}
+                <Button variant="outline" asChild>
+                  <Link href="/profile/orders">Back to Orders</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -473,7 +484,7 @@ export default function OrderDetailPage() {
                               rel="noreferrer"
                               className="block aspect-square overflow-hidden rounded-md border bg-muted"
                             >
-                              <img src={imageUrl} alt={`${item.sizeName || item.sizeId} photo ${index + 1}`} className="h-full w-full object-cover" />
+                              <img src={imageUrl} alt={`${item.sizeName || item.sizeId} photo ${index + 1}`} loading="lazy" className="h-full w-full object-cover" />
                             </a>
                           ))}
                         </div>
@@ -489,7 +500,7 @@ export default function OrderDetailPage() {
                           <input
                             id={`upload-${item.id}`}
                             type="file"
-                            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                            accept={ACCEPTED_IMAGE_TYPES}
                             multiple
                             className="sr-only"
                             disabled={uploadingItemId !== null}
@@ -545,9 +556,9 @@ export default function OrderDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="bg-muted rounded-lg p-4 text-sm space-y-1">
-                    <p className="font-semibold">Maybank</p>
-                    <p>Account: <span className="font-mono">5186 2614 2087</span></p>
-                    <p>Name: Acachiaa Empire</p>
+                    <p className="font-semibold">{BANK_DETAILS.bank}</p>
+                    <p>Account: <span className="font-mono">{BANK_DETAILS.account}</span></p>
+                    <p>Name: {BANK_DETAILS.name}</p>
                     <p>Amount: <span className="font-bold">RM {order.total?.toFixed(2)}</span></p>
                     <p className="text-xs text-muted-foreground mt-2">Reference: {order.orderNumber}</p>
                   </div>
@@ -566,7 +577,7 @@ export default function OrderDetailPage() {
                     <input
                       id="payment-proof-upload"
                       type="file"
-                      accept="image/jpeg,image/png,image/webp"
+                      accept={ACCEPTED_IMAGE_TYPES}
                       className="sr-only"
                       disabled={uploadingProof}
                       onChange={(e) => {
@@ -609,7 +620,7 @@ export default function OrderDetailPage() {
                     <p className="text-sm">Reference: <span className="font-mono">{order.paymentReference}</span></p>
                   )}
                   <a href={order.paymentProofUrl} target="_blank" rel="noreferrer" className="block aspect-video max-w-xs overflow-hidden rounded-md border bg-muted">
-                    <img src={order.paymentProofUrl} alt="Payment proof" className="h-full w-full object-cover" />
+                    <img src={order.paymentProofUrl} alt="Payment proof" loading="lazy" className="h-full w-full object-cover" />
                   </a>
                 </CardContent>
               </Card>

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "planner",
+  "instructions": ["AGENTS.md"],
+  "permission": {
+    "edit": {
+      "*": "deny",
+      "**/PLAN*.md": "allow"
+    },
+    "bash": {
+      "*": "ask",
+      "ls*": "allow",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "git branch*": "allow",
+      "npm run lint*": "allow",
+      "npm run build*": "allow",
+      "git push*": "deny",
+      "git commit*": "deny",
+      "git checkout -b*": "deny",
+      "git merge*": "deny",
+      "git rebase*": "deny",
+      "rm -rf*": "deny",
+      "rm -f*": "deny"
+    },
+    "external_directory": {
+      "*": "allow",
+      "~/.ssh/**": "deny",
+      "~/.aws/**": "deny",
+      "~/.config/opencode/**": "deny"
+    }
+  },
+  "agent": {
+    "plan": {
+      "permission": {
+        "edit": {
+          "*": "deny",
+          "**/PLAN*.md": "allow"
+        }
+      }
+    },
+    "build": {
+      "permission": {
+        "edit": {
+          "*": "deny",
+          "**/PLAN*.md": "allow"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(ls -la ~/.commandcode/ 2>/dev/null; echo \"---\"; find ~/.commandcode -maxdepth 2 -type d 2>/dev/null | head -40)",
+      "Shell(npx tsc --noEmit 2 >& 1)",
+      "Shell(npm:*)",
+      "Shell(npx eslint src/app/page.tsx 2 >& 1)",
+      "Shell(netlify:*)",
+      "Shell(git add src/app/page.tsx && git commit -F - <<'EOF' fix(checkout): repair broken bounded-concurrency upload block The previous commit left the checkout try/catch unbalanced and a `workersonge` typo, which broke `tsc`/`eslint`/`next build` on main. - Fix `Promise.all(workersonge)` -> `Promise.all(workers)` - Remove the stray brace that closed the try block early and orphaned the `catch`/`finally` Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)",
+      "Shell(git:*)",
+      "Shell(curl -s -o /dev/null -w %{http_code}\\n https://polaroidglossy.my)",
+      "Shell(curl -s https://polaroidglossy.my/api/products)",
+      "Shell(which opencode; opencode --version 2>&1 | head -5; echo \"---CONFIG---\"; ls -la ~/.config/opencode/ 2>/dev/null; ls -la ~/.opencode 2>/dev/null; ls -la ~/.local/share/opencode/ 2>/dev/null | head)",
+      "Shell(find ~ -maxdepth 4 -name \"opencode.json*\" -not -path \"*/node_modules/*\" 2>/dev/null | head -20; echo \"---LOCAL---\"; ls -la .opencode 2>/dev/null; find . -maxdepth 2 -name \"opencode*\" -o -maxdepth 2 -name \"PLAN.md\" 2>/dev/null | head)",
+      "Shell(opencode:*)",
+      "Shell(awk:*)",
+      "Shell(ls:*)",
+      "Shell(grep:*)",
+      "Shell(mdfind:*)",
+      "Shell(cmd:*)",
+      "Shell(brew:*)",
+      "Shell(find:*)",
+      "Shell(python3 -c  import zlib, struct w=h=64 raw = b''.join(b'\\x00' + b'\\xff\\x00\\x00'*w for _ in range(h)) def chunk(t,d): return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t+d) & 0xffffffff) png = b'\\x89PNG\\r\\n\\x1a\\n' png += chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)) png += chunk(b'IDAT', zlib.compress(raw)) png += chunk(b'IEND', b'') open('solid-red.png','wb').write(png) print('wrote solid-red.png', len(png), 'bytes') )",
+      "Shell(bun:*)",
+      "Shell(ls ~/.bun/bin/bun 2>/dev/null; command -v bun || echo \"bun: NOT INSTALLED\"; echo \"---PKG MGR---\"; ls bun.lock bun.lockb 2>/dev/null || echo \"no bun lockfile\"; ls package-lock.json 2>/dev/null)",
+      "Shell(npx eslint src/app/profile/orders src/app/admin/orders src/lib/orderStatus.ts 2 >& 1)",
+      "Shell(npx eslint . --format compact 2 >& 1)",
+      "Shell(sed:*)",
+      "Shell(npx eslint . -f json 2 > /dev/null)",
+      "Shell(python3 -c  import json,sys,collections data=json.load(sys.stdin) ec=collections.Counter(); wc=collections.Counter() for f in data: for m in f['messages']: if m['severity']==2: ec[f['filePath'].replace('/Users/jerza/personal/polaroid_glossy_backup/','')]+=1 elif m['severity']==1: wc[f['filePath'].replace('/Users/jerza/personal/polaroid_glossy_backup/','')]+=1 print('FILES WITH ERRORS:') for k,v in ec.most_common(20): print(f' {v:5d} {k}') print('TOTAL errors:', sum(ec.values())) print() print('MY FILES (errors/warnings):') for k in ['src/app/profile/orders/page.tsx','src/app/profile/orders/[id]/page.tsx','src/app/admin/orders/page.tsx','src/lib/orderStatus.ts']: print(f' {k}: errors={ec.get(k,0)} warnings={wc.get(k,0)}') )",
+      "Shell(cd /Users/jerza/personal/polaroid_glossy_backup && for p in / /profile/orders /admin/orders \"/profile/orders/TEST-123\"; do code=$(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000$p\"); echo \"$code $p\"; done)",
+      "Shell(echo:*)",
+      "Shell(curl -s http://localhost:3000/profile/orders)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}
