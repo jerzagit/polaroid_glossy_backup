@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { backendFetch } from '@/lib/backend';
 import { appendFallbackOrderImage, getFallbackOrder } from '@/lib/orderFallback';
 
-const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
-const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
 const ALLOW_LOCAL_FALLBACK = process.env.NODE_ENV !== 'production';
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_UPLOADS_PER_WINDOW = 30;
@@ -177,19 +176,13 @@ function validateFile(file: File) {
 }
 
 async function fetchVerifiedOrder(request: NextRequest, orderId: string, customerEmail: string, orderItemId: string | null) {
-  const headers: Record<string, string> = {};
-  const auth = request.headers.get('authorization');
-  if (auth) headers.authorization = auth;
-  const cookie = request.headers.get('cookie');
-  if (cookie) headers.cookie = cookie;
-
   let data: unknown;
   let resOk = false;
 
   try {
-    const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderId)}`, {
-      headers,
-      signal: AbortSignal.timeout(30000),
+    const res = await backendFetch(`orders/${encodeURIComponent(orderId)}`, {
+      request,
+      timeoutMs: 30000,
     });
 
     resOk = res.ok;
@@ -308,18 +301,13 @@ export async function POST(request: NextRequest) {
     if (typeof orderItemId === 'string' && orderItemId.trim()) {
       params.set('orderItemId', orderItemId);
     }
-    const backendHeaders: Record<string, string> = {};
-    const auth = request.headers.get('authorization');
-    if (auth) backendHeaders.authorization = auth;
-    const cookie = request.headers.get('cookie');
-    if (cookie) backendHeaders.cookie = cookie;
-
     try {
-      const res = await fetch(`${API_BASE}/files/upload?${params}`, {
+      const res = await backendFetch(`files/upload?${params}`, {
+        request,
         method: 'POST',
-        headers: backendHeaders,
         body: backendForm,
-        signal: AbortSignal.timeout(45000),
+        json: false,
+        timeoutMs: 45000,
       });
 
       const data = await res.json();

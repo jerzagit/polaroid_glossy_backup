@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { getToken } from '@/lib/auth-token';
 import Link from 'next/link';
 
 interface User {
@@ -43,7 +44,7 @@ export default function AdminUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('backend_jwt');
+      const token = getToken();
       const res = await fetch('/api/admin/users', {
         headers: {
           'Authorization': `Bearer ${token}`,

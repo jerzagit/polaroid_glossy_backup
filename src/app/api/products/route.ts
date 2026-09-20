@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { backendFetch } from '@/lib/backend';
 import productsMeta from '@/data/products-meta.json';
-
-const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
-const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
 
 let cache: { data: unknown; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=60' };
 
 export interface ProductSpecs {
   dimensions: string;
@@ -62,7 +60,7 @@ const FALLBACK_SIZES = [
 
 async function fetchFromBackend(): Promise<ProductListing[] | null> {
   try {
-    const res = await fetch(`${API_BASE}/print-sizes`, { signal: AbortSignal.timeout(15000) });
+    const res = await backendFetch('print-sizes', { timeoutMs: 15000 });
     if (!res.ok) return null;
     const data = await res.json();
 
@@ -163,78 +161,12 @@ function buildFromFallback(): ProductListing[] {
 
 export async function GET() {
   if (cache && Date.now() < cache.expiresAt) {
-    return NextResponse.json(cache.data, {
-      headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=60' },
-    });
+    return NextResponse.json(cache.data, { headers: CACHE_HEADERS });
   }
 
-  let products: ProductListing[] | null = null;
-
-  // 1. Try Spring Boot backend
-  products = await fetchFromBackend();
-
-  // 2. Fall back to local fallback data
-  if (!products) {
-    try {
-      const sizes = await db.printSize.findMany({ where: { isActive: true }, orderBy: { price: 'asc' } });
-      if (sizes && sizes.length > 0) {
-        let dbMetaMap = new Map<string, Record<string, unknown>>();
-        try {
-          const dbMeta = await db.productMeta.findMany();
-          dbMetaMap = new Map((dbMeta as Array<Record<string, unknown>>).map(m => [m.id as string, {
-            ...m,
-            images: JSON.parse(m.images as string),
-            features: JSON.parse(m.features as string),
-            tiktokVideos: JSON.parse(m.tiktokVideos as string),
-          }]));
-        } catch { /* fall through */ }
-
-        const jsonMetaMap = new Map(productsMeta.products.map(m => [m.id, m]));
-
-        products = (sizes as Array<Record<string, unknown>>).map(size => {
-          const meta = (dbMetaMap.get(size.id as string) ?? jsonMetaMap.get(size.id as string)) as typeof productsMeta.products[0] | undefined;
-          return {
-            id: size.id as string,
-            name: size.name as string,
-            displayName: size.displayName as string,
-            width: size.width as number,
-            height: size.height as number,
-            price: size.price as number,
-            description: (size.description as string) ?? '',
-            shortDescription: meta?.shortDescription ?? (size.description as string) ?? '',
-            fullDescription: meta?.fullDescription ?? (size.description as string) ?? '',
-            images: meta?.images ?? ['/images/product-collection.png'],
-            image: meta?.images?.[0] ?? '/images/product-collection.png',
-            popular: meta?.popular ?? false,
-            tag: meta?.tag ?? 'STANDARD',
-            features: meta?.features ?? [],
-            accentColor: meta?.accentColor ?? '#6366f1',
-            specs: meta?.specs ?? {
-              dimensions: `${size.width} × ${size.height} inches`,
-              paper: 'Glossy photo-grade 230gsm',
-              finish: 'Glossy',
-              printMethod: 'Dye-sublimation',
-              processingTime: '3–4 working days',
-              minQty: 1,
-            },
-            rating: meta?.rating ?? 4.8,
-            reviewCount: meta?.reviewCount ?? 100,
-            pricingTiers: meta?.pricingTiers,
-          };
-        });
-      }
-    } catch { /* fall through */ }
-  }
-
-  // 3. Ultimate fallback: products-meta.json + hardcoded sizes
-  if (!products) {
-    products = buildFromFallback();
-  }
-
+  const products = await fetchFromBackend() ?? buildFromFallback();
   const responseData = { success: true, products };
   cache = { data: responseData, expiresAt: Date.now() + CACHE_TTL_MS };
 
-  return NextResponse.json(responseData, {
-    headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=60' },
-  });
+  return NextResponse.json(responseData, { headers: CACHE_HEADERS });
 }

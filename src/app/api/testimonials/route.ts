@@ -1,7 +1,4 @@
-import { NextResponse } from 'next/server';
-
-const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
-const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
+import { proxyOrFallback } from '@/lib/backend';
 
 const FALLBACK_TESTIMONIALS = [
   { id: 1, name: 'Sarah Mitchell', location: 'New York, USA', text: 'Absolutely love my polaroid prints! The quality is amazing and they arrived so quickly. Perfect for my scrapbook!', printType: '4R Classic', imageUrl: '/images/customer-1.png', rating: 5 },
@@ -11,15 +8,11 @@ const FALLBACK_TESTIMONIALS = [
 ];
 
 export async function GET() {
-  try {
-    const res = await fetch(`${API_BASE}/testimonials`, { signal: AbortSignal.timeout(15000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && Array.isArray(data.testimonials)) {
-        return NextResponse.json(data);
-      }
-    }
-  } catch { /* fall through */ }
-
-  return NextResponse.json({ success: true, testimonials: FALLBACK_TESTIMONIALS });
+  return proxyOrFallback('testimonials', {
+    fallback: { success: true, testimonials: FALLBACK_TESTIMONIALS },
+    fallbackWhen: ({ ok, data }) => {
+      const payload = data as { success?: boolean; testimonials?: unknown } | null;
+      return !ok || !payload?.success || !Array.isArray(payload.testimonials);
+    },
+  });
 }

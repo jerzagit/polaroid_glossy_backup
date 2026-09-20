@@ -1,39 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { backendFetch } from '@/lib/backend';
 import { createFallbackOrder, getFallbackOrder } from '@/lib/orderFallback';
 
-const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
-const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
 const ALLOW_LOCAL_FALLBACK = process.env.NODE_ENV !== 'production';
 
 // Order creation (POST/PUT) can involve a slow cold-started backend (email
 // notifications, upload flows). Reads are fast, so use a shorter timeout.
 const TIMEOUT_MS = { POST: 45000, PUT: 45000, DELETE: 45000, GET: 20000 } as const;
 
-async function proxyToBackend(request: NextRequest, method: string, extraPath = ''): Promise<NextResponse> {
+async function proxyToBackend(request: NextRequest, method: string): Promise<NextResponse> {
   const url = new URL(request.url);
   const orderNumber = url.searchParams.get('orderNumber');
   // Convert ?orderNumber=xxx to path param for Spring Boot
   if (orderNumber) {
     url.searchParams.delete('orderNumber');
   }
-  const path = orderNumber ? `/${orderNumber}` : extraPath;
+  const path = orderNumber ? `/${orderNumber}` : '';
   const query = url.search;
-  const backendUrl = `${API_BASE}/orders${path}${query}`;
 
   const body = method === 'GET' || method === 'DELETE' ? undefined : await request.json().catch(() => undefined);
 
   try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    const auth = request.headers.get('authorization');
-    if (auth) headers['authorization'] = auth;
-    const cookie = request.headers.get('cookie');
-    if (cookie) headers['cookie'] = cookie;
-
-    const res = await fetch(backendUrl, {
+    const res = await backendFetch(`orders${path}${query}`, {
+      request,
       method,
-      headers,
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(TIMEOUT_MS[method as keyof typeof TIMEOUT_MS] ?? 20000),
+      timeoutMs: TIMEOUT_MS[method as keyof typeof TIMEOUT_MS] ?? 20000,
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });

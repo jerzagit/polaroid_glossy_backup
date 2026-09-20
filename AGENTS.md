@@ -157,7 +157,14 @@ npx prisma studio
 6. **Sync local-dev**: `git checkout local-dev && git merge main`
 7. **If backend changes needed**, tell the backend team what endpoints/mock data to update
 
-All API routes that touch a database should **proxy to Spring Boot** (`${BACKEND_API_BASE}/api/...`) with a **hardcoded JSON fallback** for development.
+### Backend tiers
+
+Every server route that talks to Spring Boot goes through `src/lib/backend.ts` (`apiBase`, `backendFetch`, `proxyOrFallback`) — no route builds its own `NEXT_PUBLIC_BACKEND_API_BASE` URL, and no route imports Prisma.
+
+- **Tier 0 — static reads** (products, product detail, reviews, testimonials): fall back to hardcoded JSON from `src/data/products-meta.json` and route constants when the backend is unreachable, so browsing and marketing pages keep working offline.
+- **Tier 1 — backend-owned writes and admin data** (orders, cart, addresses, user profile, upload, ToyyibPay, admin): never fabricate data. Return `503 { success: false, error: 'Backend unavailable' }` when the backend is down.
+
+Client components never call the backend directly — they call the Next.js `/api/*` proxy, which forwards `Authorization`/`Cookie` server-side. The `backend_jwt` browser token lives behind `src/lib/auth-token.ts` (`getToken`/`setToken`/`clearToken`); do not read `localStorage` for it directly.
 
 ## Next.js 16 Gotcha: Async Params
 
