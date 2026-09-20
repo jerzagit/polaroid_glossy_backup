@@ -169,3 +169,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
 }
 ```
+
+## Handoff: opencode → Command Code Desktop
+
+Workflow: **opencode plans, Command Code executes.** Use opencode for research/planning, then hand off to Command Code Desktop which runs on **DeepSeek V4.1 Flash** (`deepseek/deepseek-v4.1-flash`, configured in `~/.commandcode/config.json`).
+
+1. In opencode, plan the task (Tab → Plan mode).
+2. Run `/handoff` — writes a self-contained `PLAN.md` (root) with goal, context, files, constraints, steps, verification.
+3. In Command Code Desktop: open this repo, start a thread, reference `@PLAN.md`, and let it execute.
+4. One-time setup already done: `cmd` v1.58.0 installed, Go plan subscribed, model default is `deepseek/deepseek-v4.1-flash`. Optionally run `/import opencode` in Command Code to pull over opencode skills/agents/commands/MCP/AGENTS.md.
+
+Notes:
+
+- `/import opencode` copies opencode skills/agents/commands/MCP into Command Code config (`~/.commandcode/` and `.commandcode/`); `AGENTS.md` stays the shared memory file for both.
+- Session transcripts are NOT shared between the two tools — the handoff is always via `PLAN.md`.
+- When Command Code finishes, review its changes and sync back to `local-dev` per the branch workflow above.
