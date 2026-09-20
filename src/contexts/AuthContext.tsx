@@ -2,9 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import { clearToken, setToken } from '@/lib/auth-token';
 
-const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
-const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '')}/api`;
 const USE_LOCAL_AUTH_MOCK = process.env.NEXT_PUBLIC_MOCK_PAYMENTS === 'true';
 
 type AuthUser = {
@@ -53,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const email = 'local-customer@polaroid.test';
     const name = 'Local Test Customer';
 
-    const res = await fetch(`${API_BASE}/auth/google`, {
+    const res = await fetch('/api/auth/google', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, name }),
@@ -67,10 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data.token) {
       setBackendJwt(data.token);
       setMockUser({ id: email, email, name, image: null });
-      localStorage.setItem('backend_jwt', data.token);
-      if (data.refreshToken) {
-        localStorage.setItem('backend_refresh_token', data.refreshToken);
-      }
+      setToken(data.token, data.refreshToken);
     }
   }, []);
 
@@ -86,8 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleSignOut = async () => {
     setBackendJwt(undefined);
     setMockUser(null);
-    localStorage.removeItem('backend_jwt');
-    localStorage.removeItem('backend_refresh_token');
+    clearToken();
     if (session?.user) {
       await signOut({ callbackUrl: '/' });
     }
@@ -111,10 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
         if (data.token) {
           setBackendJwt(data.token);
-          localStorage.setItem('backend_jwt', data.token);
-          if (data.refreshToken) {
-            localStorage.setItem('backend_refresh_token', data.refreshToken);
-          }
+          setToken(data.token, data.refreshToken);
         }
       }
     } catch {

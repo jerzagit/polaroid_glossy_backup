@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { statusConfig } from '@/lib/orderStatus';
+import { getToken } from '@/lib/auth-token';
 import Link from 'next/link';
 
 interface OrderItem {
@@ -286,7 +287,7 @@ export default function AdminOrdersPage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('backend_jwt');
+    const token = getToken();
     setAuthorized(!!token);
     if (token) {
       void fetchOrders();
@@ -303,7 +304,7 @@ export default function AdminOrdersPage() {
 
   const fetchOrders = async () => {
     try {
-      const token = localStorage.getItem('backend_jwt');
+      const token = getToken();
       const res = await fetch('/api/admin/orders', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -327,7 +328,7 @@ export default function AdminOrdersPage() {
   const handleVerify = async (orderNumber: string) => {
     setVerifying(orderNumber);
     try {
-      const token = localStorage.getItem('backend_jwt');
+      const token = getToken();
       const res = await fetch(`/api/admin/orders/${orderNumber}/verify-payment`, {
         method: 'POST',
         headers: {
@@ -353,7 +354,7 @@ export default function AdminOrdersPage() {
   const handleReject = async (orderNumber: string, reason: string) => {
     setVerifying(orderNumber);
     try {
-      const token = localStorage.getItem('backend_jwt');
+      const token = getToken();
       const res = await fetch(`/api/admin/orders/${orderNumber}/verify-payment`, {
         method: 'POST',
         headers: {

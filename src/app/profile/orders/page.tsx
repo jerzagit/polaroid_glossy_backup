@@ -10,6 +10,7 @@ import { ArrowLeft, Package, XCircle, Upload, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { statusConfig } from '@/lib/orderStatus';
+import { getToken } from '@/lib/auth-token';
 
 interface OrderItem {
   id: string;
@@ -57,7 +58,7 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     try {
       setFetchError(false);
-      const response = await fetch('/api/orders/my', { headers: { 'Authorization': `Bearer ${localStorage.getItem('backend_jwt')}`, 'Content-Type': 'application/json' } });
+      const response = await fetch('/api/orders/my', { headers: { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' } });
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders);

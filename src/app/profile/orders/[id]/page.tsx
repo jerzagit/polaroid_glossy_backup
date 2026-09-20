@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner';
 import { compressImage } from '@/lib/imageCompression';
 import { statusConfig } from '@/lib/orderStatus';
+import { getToken } from '@/lib/auth-token';
 
 interface OrderItemType {
   id: string;
@@ -212,7 +213,7 @@ export default function OrderDetailPage() {
   const fetchOrder = async (options?: { silent?: boolean }) => {
     try {
       if (!options?.silent) setFetchError(false);
-      const response = await fetch(`/api/orders/${orderNumber}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('backend_jwt')}`, 'Content-Type': 'application/json' } });
+      const response = await fetch(`/api/orders/${orderNumber}`, { headers: { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' } });
       const data = await response.json().catch(() => null);
       if (data?.success && data.order) {
         setOrder(data.order);
@@ -239,7 +240,7 @@ export default function OrderDetailPage() {
     try {
       const compressedFile = await compressImage(file);
       const formData = new FormData();
-      const token = localStorage.getItem('backend_jwt');
+      const token = getToken();
       formData.append('file', compressedFile);
       formData.append('orderId', order.orderNumber);
       formData.append('customerEmail', order.customerEmail || profile?.email || user?.email || '');
@@ -311,7 +312,7 @@ export default function OrderDetailPage() {
       for (const file of selectedFiles) {
         const compressedFile = await compressImage(file);
         const formData = new FormData();
-        const token = localStorage.getItem('backend_jwt');
+        const token = getToken();
         formData.append('file', compressedFile);
         formData.append('orderId', order.orderNumber);
         formData.append('customerEmail', order.customerEmail || profile?.email || user?.email || '');

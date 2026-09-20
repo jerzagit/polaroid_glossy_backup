@@ -61,6 +61,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { compressImage, WHATSAPP_HD_SETTINGS } from '@/lib/imageCompression';
 import { saveCartPhotos, loadCartPhotos, removeCartPhotos, clearAllCartPhotos } from '@/lib/photoStorage';
+import { getToken } from '@/lib/auth-token';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
@@ -210,7 +211,7 @@ export default function PolaroidPrintPage() {
   const { user, profile, loading: authLoading, signInWithGoogle, signOut, backendJwt } = useAuth();
 
   const authHeaders = (): Record<string, string> => {
-    const token = backendJwt || (typeof window !== 'undefined' ? localStorage.getItem('backend_jwt') : null);
+    const token = backendJwt || getToken();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     return headers;
@@ -218,7 +219,7 @@ export default function PolaroidPrintPage() {
 
   // Auth headers for file uploads — omits Content-Type so the browser sets multipart/form-data boundary
   const uploadAuthHeaders = (): Record<string, string> => {
-    const token = backendJwt || (typeof window !== 'undefined' ? localStorage.getItem('backend_jwt') : null);
+    const token = backendJwt || getToken();
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     return headers;

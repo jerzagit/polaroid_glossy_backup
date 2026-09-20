@@ -1,7 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-
-const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || 'http://localhost:8080';
-const API_BASE = `${BACKEND_API_BASE.replace(/\/+$/, '').replace(/\/api$/, '')}/api`;
+import { NextRequest } from 'next/server';
+import { proxyOrFallback } from '@/lib/backend';
 
 const FALLBACK_REVIEWS = [
   {
@@ -30,40 +28,25 @@ const FALLBACK_REVIEWS = [
   },
 ];
 
-function buildBackendUrl(searchParams: URLSearchParams): string {
+function backendPath(searchParams: URLSearchParams): string {
   const params = new URLSearchParams();
   for (const key of ['sizeId', 'userId', 'orderId']) {
     const val = searchParams.get(key);
     if (val) params.set(key, val);
   }
   const qs = params.toString();
-  return `${API_BASE}/reviews${qs ? `?${qs}` : ''}`;
+  return `reviews${qs ? `?${qs}` : ''}`;
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const isScoped = Boolean(searchParams.get('orderId') || searchParams.get('userId'));
 
-  try {
-    const url = buildBackendUrl(searchParams);
-    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && Array.isArray(data.reviews)) {
-        return NextResponse.json(data);
-      }
-    }
-  } catch { /* fall through */ }
-
-  let fallback = FALLBACK_REVIEWS;
-  const sizeId = searchParams.get('sizeId');
-  const userId = searchParams.get('userId');
-  const orderId = searchParams.get('orderId');
-
-  if (orderId) {
-    fallback = [];
-  } else if (userId) {
-    fallback = [];
-  }
-
-  return NextResponse.json({ success: true, reviews: fallback });
+  return proxyOrFallback(backendPath(searchParams), {
+    fallback: { success: true, reviews: isScoped ? [] : FALLBACK_REVIEWS },
+    fallbackWhen: ({ ok, data }) => {
+      const payload = data as { success?: boolean; reviews?: unknown } | null;
+      return !ok || !payload?.success || !Array.isArray(payload.reviews);
+    },
+  });
 }
