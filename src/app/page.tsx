@@ -1029,9 +1029,8 @@ export default function PolaroidPrintPage() {
         }
       });
 
-      await Promise.all(workersonge);
+      await Promise.all(workers);
       if (firstError) throw firstError;
-    }
 
       if (paymentMethod === 'toyyibpay') {
         console.log('Creating ToyyibPay bill...');
