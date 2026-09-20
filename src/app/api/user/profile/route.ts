@@ -2,36 +2,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import { proxyOrFallback } from '@/lib/backend';
 import { requireSession } from '@/lib/auth';
 
-export async function GET(request: NextRequest) {
+async function requireOwnProfile(request: NextRequest) {
   const { session, error } = await requireSession();
-  if (error) return error;
+  if (error) return { error };
 
   const { searchParams } = new URL(request.url);
   const email = searchParams.get('email');
 
-  if (!email) return NextResponse.json({ success: false, error: 'Email is required' }, { status: 400 });
-
-  if (email.toLowerCase() !== session!.user!.email!.toLowerCase()) {
-    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+  if (!email) {
+    return { error: NextResponse.json({ success: false, error: 'Email is required' }, { status: 400 }) };
   }
 
-  return proxyOrFallback(`user/profile?email=${encodeURIComponent(email)}`, { request });
+  if (email.toLowerCase() !== session!.user!.email!.toLowerCase()) {
+    return { error: NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 }) };
+  }
+
+  return { error: null };
+}
+
+export async function GET(request: NextRequest) {
+  const { error } = await requireOwnProfile(request);
+  if (error) return error;
+
+  return proxyOrFallback('auth/profile', { request });
 }
 
 export async function PUT(request: NextRequest) {
-  const { session, error } = await requireSession();
+  const { error } = await requireOwnProfile(request);
   if (error) return error;
 
-  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
-  const email = typeof body?.email === 'string' ? body.email : null;
+  const body = await request.json().catch(() => null);
 
-  if (!email) return NextResponse.json({ success: false, error: 'Email is required' }, { status: 400 });
-
-  if (email.toLowerCase() !== session!.user!.email!.toLowerCase()) {
-    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
-  }
-
-  return proxyOrFallback('user/profile', {
+  return proxyOrFallback('auth/profile', {
     request,
     method: 'PUT',
     body: JSON.stringify(body),
