@@ -91,7 +91,15 @@ export async function proxyOrFallback(path: string, options: ProxyOrFallbackOpti
 
   try {
     const response = await backendFetch(path, fetchOptions);
-    const data: unknown = await response.json();
+    const text = await response.text();
+
+    // 204/205 and other bodyless replies pass straight through.
+    if (text.length === 0) {
+      return new NextResponse(null, { status: response.status });
+    }
+
+    // Invalid JSON throws and is handled as "backend unavailable" below.
+    const data: unknown = JSON.parse(text);
 
     if (fallback !== undefined && fallbackWhen?.({ status: response.status, ok: response.ok, data })) {
       return NextResponse.json(fallback);
