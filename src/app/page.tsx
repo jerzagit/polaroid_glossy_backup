@@ -980,7 +980,17 @@ export default function PolaroidPrintPage() {
       }
 
       setCheckoutUploadProgress({ done: 0, total: pendingUploads.length });
-      for (const [index, upload] of pendingUploads.entries()) {
+
+      // Upload with bounded concurrency (not one-at-a-time) so large orders
+      // (100-250+ photos) do not stall the register for minutes. Ordering is
+      // still deterministic, and any failure aborts the remaining uploads so
+      // the order is never partially billed.
+      const CONCURRENT_UPLOADS = 5;
+      let nextIndex = 0;
+      let completed = 0;
+      let firstError: Error | null = null;
+
+      const uploadOne = async (ordinal: number, upload: { file: File; orderItemId?: string }) => {
         const formData = new FormData();
         formData.append('file', upload.file);
         formData.append('orderId', orderNumber);
@@ -997,11 +1007,31 @@ export default function PolaroidPrintPage() {
 
         if (!uploadResponse.ok || !uploadData?.success || !uploadData.url) {
           const reason = uploadData?.error || `Upload request failed (${uploadResponse.status})`;
-          throw new Error(`Photo ${index + 1} of ${pendingUploads.length} failed: ${reason}`);
+          throw new Error(`Photo ${ordinal} of ${pendingUploads.length} failed: ${reason}`);
         }
 
-        setCheckoutUploadProgress({ done: index + 1, total: pendingUploads.length });
-      }
+        completed += 1;
+        setCheckoutUploadProgress({ done: completed, total: pendingUploads.length });
+      };
+
+      const workers = Array.from({ length: Math.min(CONCURRENT_UPLOADS, pendingUploads.length) }, async () => {
+        while (firstError === null) {
+          const index = nextIndex;
+          if (index >= pendingUploads.length) break;
+          nextIndex += 1;
+          const upload = pendingUploads[index];
+          try {
+            await uploadOne(index + 1, upload);
+          } catch (error) {
+            if (firstError === null) firstError = error instanceof Error ? error : new Error(String(error));
+            break;
+          }
+        }
+      });
+
+      await Promise.all(workersonge);
+      if (firstError) throw firstError;
+    }
 
       if (paymentMethod === 'toyyibpay') {
         console.log('Creating ToyyibPay bill...');
