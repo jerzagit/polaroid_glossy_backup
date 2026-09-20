@@ -6,8 +6,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { ArrowLeft, Package, Clock, Loader2, CheckCircle, XCircle, Truck, RefreshCwIcon, PackageCheck, Receipt, Upload, Check } from 'lucide-react';
+import { ArrowLeft, Package, XCircle, Upload, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { statusConfig } from '@/lib/orderStatus';
 
 interface OrderItem {
   id: string;
@@ -31,24 +33,15 @@ interface Order {
   createdAt: string;
 }
 
-const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  draft: { label: 'Draft', color: 'bg-gray-100 text-gray-800', icon: Package },
-  pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800', icon: Loader2 },
-  posted: { label: 'Posted', color: 'bg-purple-100 text-purple-800', icon: PackageCheck },
-  on_delivery: { label: 'On Delivery', color: 'bg-indigo-100 text-indigo-800', icon: Truck },
-  delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: XCircle },
-  refunded: { label: 'Refunded', color: 'bg-gray-100 text-gray-800', icon: RefreshCwIcon },
-  expired: { label: 'Expired', color: 'bg-red-100 text-red-800', icon: XCircle },
-};
-
 export default function OrdersPage() {
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -63,29 +56,40 @@ export default function OrdersPage() {
 
   const fetchOrders = async () => {
     try {
+      setFetchError(false);
       const response = await fetch('/api/orders/my', { headers: { 'Authorization': `Bearer ${localStorage.getItem('backend_jwt')}`, 'Content-Type': 'application/json' } });
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders);
+      } else {
+        setFetchError(true);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
   };
-
-  const filteredOrders = activeTab === 'all'
-    ? orders
-    : orders.filter(o => o.status?.toLowerCase() === activeTab);
 
   const tabs = [
     { id: 'all', label: 'All' },
     { id: 'draft', label: 'Draft' },
     { id: 'pending', label: 'Pending' },
     { id: 'processing', label: 'Processing' },
+    { id: 'posted', label: 'Posted' },
+    { id: 'on_delivery', label: 'On Delivery' },
     { id: 'delivered', label: 'Delivered' },
+    { id: 'cancelled', label: 'Cancelled' },
   ];
+
+  const activeTabLabel = tabs.find(tab => tab.id === activeTab)?.label ?? 'All';
+  const query = search.trim().toLowerCase();
+  const filteredOrders = orders.filter(o => {
+    if (activeTab !== 'all' && o.status?.toLowerCase() !== activeTab) return false;
+    if (query && !o.orderNumber?.toLowerCase().includes(query)) return false;
+    return true;
+  });
 
   if (authLoading) {
     return (
@@ -114,7 +118,16 @@ export default function OrdersPage() {
       </header>
 
       <div className="container mx-auto px-3 md:px-4 py-6 md:py-12 max-w-3xl">
-        <h1 className="text-2xl md:text-3xl font-bold mb-6">Order History</h1>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">{t.orders_title}</h1>
+        <p className="text-sm text-muted-foreground mb-6">{t.orders_desc}</p>
+
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by order number"
+          className="mb-4 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+        />
 
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {tabs.map(tab => (
@@ -134,19 +147,43 @@ export default function OrdersPage() {
           <div className="flex items-center justify-center py-12">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
+        ) : fetchError ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <XCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="font-semibold text-lg mb-2">Could not load your orders</h3>
+              <p className="text-muted-foreground mb-4">Something went wrong while fetching your orders.</p>
+              <Button onClick={() => { setLoading(true); fetchOrders(); }}>Retry</Button>
+            </CardContent>
+          </Card>
         ) : filteredOrders.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
               <Package className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold text-lg mb-2">No orders yet</h3>
-              <p className="text-muted-foreground mb-4">Start by creating your first photo print order.</p>
-              <Button asChild>
-                <Link href="/">Create Your First Order</Link>
-              </Button>
+              {query ? (
+                <>
+                  <h3 className="font-semibold text-lg mb-2">No matching orders</h3>
+                  <p className="text-muted-foreground">No orders match &quot;{search.trim()}&quot;.</p>
+                </>
+              ) : activeTab !== 'all' ? (
+                <>
+                  <h3 className="font-semibold text-lg mb-2">No {activeTabLabel.toLowerCase()} orders</h3>
+                  <p className="text-muted-foreground">{t.orders_empty}</p>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-semibold text-lg mb-2">{t.orders_empty}</h3>
+                  <p className="text-muted-foreground mb-4">Start by creating your first photo print order.</p>
+                  <Button asChild>
+                    <Link href="/">Create Your First Order</Link>
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">Showing {filteredOrders.length} of {orders.length}</p>
             {filteredOrders.map(order => {
               const status = statusConfig[order.status?.toLowerCase()] || statusConfig.pending;
               const StatusIcon = status.icon;
