@@ -3,7 +3,7 @@
     {
       "id": "ic-border",
       "images": [
-        "/images/products/ic-size.jpg",
+        "/images/products/ic-border/ic-border.jpg",
         "/images/products/size-comparison.jpg",
         "/images/products/glossy-waterproof.jpg"
       ],
@@ -37,7 +37,7 @@
     {
       "id": "ic",
       "images": [
-        "/images/products/ic-size.jpg",
+        "/images/products/ic/ic.jpg",
         "/images/products/size-comparison.jpg",
         "/images/products/glossy-waterproof.jpg"
       ],
@@ -71,7 +71,7 @@
     {
       "id": "polaroid-mini",
       "images": [
-        "/images/products/polaroid-mini.jpg",
+        "/images/products/polaroid-mini/polaroid-mini.jpg",
         "/images/products/size-comparison.jpg",
         "/images/products/glossy-waterproof.jpg"
       ],
@@ -105,8 +105,8 @@
     {
       "id": "2r-no-border",
       "images": [
+        "/images/products/2r-no-border/2r-no-border.jpg",
         "/images/products/size-comparison.jpg",
-        "/images/products/3r-no-border.jpg",
         "/images/products/glossy-waterproof.jpg"
       ],
       "popular": false,
@@ -130,7 +130,7 @@
     {
       "id": "2r-border",
       "images": [
-        "/images/products/2r-border.jpg",
+        "/images/products/2r-border/2r-border.jpg",
         "/images/products/size-comparison.jpg",
         "/images/products/glossy-waterproof.jpg"
       ],
@@ -155,7 +155,7 @@
     {
       "id": "3r-no-border",
       "images": [
-        "/images/products/3r-no-border.jpg",
+        "/images/products/3r-no-border/3r-no-border.jpg",
         "/images/products/size-comparison-large.jpg",
         "/images/products/glossy-waterproof.jpg"
       ],
@@ -180,7 +180,7 @@
     {
       "id": "3r-border",
       "images": [
-        "/images/products/3r-border.jpg",
+        "/images/products/3r-border/3r-border.jpg",
         "/images/products/size-comparison-large.jpg",
         "/images/products/glossy-waterproof.jpg"
       ],
